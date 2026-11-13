@@ -1,0 +1,325 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		5B1000000000000000000101 /* WilcoCore in Frameworks */ = {isa = PBXBuildFile; productRef = 5B1000000000000000000201 /* WilcoCore */; };
+		5B1000000000000000000103 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 5B1000000000000000000203 /* Sparkle */; };
+		5B1000000000000000000104 /* WilcoAudio in Frameworks */ = {isa = PBXBuildFile; productRef = 5B1000000000000000000204 /* WilcoAudio */; };
+		5B1000000000000000000105 /* WilcoTranscription in Frameworks */ = {isa = PBXBuildFile; productRef = 5B1000000000000000000205 /* WilcoTranscription */; };
+		5B1000000000000000000106 /* WilcoControl in Frameworks */ = {isa = PBXBuildFile; productRef = 5B1000000000000000000206 /* WilcoControl */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		5B1000000000000000000301 /* Wilco.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Wilco.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		5B1000000000000000000401 /* Wilco */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Wilco;
+			sourceTree = "<group>";
+		};
+		5B1000000000000000000402 /* Config */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Config;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		5B1000000000000000000501 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5B1000000000000000000101 /* WilcoCore in Frameworks */,
+				5B1000000000000000000105 /* WilcoTranscription in Frameworks */,
+				5B1000000000000000000106 /* WilcoControl in Frameworks */,
+				5B1000000000000000000103 /* Sparkle in Frameworks */,
+				5B1000000000000000000104 /* WilcoAudio in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		5B1000000000000000000601 = {
+			isa = PBXGroup;
+			children = (
+				5B1000000000000000000401 /* Wilco */,
+				5B1000000000000000000402 /* Config */,
+				5B1000000000000000000602 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		5B1000000000000000000602 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				5B1000000000000000000301 /* Wilco.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		5B1000000000000000000701 /* Wilco */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5B1000000000000000000902 /* Build configuration list for PBXNativeTarget "Wilco" */;
+			buildPhases = (
+				5B1000000000000000000801 /* Sources */,
+				5B1000000000000000000501 /* Frameworks */,
+				5B1000000000000000000802 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				5B1000000000000000000401 /* Wilco */,
+			);
+			name = Wilco;
+			packageProductDependencies = (
+				5B1000000000000000000201 /* WilcoCore */,
+				5B1000000000000000000205 /* WilcoTranscription */,
+				5B1000000000000000000203 /* Sparkle */,
+				5B1000000000000000000204 /* WilcoAudio */,
+				5B1000000000000000000206 /* WilcoControl */,
+			);
+			productName = Wilco;
+			productReference = 5B1000000000000000000301 /* Wilco.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		5B1000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2630;
+				LastUpgradeCheck = 2630;
+				TargetAttributes = {
+					5B1000000000000000000701 = {
+						CreatedOnToolsVersion = 26.3;
+					};
+				};
+			};
+			buildConfigurationList = 5B1000000000000000000901 /* Build configuration list for PBXProject "Wilco" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 5B1000000000000000000601;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				5B1000000000000000000A01 /* XCLocalSwiftPackageReference "Packages/WilcoCore" */,
+				5B1000000000000000000A03 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 5B1000000000000000000602 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				5B1000000000000000000701 /* Wilco */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		5B1000000000000000000802 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		5B1000000000000000000801 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		5B1000000000000000000B01 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		5B1000000000000000000B02 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		5B1000000000000000000B03 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/Wilco.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = B46GNF8BU6;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Wilco;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Omar Davis";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.3.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.ic3burg.wilco;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		5B1000000000000000000B04 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/Wilco.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = B46GNF8BU6;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Wilco;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Omar Davis";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.3.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.ic3burg.wilco;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		5B1000000000000000000901 /* Build configuration list for PBXProject "Wilco" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5B1000000000000000000B01 /* Debug */,
+				5B1000000000000000000B02 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		5B1000000000000000000902 /* Build configuration list for PBXNativeTarget "Wilco" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5B1000000000000000000B03 /* Debug */,
+				5B1000000000000000000B04 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		5B1000000000000000000A01 /* XCLocalSwiftPackageReference "Packages/WilcoCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/WilcoCore;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		5B1000000000000000000A03 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.10.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		5B1000000000000000000201 /* WilcoCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = WilcoCore;
+		};
+		5B1000000000000000000203 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5B1000000000000000000A03 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+		5B1000000000000000000204 /* WilcoAudio */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = WilcoAudio;
+		};
+		5B1000000000000000000205 /* WilcoTranscription */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = WilcoTranscription;
+		};
+		5B1000000000000000000206 /* WilcoControl */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = WilcoControl;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 5B1000000000000000000001 /* Project object */;
+}

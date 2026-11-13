@@ -1,0 +1,18 @@
+# macOS
+.DS_Store
+
+# Reverse-engineering evidence: kept locally, not published.
+# Contains the original 0.2.0 app, personal show data and crash logs.
+/reference/*
+!/reference/README.md
+
+# Xcode / SwiftPM
+xcuserdata/
+*.xcuserstate
+DerivedData/
+build/
+.build/
+.swiftpm/
+
+# Brainstorming mockups
+.superpowers/

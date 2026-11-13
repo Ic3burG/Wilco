@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Package tests
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Use the newest Xcode on the runner
+        run: |
+          xcode=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+          swift --version
+
+      - uses: actions/cache@v6
+        with:
+          path: Packages/WilcoCore/.build
+          key: spm-${{ runner.os }}-${{ hashFiles('Packages/WilcoCore/Package.resolved') }}
+          restore-keys: spm-${{ runner.os }}-
+
+      # Tests that need this Mac's own show data or real speech
+      # (WILCO_ASR_TESTS=1) skip themselves on the runner.
+      - name: swift test
+        working-directory: Packages/WilcoCore
+        timeout-minutes: 15
+        run: swift test
+
+  build:
+    name: App build
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Use the newest Xcode on the runner
+        run: |
+          xcode=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+
+      - uses: actions/cache@v6
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData/SourcePackages
+          key: xcode-spm-${{ runner.os }}-${{ hashFiles('Packages/WilcoCore/Package.resolved', 'Wilco.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: xcode-spm-${{ runner.os }}-
+
+      # Unsigned: CI has no access to the Apple team's certificates.
+      - name: xcodebuild
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Wilco.xcodeproj \
+            -scheme Wilco \
+            -configuration Debug \
+            -destination 'platform=macOS' \
+            -clonedSourcePackagesDirPath ~/Library/Developer/Xcode/DerivedData/SourcePackages \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            | tee build.log | grep -E "warning:|error:|BUILD (SUCCEEDED|FAILED)" || true
+          grep -q "BUILD SUCCEEDED" build.log
