@@ -247,6 +247,7 @@ starts from a single fresh commit.
   and preferences were moved into the new folder and preferences domain once,
   on this Mac. The app has no import code for older locations.
 - `ShowStore` no longer makes a one-time backup of the show file.
+- Copyright in the app is now "Copyright © 2026 Omar Davis".
 - Format fixtures renamed `show-v1.wilco` and `session-v1.jsonl`; the
   format suite is now `FileFormatTests`. 195 tests, passing; the app builds
   with no new warnings.
@@ -258,6 +259,10 @@ starts from a single fresh commit.
 - **Verify in the app:** Wilco opens with the show, configurations,
   transcripts, Whisper models and look & feel all in place.
 - **New app icon.** The headset icon is inherited and should be replaced.
+- **Open question:** comments and SPEC.md still say "0.2.0" for the earlier
+  app (e.g. "the 0.2.0 crash"). Waiting on the user: keep, or reword them.
+- The local-only branch `old-history` keeps the pre-squash commits. Delete
+  it (`git branch -D old-history`) once it's no longer wanted.
 - Configurations checklist and deferred minors from the previous section
   are unchanged.
 - Rename the local folder `~/Projects/Wilco` to `~/Projects/Wilco` when
