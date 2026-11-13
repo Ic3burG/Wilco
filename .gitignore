@@ -16,3 +16,6 @@ build/
 
 # Brainstorming mockups
 .superpowers/
+
+# Benchmark output (machine-specific)
+bench-results/

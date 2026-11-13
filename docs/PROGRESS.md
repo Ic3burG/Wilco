@@ -275,3 +275,81 @@ starts from a single fresh commit.
   are unchanged.
 - Rename the local folder `~/Projects/Wilco` to `~/Projects/Wilco` when
   convenient. (Claude Code's memory for this project is keyed by the path.)
+
+## 2026-11-12 (late) — Choosing speech models and a 32-channel benchmark
+
+### Research: other speech models
+
+The goal is 32 channels transcribed at once, on one Mac. Four suggested
+models were checked against that:
+
+- **Moonshine Voice** (MIT, Swift package with a macOS build). It streams
+  partial results, but one loaded model handles its streams one at a time,
+  and its own docs warn that 10 or more streams slow it down. It's unlikely
+  to reach 32 channels; not pursued for now.
+- **Canary-Qwen 2.5B** and **IBM Granite Speech 3.3** are large models that
+  pair a speech encoder with a language model. Neither streams or has an
+  official Mac build, and neither can serve 32 live channels. Ruled out.
+- **NVIDIA Parakeet TDT 0.6B v3** (CC-BY-4.0) is the best candidate. The
+  FluidAudio Swift package runs it on the Neural Engine at about 210× real
+  time. It transcribes a finished utterance the way our Whisper path does,
+  so one shared model could serve every channel.
+
+### Tooling
+
+- **`wilco-bench`**, a multichannel transcription benchmark (new
+  `WilcoBench` library and command-line tool in `Packages/WilcoCore`).
+  - It plays a seeded scenario of comms calls into many channels in real
+    time, through the same 48 kHz ring buffers and `ChannelTranscribers.make`
+    path the app uses.
+  - It reports word error rate, delay from the end of a call to its final
+    line, first-words delay, missed calls, backlog, CPU, memory and dropped
+    audio, plus a "keeps up" verdict.
+  - Speech comes from `say` in several voices (cached), or from a folder of
+    real recordings (`--corpus`).
+  - A new model is one `BenchEngine` entry, so a candidate can be measured
+    before it exists in the app. How to run and extend it:
+    [`BENCHMARK.md`](BENCHMARK.md).
+- 21 new package tests: text normalising ("Q5" = "cue five"), word error
+  rate, scenarios, scoring, the runner and the report (216 in all).
+
+### Baseline: where we land today
+
+M1 Max, 60 s runs, 30% talk time, `say` speech. Full table:
+[`benchmarks/2026-11-12-m1-max-say.md`](benchmarks/2026-11-12-m1-max-say.md).
+
+- **Whisper base** keeps up at 32 channels. Lines arrive 0.76 s after a
+  call ends (0.91 s for the slowest 5%), the same as at 1 channel.
+- **Apple long-form** (the default "fast, then corrected" setting) keeps up
+  at 32 channels: 0.93 s median, 1.66 s for the slowest 5%, with one call
+  missed out of 253.
+- **Whisper small** is the most accurate (3–5% WER) up to 16 channels, but
+  falls behind at 32 (7 s for the slowest 5%).
+- **Apple long-form "one pass"** isn't overloaded but is slower at every
+  channel count, about 2.2 s median. The "fast, then corrected" setting gets
+  final lines out sooner.
+- **Apple dictation** is a poor fit: 11–17% WER, and up to 13% of calls
+  missed.
+- Load doesn't change accuracy: channel 1's transcript was the same at 8,
+  16 and 32 channels.
+- `say` speech is a best case; real comms will score worse.
+
+### Found along the way
+
+- `SpeechAssets.status` reports an installed Apple model as only
+  "supported" to a process that hasn't reserved it. The benchmark checks
+  installed locales instead. The app may show "Install" for a language
+  another app already downloaded (installing it is then instant). Minor.
+
+### Next steps / where we left off
+
+- **Add Parakeet TDT v3** (through FluidAudio) as a benchmark engine and
+  measure it at 32 channels. To be worth adopting, it needs better accuracy
+  than Whisper small while keeping up at 32 channels like Whisper base.
+- **Benchmark real comms audio:** collect recordings from a show
+  (`name.wav` + `name.txt`) and run with `--corpus`. Those numbers are the
+  ones to decide on.
+- Consider the Apple "one pass" profile's name and description, since it's
+  slower than the default, not lighter.
+- Unchanged from earlier: configurations checklist in the app, deferred
+  minors, delete `old-history` when no longer needed.

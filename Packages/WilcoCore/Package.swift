@@ -28,6 +28,14 @@ let package = Package(
             ]
         ),
         .target(
+            name: "WilcoBench",
+            dependencies: ["WilcoCore", "WilcoTranscription"]
+        ),
+        .executableTarget(
+            name: "wilco-bench",
+            dependencies: ["WilcoBench", "WilcoTranscription", "WilcoCore"]
+        ),
+        .target(
             name: "WilcoControl",
             dependencies: ["WilcoCore"],
             linkerSettings: [.linkedFramework("CoreMIDI"), .linkedFramework("Network")]
@@ -44,6 +52,10 @@ let package = Package(
         .testTarget(
             name: "WilcoTranscriptionTests",
             dependencies: ["WilcoTranscription"]
+        ),
+        .testTarget(
+            name: "WilcoBenchTests",
+            dependencies: ["WilcoBench", "WilcoTranscription", "WilcoCore"]
         ),
         .testTarget(
             name: "WilcoControlTests",

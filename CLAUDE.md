@@ -17,6 +17,10 @@ clean rebuild of a reference app that shipped only as a compiled binary. Read th
   are slow and need speech models installed.
 - **App build** (the same command CI runs, unsigned):
   `xcodebuild build -project Wilco.xcodeproj -scheme Wilco -configuration Debug -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY=""`
+- **Multichannel benchmark:** `cd Packages/WilcoCore && swift run -c release
+  wilco-bench` runs each engine at 1–32 channels in real time and reports
+  accuracy, delay and CPU. See `docs/BENCHMARK.md`, including how to add a
+  candidate model.
 - Tests use Swift Testing (`@Suite`, `@Test`), not XCTest. Tests that need
   local-only data gate themselves with `.enabled(if:)`: the user's real show,
   real session transcripts (`DataLocations.transcripts`) or `WILCO_ASR_TESTS`. On
@@ -33,6 +37,7 @@ clean rebuild of a reference app that shipped only as a compiled binary. Read th
 | `Packages/WilcoCore/Sources/WilcoCore` | Platform-free model, persistence, automation matching, report, segmenter |
 | `Packages/WilcoCore/Sources/WilcoAudio` | CoreAudio HAL capture, devices, multi-device |
 | `Packages/WilcoCore/Sources/WilcoTranscription` | Apple speech (macOS 26+) and WhisperKit transcribers, language catalog, model assets |
+| `Packages/WilcoCore/Sources/WilcoBench`, `wilco-bench` | Multichannel transcription benchmark (library + command-line tool) |
 | `Packages/WilcoCore/Sources/WilcoControl` | OSC (UDP/TCP/SLIP) and MIDI output |
 | `Packages/WilcoCore/Tests/WilcoCoreTests/Fixtures` | Real show and `.jsonl` files (identifying text replaced) for format tests |
 | `Config/` | Info.plist and entitlements |

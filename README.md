@@ -22,6 +22,7 @@ The core app works and is in testing; it is not yet released. See
 | Post-show report with HTML, SRT and VTT export | Vor preset |
 | Look & Feel, including Light / Dark / Match System | |
 | Configurations: saved show setups, load in one click, import/export (new) | |
+| Multichannel transcription benchmark, `wilco-bench` (new; see `docs/BENCHMARK.md`) | |
 
 ## Files
 
