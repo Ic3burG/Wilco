@@ -248,6 +248,12 @@ starts from a single fresh commit.
   on this Mac. The app has no import code for older locations.
 - `ShowStore` no longer makes a one-time backup of the show file.
 - Copyright in the app is now "Copyright © 2026 Omar Davis".
+- **New app icon:** an amber waveform that settles into lines of text, with
+  an "acknowledged" check badge, on a midnight-navy tile. Generated from a
+  prompt, then fitted to Apple's grid (824px tile on a 1024 canvas, made
+  fully opaque, soft drop shadow) and exported at every size. It reads
+  clearly down to 32px; at 16px it's just a shape. It replaces the
+  inherited headset.
 - No version number or name for the reference app anywhere in the project.
   Docs call it "the reference app". Code comments explain behaviour on its
   own terms (e.g. why the inspector never stores an array index). Two
@@ -263,7 +269,6 @@ starts from a single fresh commit.
 
 - **Verify in the app:** Wilco opens with the show, configurations,
   transcripts, Whisper models and look & feel all in place.
-- **New app icon.** The headset icon is inherited and should be replaced.
 - The local-only branch `old-history` keeps the pre-squash commits. Delete
   it (`git branch -D old-history`) once it's no longer wanted.
 - Configurations checklist and deferred minors from the previous section
