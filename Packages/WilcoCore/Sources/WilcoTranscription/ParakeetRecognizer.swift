@@ -46,9 +46,10 @@ public struct ParakeetRecognizer: UtteranceRecognizer {
            // With 10 terms or fewer this is always true; larger
            // vocabularies skip the CTC pass when no word is close to a term.
            session.hasCTCRescoringCandidates(text: text, tokenTimings: timings),
+           // Without a replacement, rescore hands back `text` unchanged,
+           // which `accepts` refuses.
            let rescored = await session.rescore(text: text, tokenTimings: timings, audioSamples: audio),
-           rescored.wasModified,
-           ParakeetVocabulary.keepsNumbers(original: text, rescored: rescored.text) {
+           ParakeetVocabulary.accepts(original: text, rescored: rescored.text) {
             text = rescored.text
         }
         return Recognition(text: text, confidence: Double(result.confidence))

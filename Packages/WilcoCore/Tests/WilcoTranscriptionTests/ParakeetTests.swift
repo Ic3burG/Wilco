@@ -42,14 +42,27 @@ import Testing
         #expect(ParakeetVocabulary.thresholds == VocabularyBoostingSession.Thresholds(cbw: 0, minSimilarity: 0.7))
     }
 
-    @Test func rescoreThatLosesACueNumberIsRefused() {
+    @Test func rescoreThatChangesANumberIsRefused() {
         // Seen with "QLab" boosted: the rescorer swapped the cue number out.
-        #expect(!ParakeetVocabulary.keepsNumbers(original: "Standby Club Q12.", rescored: "Standby Club QLab."))
-        #expect(!ParakeetVocabulary.keepsNumbers(original: "And I clam to 12.", rescored: "And I clam to QLab."))
-        #expect(!ParakeetVocabulary.keepsNumbers(original: "Go 4 and 4.", rescored: "Go 4 and Tait."))
-        #expect(ParakeetVocabulary.keepsNumbers(original: "Stand by the kineses rig.", rescored: "Stand by the Kinesys."))
-        #expect(ParakeetVocabulary.keepsNumbers(original: "Cue 42, go.", rescored: "Cue 42 go"))
-        #expect(ParakeetVocabulary.keepsNumbers(original: "Ellex forty two", rescored: "LX 42"))
+        #expect(!ParakeetVocabulary.accepts(original: "Standby Club Q12.", rescored: "Standby Club QLab."))
+        #expect(!ParakeetVocabulary.accepts(original: "club Q12", rescored: "QLab"))
+        #expect(!ParakeetVocabulary.accepts(original: "And I clam to 12.", rescored: "And I clam to QLab."))
+        #expect(!ParakeetVocabulary.accepts(original: "Go 4 and 4.", rescored: "Go 4 and Tait."))
+        // A term mustn't bring a number nobody said, or turn a spoken one into digits.
+        #expect(!ParakeetVocabulary.accepts(original: "Ellex forty three", rescored: "LX 42"))
+        #expect(!ParakeetVocabulary.accepts(original: "Ellex forty two", rescored: "LX 42"))
+        #expect(!ParakeetVocabulary.accepts(original: "Standby Ellex", rescored: "Standby LX 42"))
+        #expect(!ParakeetVocabulary.accepts(original: "cue twelve", rescored: "QLab"))
+        #expect(!ParakeetVocabulary.accepts(original: "Fly forty-two in", rescored: "Fly Nivoflex in"))
+    }
+
+    @Test func rescoreThatOnlyFixesATermIsAccepted() {
+        #expect(ParakeetVocabulary.accepts(original: "standby the kineses rig", rescored: "standby the Kinesys rig"))
+        #expect(ParakeetVocabulary.accepts(original: "Cue 42, kineses go.", rescored: "Cue 42 Kinesys go"))
+        #expect(ParakeetVocabulary.accepts(original: "Standby forty two on the kineses",
+                                           rescored: "Standby forty two on the Kinesys"))
+        // Nothing changed: nothing to accept.
+        #expect(!ParakeetVocabulary.accepts(original: "Deck is clear.", rescored: "Deck is clear."))
     }
 
     @Test func blankTermsAreDropped() {

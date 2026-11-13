@@ -15,22 +15,35 @@ public enum ParakeetVocabulary {
     /// heard words, so correctly heard words are rarely replaced.
     public static let thresholds = VocabularyBoostingSession.Thresholds(cbw: 0, minSimilarity: 0.7)
 
-    /// Whether a rescored line still has every number the original had. The
-    /// rescorer can replace a span that holds a cue number ("Club Q12" became
-    /// "QLab"), and a wrong cue number is worse than a missed term, so such
-    /// a rescore is thrown away.
-    static func keepsNumbers(original: String, rescored: String) -> Bool {
-        var remaining = numbers(in: rescored)
-        for number in numbers(in: original) {
-            guard let index = remaining.firstIndex(of: number) else { return false }
-            remaining.remove(at: index)
-        }
-        return true
+    /// Whether to use a rescored line in place of the original. It must
+    /// differ, and carry exactly the same numbers, digits and spoken words
+    /// alike. The rescorer can replace a span holding a cue number ("club
+    /// Q12" became "QLab"), and a term such as "LX 42" from a rule phrase can
+    /// bring a number nobody said. A line's numbers must come from the speech
+    /// engine, never from the booster: a wrong cue number is worse than a
+    /// missed term.
+    static func accepts(original: String, rescored: String) -> Bool {
+        original != rescored && numbers(in: original) == numbers(in: rescored)
     }
 
-    /// Runs of digits, in order.
-    private static func numbers(in text: String) -> [Substring] {
-        text.split(whereSeparator: { !$0.isNumber })
+    /// Spoken number words, including the ones callers use for digits.
+    private static let numberWords: Set<String> = [
+        "zero", "oh", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+        "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen",
+        "nineteen", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety",
+        "hundred", "thousand", "double",
+    ]
+
+    /// How many times each digit run and number word appears.
+    private static func numbers(in text: String) -> [String: Int] {
+        var counts: [String: Int] = [:]
+        for digits in text.split(whereSeparator: { !$0.isNumber }) {
+            counts[String(digits), default: 0] += 1
+        }
+        for word in text.lowercased().split(whereSeparator: { !$0.isLetter }) where numberWords.contains(String(word)) {
+            counts[String(word), default: 0] += 1
+        }
+        return counts
     }
 
     /// The terms, trimmed, without blanks.
