@@ -140,9 +140,7 @@ final class AppModel {
     // MARK: Channels
 
     func addChannel() {
-        let engine: SpeechEngine
-        if #available(macOS 26, *) { engine = .longForm } else { engine = .whisper }
-        let channel = document.addChannel(engine: engine)
+        let channel = document.addChannel(engine: .platformDefault)
         selection = .channel(channel.id)
     }
 

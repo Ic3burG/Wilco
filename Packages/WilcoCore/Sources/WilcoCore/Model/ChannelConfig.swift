@@ -79,7 +79,10 @@ public struct ChannelConfig: Codable, Equatable, Identifiable, Sendable {
         deviceChannel = try c.decodeIfPresent(Int.self, forKey: .deviceChannel).flatMap { $0 >= 0 ? $0 : nil }
         groupID = try c.decodeIfPresent(UUID.self, forKey: .groupID)
         localeIdentifier = try c.decodeIfPresent(String.self, forKey: .localeIdentifier) ?? "en_US"
-        engine = try c.decodeIfPresent(SpeechEngine.self, forKey: .engine) ?? .longForm
+        // An engine this build does not know (a newer file, a hand edit) falls
+        // back to the default rather than failing the whole show.
+        engine = try c.decodeIfPresent(String.self, forKey: .engine)
+            .map { SpeechEngine(rawValue: $0) ?? .platformDefault } ?? .longForm
         latencyProfile = try c.decodeIfPresent(SpeechLatencyProfile.self, forKey: .latencyProfile) ?? .leadAndCorrect
         isMuted = try c.decodeIfPresent(Bool.self, forKey: .isMuted) ?? false
         vocabulary = try c.decodeIfPresent([String].self, forKey: .vocabulary) ?? []
@@ -110,6 +113,20 @@ public enum SpeechEngine: String, Codable, CaseIterable, Sendable {
     case dictation
     /// WhisperKit: one shared multilingual model; the only engine before macOS 26.
     case whisper
+    /// NVIDIA Parakeet through FluidAudio: one shared multilingual model.
+    case parakeet
+
+    /// The engines the Inspector offers. Parakeet joins once it can transcribe.
+    public static var selectable: [SpeechEngine] { [.longForm, .dictation, .whisper] }
+
+    /// What a new channel uses: long-form speech on macOS 26 and later,
+    /// Whisper before that.
+    public static var platformDefault: SpeechEngine {
+        if #available(macOS 26, *) { .longForm } else { .whisper }
+    }
+
+    /// Whether Apple's speech framework runs this engine.
+    public var isApple: Bool { self == .longForm || self == .dictation }
 }
 
 public enum SpeechLatencyProfile: String, Codable, CaseIterable, Sendable {

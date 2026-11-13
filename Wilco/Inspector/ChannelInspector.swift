@@ -124,7 +124,7 @@ private struct ChannelForm: View {
                     LabeledContent("Status", value: status.title)
                 }
                 Picker("Engine", selection: $channel.engine) {
-                    ForEach(SpeechEngine.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                    ForEach(SpeechEngine.selectable, id: \.self) { Text($0.displayName).tag($0) }
                 }
                 Picker("Language", selection: languageSelection) {
                     ForEach(languageOptions) { Text($0.name).tag($0.id) }
@@ -205,6 +205,7 @@ private extension SpeechEngine {
         case .longForm: "Long-form (macOS 26)"
         case .dictation: "Dictation (macOS 26)"
         case .whisper: "Whisper"
+        case .parakeet: "Parakeet"
         }
     }
 }

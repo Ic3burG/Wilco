@@ -12,6 +12,30 @@ struct FileFormatTests {
         return try Data(contentsOf: url)
     }
 
+    @Test func unknownEngineDecodesAsPlatformDefault() throws {
+        let json = #"{"id":"6F9619FF-8B86-D011-B42D-00CF4FC964FF","name":"SM","engine":"quantum"}"#
+        let channel = try JSONDecoder().decode(ChannelConfig.self, from: Data(json.utf8))
+        #expect(channel.engine == SpeechEngine.platformDefault)
+        #expect(channel.name == "SM")
+    }
+
+    @Test func missingEngineDecodesAsLongForm() throws {
+        let json = #"{"id":"6F9619FF-8B86-D011-B42D-00CF4FC964FF","name":"SM"}"#
+        let channel = try JSONDecoder().decode(ChannelConfig.self, from: Data(json.utf8))
+        #expect(channel.engine == .longForm)
+    }
+
+    @Test func parakeetEngineRoundTrips() throws {
+        let channel = ChannelConfig(name: "SM", engine: .parakeet)
+        let decoded = try JSONDecoder().decode(ChannelConfig.self, from: JSONEncoder().encode(channel))
+        #expect(decoded.engine == .parakeet)
+    }
+
+    @Test func parakeetIsNotSelectableYet() {
+        #expect(!SpeechEngine.selectable.contains(.parakeet))
+        #expect(SpeechEngine.selectable.contains(.whisper))
+    }
+
     @Test func decodesShowFile() throws {
         let show = try WilcoJSON.decoder().decode(ShowDocument.self, from: fixture("show-v1.wilco"))
 

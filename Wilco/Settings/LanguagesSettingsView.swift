@@ -104,7 +104,7 @@ struct LanguagesSettingsView: View {
                     if row.unused {
                         Button("Remove") { installer.remove(.apple(.longForm, localeIdentifier: row.localeIdentifier)) }
                             .help("Tell macOS Wilco no longer needs this language. It is deleted once no other app uses it.")
-                    } else if row.engine == .whisper {
+                    } else if !row.engine.isApple {
                         status(for: .whisper(selectedWhisper), installed: whisperSizes[selectedWhisper] != nil)
                     } else {
                         let item = ModelInstaller.Item.apple(row.engine, localeIdentifier: row.localeIdentifier)
@@ -176,7 +176,7 @@ struct LanguagesSettingsView: View {
         }.value
         reserved = await SpeechAssets.reservedLocaleIdentifiers()
         var statuses: [ModelInstaller.Item: SpeechAssetStatus] = [:]
-        for row in requirements where row.engine != .whisper && !row.unused {
+        for row in requirements where row.engine.isApple && !row.unused {
             statuses[.apple(row.engine, localeIdentifier: row.localeIdentifier)] =
                 await SpeechAssets.status(engine: row.engine, localeIdentifier: row.localeIdentifier)
         }
@@ -184,7 +184,7 @@ struct LanguagesSettingsView: View {
     }
 
     private func languageName(_ row: Requirement) -> String {
-        if row.localeIdentifier.isEmpty, row.engine != .whisper {
+        if row.localeIdentifier.isEmpty, row.engine.isApple {
             return LanguageCatalog.displayName(for: Locale.current.identifier)
         }
         return LanguageCatalog.displayName(for: row.localeIdentifier)
@@ -221,6 +221,7 @@ private extension SpeechEngine {
         case .longForm: "Long-form"
         case .dictation: "Dictation"
         case .whisper: "Whisper (open)"
+        case .parakeet: "Parakeet (open)"
         }
     }
 }

@@ -63,7 +63,8 @@ public enum ChannelTranscribers {
         onEvent: @escaping TranscriptionHandler,
         onStatus: @escaping StatusHandler
     ) -> any ChannelTranscriber {
-        if configuration.engine != .whisper, #available(macOS 26, *) {
+        // Parakeet shares the Whisper path until its own transcriber exists.
+        if configuration.engine.isApple, #available(macOS 26, *) {
             return AppleChannelTranscriber(
                 configuration: configuration, source: source, sessionOffset: sessionOffset,
                 onEvent: onEvent, onStatus: onStatus
