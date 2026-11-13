@@ -19,3 +19,7 @@ build/
 
 # Benchmark output (machine-specific)
 bench-results/
+
+# Agent worktrees and plan-execution scratch
+.claude/worktrees/
+.superpowers/
