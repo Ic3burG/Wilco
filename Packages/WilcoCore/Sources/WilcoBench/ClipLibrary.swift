@@ -50,6 +50,13 @@ public enum ClipLibrary {
         "Standing by.",
     ]
 
+    /// The cue words `phrases` use, as a show would list them for boosting.
+    public static let vocabulary = [
+        "Standby", "Lighting", "Sound", "Video", "Automation", "Pyro", "Places",
+        "Deck", "Rail", "Spot", "Front of house", "Follow spots", "Wardrobe",
+        "Props", "Curtain", "Overture", "Interval", "Blackout",
+    ]
+
     /// A voice as `say -v ?` lists it.
     public struct SystemVoice: Equatable, Sendable {
         /// The name `say -v` takes, e.g. "Rishi (English (India))".

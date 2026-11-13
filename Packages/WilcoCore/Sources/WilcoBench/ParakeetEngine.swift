@@ -32,7 +32,32 @@ extension BenchEngine {
                 return factory(recognizer: ParakeetRecognizer(store: ParakeetModelStore(directory: cache), language: nil))
             }
         ),
+        BenchEngine(
+            id: "parakeet-v3-vocab",
+            summary: "Parakeet TDT 0.6B v3 (English) with the cue words boosted by the CTC 110M model",
+            unavailableReason: {
+                let store = ParakeetModelStore(directory: sharedCache)
+                return store.isInstalled() && store.isVocabularyInstalled()
+                    ? nil : "the models aren't downloaded (wilco-bench --install parakeet-v3-vocab)"
+            },
+            install: { progress in
+                try await ParakeetModelStore(directory: sharedCache).install(progress: progress)
+            },
+            makeFactory: {
+                // Every channel boosts the same words, as a show's global
+                // vocabulary would. English, because boosting is English only.
+                factory(recognizer: ParakeetRecognizer(
+                    store: ParakeetModelStore(directory: sharedCache), language: .english,
+                    vocabulary: ClipLibrary.vocabulary
+                ))
+            }
+        ),
     ]
+
+    /// FluidAudio's own model cache, so an existing download is reused.
+    private static var sharedCache: URL {
+        AsrModels.defaultCacheDirectory(for: .v3).deletingLastPathComponent()
+    }
 
     private static func unavailable(version: AsrModelVersion, id: String) -> String? {
         AsrModels.modelsExist(at: AsrModels.defaultCacheDirectory(for: version), version: version)

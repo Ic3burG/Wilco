@@ -16,14 +16,20 @@ public enum ParakeetLanguages {
 public struct ParakeetRecognizer: UtteranceRecognizer {
     let store: ParakeetModelStore
     let language: Language?
+    /// Boosts the channel's vocabulary; nil when it doesn't apply.
+    let booster: ParakeetBooster?
 
-    public init(store: ParakeetModelStore, language: Language?) {
+    public init(store: ParakeetModelStore, language: Language?, vocabulary: [String] = []) {
         self.store = store
         self.language = language
+        booster = ParakeetVocabulary.applies(language: language, terms: vocabulary)
+            ? ParakeetBooster(store: store, terms: vocabulary) : nil
     }
 
     public func prepare() async throws {
         _ = try await store.manager()
+        // Load the vocabulary model now rather than on the first call.
+        _ = await booster?.current()
     }
 
     public func recognize(_ samples: [Float]) async throws -> Recognition? {
@@ -34,6 +40,17 @@ public struct ParakeetRecognizer: UtteranceRecognizer {
         let audio = samples.count < minimum ? samples + [Float](repeating: 0, count: minimum - samples.count) : samples
         var state = TdtDecoderState.make(decoderLayers: await manager.decoderLayerCount)
         let result = try await manager.transcribe(audio, decoderState: &state, language: language)
-        return Recognition(text: result.text, confidence: Double(result.confidence))
+        var text = result.text
+        if let session = await booster?.current(),
+           let timings = result.tokenTimings, !timings.isEmpty,
+           // With 10 terms or fewer this is always true; larger
+           // vocabularies skip the CTC pass when no word is close to a term.
+           session.hasCTCRescoringCandidates(text: text, tokenTimings: timings),
+           let rescored = await session.rescore(text: text, tokenTimings: timings, audioSamples: audio),
+           rescored.wasModified,
+           ParakeetVocabulary.keepsNumbers(original: text, rescored: rescored.text) {
+            text = rescored.text
+        }
+        return Recognition(text: text, confidence: Double(result.confidence))
     }
 }

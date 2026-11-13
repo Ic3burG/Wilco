@@ -68,7 +68,8 @@ public enum ChannelTranscribers {
             return UtteranceChannelTranscriber(
                 channelID: configuration.channelID, source: source, sessionOffset: sessionOffset,
                 recognizer: ParakeetRecognizer(
-                    store: parakeetModels, language: ParakeetLanguages.language(for: configuration.localeIdentifier)
+                    store: parakeetModels, language: ParakeetLanguages.language(for: configuration.localeIdentifier),
+                    vocabulary: configuration.vocabulary
                 ),
                 onEvent: onEvent, onStatus: onStatus
             )

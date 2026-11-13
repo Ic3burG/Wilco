@@ -100,7 +100,10 @@ extension BenchEngine {
     private static func wilcoFactory(
         engine: SpeechEngine, profile: SpeechLatencyProfile, whisperModel: WhisperModel, models: WhisperModelStore
     ) -> BenchChannelFactory {
-        { channel in
+        // Never loaded: these engines aren't Parakeet, but `make` takes a
+        // store. One per run rather than one per channel.
+        let parakeetModels = ParakeetModelStore()
+        return { channel in
             var show = ShowDocument()
             show.whisperModel = whisperModel.rawValue
             let config = ChannelConfig(
@@ -111,7 +114,7 @@ extension BenchEngine {
             configuration.vocabulary = channel.vocabulary
             return ChannelTranscribers.make(
                 configuration: configuration, source: channel.source, sessionOffset: 0,
-                whisperModels: models, parakeetModels: ParakeetModelStore(), onEvent: channel.onEvent, onStatus: channel.onStatus
+                whisperModels: models, parakeetModels: parakeetModels, onEvent: channel.onEvent, onStatus: channel.onStatus
             )
         }
     }

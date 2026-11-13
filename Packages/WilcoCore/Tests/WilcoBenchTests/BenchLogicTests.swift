@@ -280,6 +280,20 @@ struct BenchReportTests {
     }
 }
 
+@Suite("Clip vocabulary")
+struct ClipVocabularyTests {
+    @Test func everyTermIsSpokenInAPhrase() {
+        let spoken = ClipLibrary.phrases.joined(separator: " ").lowercased()
+        for term in ClipLibrary.vocabulary {
+            #expect(spoken.contains(term.lowercased()), "\(term)")
+        }
+    }
+
+    @Test func vocabularyEngineIsListed() {
+        #expect(BenchEngine.named("parakeet-v3-vocab") != nil)
+    }
+}
+
 @Suite("Voice selection")
 struct VoiceSelectionTests {
     // macOS lists the same voice under different names over time: "Rishi"
