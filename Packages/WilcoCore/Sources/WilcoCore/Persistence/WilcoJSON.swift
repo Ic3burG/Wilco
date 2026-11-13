@@ -2,8 +2,8 @@ import Foundation
 
 /// JSON settings shared by every Wilco file and wire format.
 ///
-/// Dates are ISO-8601 with whole seconds (`2026-11-08T02:25:25Z`), matching
-/// 0.2.0 transcripts and peer lines.
+/// Dates are ISO-8601 with whole seconds (`2026-11-08T02:25:25Z`), in shows,
+/// transcripts and peer lines alike.
 public enum WilcoJSON {
     public static func encoder() -> JSONEncoder {
         let encoder = JSONEncoder()

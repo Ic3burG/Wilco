@@ -5,7 +5,7 @@ Date: 2026-11-12. Status: agreed with the user in conversation; ready to plan.
 ## Why
 
 On a busy show the user wants to watch one kind of traffic at a time,
-such as "only the radio channels", without losing the rest. 0.2.0's show
+such as "only the radio channels", without losing the rest. The show
 format already had groups (`ShowDocument.groups`, `ChannelConfig.groupID`),
 but the app never had a working UI for them. Its recovered strings contain no
 group copy at all. This feature makes groups real.
@@ -21,7 +21,7 @@ Nothing about capture or control changes.
    group.
 4. In the post-show report (and its HTML export), filter by group with one
    click.
-5. Groups round-trip through the `.wilco` file using 0.2.0's own fields.
+5. Groups round-trip through the `.wilco` file using the format's existing fields.
 
 ## Non-goals
 
@@ -33,7 +33,7 @@ Nothing about capture or control changes.
 
 ## Anti-goals (it would be a failure if…)
 
-- Opening a 0.2.0 show, or a show saved by this build, lost or scrambled
+- Opening an older show, or a show saved by this build, lost or scrambled
   group membership or channel order.
 - Grouping, ungrouping or deleting a group affected transcription,
   automation or a running session in any way.
@@ -43,16 +43,16 @@ Nothing about capture or control changes.
 ## Data model (existing, unchanged on disk)
 
 - `ShowDocument.groups: [ChannelGroup]`. `ChannelGroup { id, name, symbol }`
-  is already Codable and in the 0.2.0 format.
+  is already Codable and in the show format.
 - `ChannelConfig.groupID: UUID?`. At most one group per channel, by
   construction.
 - **Sidebar order** *(revised 2026-11-12 after user testing)*: folders and
   ungrouped channels can be placed **anywhere** among each other, like Finder.
   The top-level order is stored in a new optional show-file field,
   `sidebarOrder`: an array of `"group:<uuid>"` / `"channel:<uuid>"` strings.
-  0.2.0 ignores unknown keys, so shows still open there. If 0.2.0 re-saves a
-  show, only the top-level positions are lost. Without the field (any 0.2.0
-  show), the order is folders in `groups` order, then ungrouped channels, in
+  Readers that ignore unknown keys still open these shows. If such a reader
+  re-saves a show, only the top-level positions are lost. Without the field
+  (any older show), the order is folders in `groups` order, then ungrouped channels, in
   `channels` order. Each folder lists its channels in `channels` array order.
   Stale or unknown entries are dropped. Groups and ungrouped channels missing
   from it are appended at the end.
@@ -68,7 +68,7 @@ Nothing about capture or control changes.
   (Channels mode) and report chips follow the sidebar order, not raw array
   order. How the builder gets there (keeping `channels` sorted to match on
   every edit, or computing a display order) is left to the builder. Keeping
-  the array in sidebar order is simpler and makes 0.2.0 see the same order.
+  the array in sidebar order is simpler and makes code that reads only `channels` see the same order.
 
 ## Sidebar
 
@@ -110,7 +110,7 @@ existing **Channels** section.
 - New `SidebarItem.group(UUID)`, persisted as `"group:<uuid>"` in
   `sidebar.selection`. `validated(in:)` falls back to `.combined` when the
   group no longer exists. Deleting the selected group moves selection to
-  `.combined` first, matching how channel deletion already avoids the 0.2.0
+  `.combined` first, matching how channel deletion already avoids the stale-index
   crash.
 - Detail: the combined transcript restricted to the group's channels. The
   live header shows the group's symbol and name and its channel chips. The
@@ -179,7 +179,7 @@ that way.
   (see `CLAUDE.md`).
 - Logic in `WilcoCore` with Swift Testing tests. The app target stays thin.
 - Swift 6 strict concurrency. The audio thread is untouched by this feature.
-- The show file stays readable by 0.2.0. Nothing new is written to disk,
+- The show file format is unchanged. Nothing new is written to disk,
   since group collapse and the matrix mode are UserDefaults.
 
 ## Sidebar list control *(revised 2026-11-12 after user testing)*

@@ -32,7 +32,7 @@ label, so an exported file opens elsewhere under the same name.
   new configuration from what's on screen. **Revert to Saved** throws the
   edits away.
 - Export a configuration to a `.wilco` file and import `.wilco` files,
-  including 0.2.0 show files, which use the same format.
+  including older show files, which use the same format.
 - Show which configuration is loaded and whether it has unsaved edits.
 
 ## Non-goals
@@ -49,7 +49,7 @@ label, so an exported file opens elsewhere under the same name.
 - Losing work: a crash, quit or power cut must never lose working-copy
   edits, and never lose a saved configuration.
 - Switching while live: loading must never interrupt a capture.
-- Breaking 0.2.0 compatibility: `Current.wilco`, `.wilco` files and
+- Breaking compatibility: `Current.wilco`, `.wilco` files and
   preferences must keep opening in both directions as they do now.
 
 ## Behaviour
@@ -165,11 +165,10 @@ renamed.
 
 ## Storage
 
-- Folder: `DataLocations.root/Configurations/` (alongside `Current.wilco`;
-  0.2.0 never looks there).
+- Folder: `DataLocations.root/Configurations/` (alongside `Current.wilco`).
 - One file per configuration, `‹UUID›.wilco`, holding a plain
-  `ShowDocument` JSON in exactly the format of `Current.wilco` and 0.2.0
-  exports. The UUID gives a stable identity, so renaming never moves files.
+  `ShowDocument` JSON in exactly the format of `Current.wilco` and
+  exported shows. The UUID gives a stable identity, so renaming never moves files.
   The display name comes from the `name` inside. *(My call.)*
 - The loaded configuration's UUID is stored in `UserDefaults`
   (`configurations.loaded`). *(My call.)* If it points to a file that has
@@ -177,7 +176,7 @@ renamed.
   with "— Not Saved", and Save behaves like Save As New.
 - Writes are atomic (`Data.write(options: .atomic)`), as `ShowStore` does now.
 - `ShowDocument` gains **no new fields**, so the format stays exactly
-  0.2.0-compatible.
+  as it is.
 
 ## Where the code goes
 
@@ -186,7 +185,7 @@ Following the repo rule (logic in the package, app target thin):
 - **WilcoCore / Persistence:** a `ConfigurationStore` (list, read, create,
   save, rename, duplicate, delete, import, export, first-run migration,
   unique-name rule). Pure file I/O plus `ShowDocument`, fully unit-tested
-  against a temporary directory. It includes a test that a real 0.2.0
+  against a temporary directory. It includes a test that a real show
   fixture from `Tests/WilcoCoreTests/Fixtures` imports and round-trips.
 - **App / `AppModel`:** the loaded configuration ID, the saved snapshot for
   the Edited comparison, and the `load` / `save` / `saveAsNew` / `revert`
@@ -200,7 +199,7 @@ Following the repo rule (logic in the package, app target thin):
 ## Testing
 
 - Unit tests (`swift test`) for `ConfigurationStore`: create/list/rename/
-  duplicate/delete, unique names, import of a 0.2.0 fixture, import of an
+  duplicate/delete, unique names, import of a real show fixture, import of an
   unreadable file, export round-trip byte-for-byte as `ShowDocument`,
   first-run migration with and without `Current.wilco`, and a missing
   loaded-ID file.

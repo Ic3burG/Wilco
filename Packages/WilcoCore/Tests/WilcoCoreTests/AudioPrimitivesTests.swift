@@ -151,6 +151,6 @@ struct CaptureTapTests {
         #expect(channel.deviceUID == nil)
 
         let encoded = String(decoding: try WilcoJSON.encoder().encode(channel), as: UTF8.self)
-        #expect(!encoded.contains("deviceUID"), "0.2.0 files should round-trip without new keys")
+        #expect(!encoded.contains("deviceUID"), "older files should round-trip without new keys")
     }
 }

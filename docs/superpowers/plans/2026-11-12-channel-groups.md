@@ -6,7 +6,7 @@
 only that group's chat, show the Matrix by channel or by group, and filter the
 post-show report and its HTML export by group.
 
-**Architecture:** Groups already exist in the 0.2.0 show format
+**Architecture:** Groups already exist in the show format
 (`ShowDocument.groups`, `ChannelConfig.groupID`). All ordering, filtering and
 column logic goes into `WilcoCore` as pure functions with Swift Testing
 tests. The app target (`Wilco/`) only renders them. A new
@@ -306,7 +306,7 @@ Each test has one or two `#expect`s, built on the Task 2 `makeShow()` fixture. M
 
 **Interfaces:**
 - Consumes: Task 2 operations; Task 3 `AppModel.addGroup()`, `deleteGroup(_:)`, `groupBeingRenamed`.
-- Produces: `LookAndFeel.collapsedGroups: Set<UUID>`, persisted under the defaults key `sidebar.collapsedGroups` as an array of UUID strings. Don't add it to the 0.2.0 legacy-import list.
+- Produces: `LookAndFeel.collapsedGroups: Set<UUID>`, persisted under the defaults key `sidebar.collapsedGroups` as an array of UUID strings.
 
 - [ ] **Step 1: Build the outline.** In the Channels section, `ForEach(model.document.groups)` gives a `DisclosureGroup` per group:
   - its label is a `GroupRow` showing the symbol, name and channel count, tagged `.group(id)`;
@@ -439,5 +439,5 @@ Each test has one or two `#expect`s, built on the Task 2 `makeShow()` fixture. M
 ### Task 9: Whole-feature verification
 
 - [ ] **Step 1:** Run `swift test` and `WILCO_ASR_TESTS=1 swift test` in `Packages/WilcoCore`, then the app `xcodebuild`. All must be green.
-- [ ] **Step 2:** Open a 0.2.0 show backup and confirm it loads with no groups and an unchanged channel order. Then make groups, quit, relaunch and confirm they persist.
+- [ ] **Step 2:** Open an older show backup and confirm it loads with no groups and an unchanged channel order. Then make groups, quit, relaunch and confirm they persist.
 - [ ] **Step 3:** Hand the user the app-testing checklist from the spec's "Done means". Record the feature in `docs/PROGRESS.md` as "built, awaiting user test" until they confirm it, and update the README status table.

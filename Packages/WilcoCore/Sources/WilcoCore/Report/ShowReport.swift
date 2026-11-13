@@ -79,7 +79,7 @@ public struct ShowReport: Sendable {
         }
     }
 
-    /// Confidence below which a line counts as unclear (0.2.0's threshold).
+    /// Confidence below which a line counts as unclear.
     public static let unclearBelow = 0.5
     /// Length of the window behind "busiest".
     public static let busiestWindow: Double = 600
@@ -259,7 +259,7 @@ public enum ShowReportBuilder {
             }
     }
 
-    /// Chatter that says nothing about what a channel was for (0.2.0's list).
+    /// Chatter that says nothing about what a channel was for.
     static let stopWords: Set<String> = [
         "the", "and", "you", "that", "this", "with", "for", "are", "was", "but", "not", "have", "just", "get",
         "got", "gonna", "going", "yeah", "yes", "okay", "all", "right", "like", "know", "what", "were", "im",

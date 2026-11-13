@@ -1,7 +1,8 @@
 import Foundation
 
 /// Channel edits. Every operation addresses channels by ID: positions shift
-/// on reorder and delete, and holding one across an edit is what crashed 0.2.0.
+/// on reorder and delete, and holding one across an edit crashes when the
+/// array shrinks under it.
 extension ShowDocument {
     /// Appends a channel named "Channel N", patched to the lowest unused input.
     @discardableResult

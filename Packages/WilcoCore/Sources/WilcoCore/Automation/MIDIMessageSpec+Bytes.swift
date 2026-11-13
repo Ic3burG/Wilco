@@ -33,7 +33,7 @@ extension MIDIMessageSpec {
         min(max(channel, 1), 16) - 1
     }
 
-    /// MIDI Show Control GO, command format Lighting (General), as 0.2.0 sent it:
+    /// MIDI Show Control GO, command format Lighting (General):
     /// `F0 7F <device> 02 01 01 <cue> [00 <list>] F7`. Cue numbers keep only
     /// the digits and points MSC allows.
     private static func mscGo(deviceID: UInt8, cue: String, list: String) -> [UInt8] {

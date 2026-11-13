@@ -69,7 +69,7 @@ struct SidebarItemTests {
         #expect(SidebarItem(storageValue: "nonsense") == nil)
     }
 
-    /// The 0.2.0 crash: the inspector outlived the channel it showed.
+    /// Regression: an inspector outliving the channel it showed crashed.
     @Test func selectionOfDeletedChannelFallsBackToCombined() {
         var show = ShowDocument()
         let channel = show.addChannel()

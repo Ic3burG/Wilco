@@ -4,8 +4,8 @@ import WilcoTranscription
 
 /// Edits one channel, found by ID on every render.
 ///
-/// 0.2.0 stored the channel's array index here, and crashed when a
-/// delete shortened the array while this view was still on screen.
+/// Never store the channel's array index here: a delete shortens the array
+/// while this view is still on screen, and the stale index crashes.
 struct ChannelInspector: View {
     @Environment(AppModel.self) private var model
     let channelID: ChannelConfig.ID

@@ -205,7 +205,6 @@ private extension WhisperModel {
         }
     }
 
-    /// 0.2.0's descriptions.
     var blurb: String {
         switch self {
         case .tiny: "Fastest, lowest accuracy. ~75 MB. For a busy rig or a slower Mac."

@@ -2,7 +2,7 @@
 .DS_Store
 
 # Reverse-engineering evidence: kept locally, not published.
-# Contains the original 0.2.0 app, personal show data and crash logs.
+# Contains the reference app, personal show data and crash logs.
 /reference/*
 !/reference/README.md
 

@@ -5,7 +5,8 @@ import Foundation
 ///
 /// Display order is folders in `groups` order, each folder's channels in
 /// `channels` order, then ungrouped channels. Every group edit leaves the
-/// `channels` array itself in that order, so 0.2.0 and every view agree.
+/// `channels` array itself in that order, so code that reads only
+/// `channels` and every view agree.
 extension ShowDocument {
     public func group(id: ChannelGroup.ID) -> ChannelGroup? {
         groups.first { $0.id == id }
@@ -151,8 +152,8 @@ extension ShowDocument {
     }
 
     /// Clears dangling group IDs, stores the repaired top-level order, and
-    /// puts `groups` and `channels` in sidebar order, so 0.2.0 and every
-    /// view agree.
+    /// puts `groups` and `channels` in sidebar order, so code that reads only
+    /// `channels` and every view agree.
     private mutating func normalizeChannelOrder() {
         for index in channels.indices where effectiveGroupID(of: channels[index]) == nil {
             channels[index].groupID = nil

@@ -1,6 +1,6 @@
 # Wilco — reconstruction spec
 
-Derived from the shipped **0.2.0** app (arm64,
+Derived from a shipped **reference app** (arm64,
 SHA-256 `6e92bf9e…0824f9`) to guide a clean rebuild. Nothing here is copied
 source: it is behaviour, data shapes and user-facing text recovered from the
 binary's Swift metadata, symbols, string literals and targeted decompilation,
@@ -32,7 +32,7 @@ per-channel matrix, and fires **automation** (OSC / MIDI / webhook /
 notification / cue marker / MOS) when phrases are heard. Machines on the same
 LAN can share transcripts; a local MCP server exposes read-only status.
 
-Minimum OS in 0.2.0: **macOS 15.0** (`LSMinimumSystemVersion`). Apple's new
+Minimum OS in the reference app: **macOS 15.0** (`LSMinimumSystemVersion`). Apple's new
 `SpeechAnalyzer` engines need **macOS 26**; Whisper is the fallback below 26.
 [str 18265–18270]
 
@@ -41,8 +41,8 @@ Minimum OS in 0.2.0: **macOS 15.0** (`LSMinimumSystemVersion`). Apple's new
 | Component | Purpose | Rebuild |
 |---|---|---|
 | **WhisperKit** + ArgmaxCore (Argmax, MIT) | On-device Whisper | SPM package `argmaxinc/WhisperKit` |
-| **Sparkle 2.10** | Updates | SPM `sparkle-project/Sparkle`; real feed + EdDSA key needed (0.2.0 shipped placeholders `updates.example.com`, `REPLACE_WITH_SPARKLE_PUBLIC_ED_KEY`) |
-| **TurboActivate** | Licensing | **Drop.** 0.2.0 never bundled `libTurboActivate.dylib`; the app itself reports *"Licensing is not active in this build… Capture is not gated until then."* [str 18300–18330] |
+| **Sparkle 2.10** | Updates | SPM `sparkle-project/Sparkle`; real feed + EdDSA key needed (the reference app shipped placeholders `updates.example.com`, `REPLACE_WITH_SPARKLE_PUBLIC_ED_KEY`) |
+| **TurboActivate** | Licensing | **Drop.** The reference app never bundled `libTurboActivate.dylib`; the app itself reports *"Licensing is not active in this build… Capture is not gated until then."* [str 18300–18330] |
 
 Apple frameworks used: SwiftUI/AppKit, CoreAudio (HAL, direct IOProc),
 AVFoundation, Speech (`SpeechAnalyzer`/`SpeechTranscriber`/`DictationTranscriber`),
@@ -56,7 +56,7 @@ All under `~/Library/Application Support/Wilco/` [file]:
 | Path | Format |
 |---|---|
 | `Current.wilco` | The open show: JSON-encoded `ShowDocument` (§4). Autosaved (`ShowStore.scheduleSave` debounced, `saveNow`). If unreadable on launch it is renamed `Current-unreadable-<…>` and the user is told *"Could not open the previous show file. It has been kept at …"* [str, sym] |
-| `Configurations/‹UUID›.wilco` | **New in the rebuild, not in 0.2.0.** Saved show setups, one plain `ShowDocument` each (same format as `Current.wilco`). `Current.wilco` stays the autosaved working copy; a configuration changes only on Save. The loaded one's UUID is in `UserDefaults` `configurations.loaded`. See `docs/superpowers/specs/2026-11-12-configurations-design.md`. |
+| `Configurations/‹UUID›.wilco` | **New in the rebuild, not in the reference app.** Saved show setups, one plain `ShowDocument` each (same format as `Current.wilco`). `Current.wilco` stays the autosaved working copy; a configuration changes only on Save. The loaded one's UUID is in `UserDefaults` `configurations.loaded`. See `docs/superpowers/specs/2026-11-12-configurations-design.md`. |
 | `Transcripts/Session yyyy-MM-dd HHmm-ss.jsonl` | One `TranscriptSegment` JSON object per line, appended as each line is finalised (`TranscriptWriter`). *"Every finalised line is written to disk as it happens, so clearing the on-screen log does not discard the record."* |
 | `WhisperModels/models/argmaxinc/whisperkit-coreml/openai_whisper-<variant>/` | WhisperKit's standard download layout. **Reuse this path** so existing downloads (3 GB here) carry over. |
 
@@ -69,10 +69,10 @@ A private UTI is used for channel drag-and-drop
 
 All types are `Codable`; JSON key order in files is unordered (Swift
 `JSONEncoder` default). Unknown keys must be tolerated; missing optional keys
-default sensibly (0.2.0 has explicit `CodingKeys` + `init(from:)` for these).
+default sensibly (the reference app has explicit `CodingKeys` + `init(from:)` for these).
 
 ```swift
-struct ShowDocument {            // formatVersion == 1 in 0.2.0
+struct ShowDocument {            // formatVersion == 1
   var formatVersion: Int
   var name: String               // default "New Show"
   var deviceUID: String?         // CoreAudio device UID; channels patch by UID
@@ -313,7 +313,7 @@ on connect sends `<reqMachInfo/>`; periodic `<heartbeat><time>yyyy-MM-dd'T'HH:mm
 `mosAbstract`, `objType DATA`, `objTB 0`, `objDur 0`, `status NEW`. Only
 rule-matched lines are pushed.
 
-⚠️ 0.2.0 encodes MOS text as **UTF-8** [dis: `String.data(using: .utf8)`]. The
+⚠️ The reference app encodes MOS text as **UTF-8** [dis: `String.data(using: .utf8)`]. The
 MOS protocol specifies **UCS-2 / UTF-16 big-endian**, so strict NCS systems
 may reject it. Likely a latent bug; make the encoding selectable in the rebuild.
 
@@ -348,7 +348,7 @@ notifications (→ `202 Accepted`). Errors: parse error, invalid request,
 | `wilco_channels` | `[MCPChannel { id, name, patched, muted, transcribing, engine, language }]` |
 | `wilco_transcript` | `[MCPLine { channel, sessionOffsetSeconds, time, text, confidence? }]`, oldest first; args `channel` (string, optional filter) and `limit` (integer, default 50, max 500) |
 
-## 11. Known bugs in 0.2.0
+## 11. Known bugs in the reference app
 
 ### 11.1 Crash when deleting a channel (2026-11-07 22:25:48)
 - Crash report: `EXC_BREAKPOINT / SIGTRAP` on the main thread in
@@ -371,7 +371,7 @@ notifications (→ `202 Accepted`). Errors: parse error, invalid request,
   `~/Library/Application Support/Wilco/`.
 - Keep `formatVersion` 1 compatibility for `.wilco` files and `.jsonl` transcripts.
 - Sparkle with a real appcast + EdDSA key; no TurboActivate.
-- Ship a universal (arm64 + x86_64) build only if needed; 0.2.0 was arm64-only.
+- Ship a universal (arm64 + x86_64) build only if needed; the reference app was arm64-only.
 
 ## 13. Open questions / not yet verified
 
@@ -381,4 +381,4 @@ notifications (→ `202 Accepted`). Errors: parse error, invalid request,
   we're free to add a TXT `id=<instanceID>` while staying wire-compatible).
 - Whisper chunking/VAD parameters and Apple analyzer options (tuning; can be
   re-derived empirically).
-- Exact SwiftUI layouts (screenshots of 0.2.0 running are the best reference).
+- Exact SwiftUI layouts (screenshots of the reference app running are the best reference).

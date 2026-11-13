@@ -1,7 +1,7 @@
 import Foundation
 
 /// Finds run-of-show moments in comms: show phases, house lights, songs,
-/// cue calls and department gos. Phrase lists follow 0.2.0.
+/// cue calls and department gos.
 public enum MarkerDetector {
     public struct Detection: Equatable, Sendable {
         public var category: ShowReport.MarkerCategory

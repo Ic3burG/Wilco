@@ -2,8 +2,8 @@ import Foundation
 import Testing
 @testable import WilcoCore
 
-/// Automation actions use Swift's synthesized enum coding, the format 0.2.0
-/// wrote. These pin the JSON shape so a refactor cannot silently change it.
+/// Automation actions use Swift's synthesized enum coding, the stored
+/// format. These pin the JSON shape so a refactor cannot silently change it.
 @Suite("Automation JSON shape")
 struct AutomationCodingTests {
     private func json(_ value: some Encodable) throws -> [String: Any] {

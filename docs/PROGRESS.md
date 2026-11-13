@@ -12,29 +12,29 @@ Status key: **verified** means tried in the app on a real Mac;
 
 ### Taking the project over
 
-- 0.2.0 shipped only as a compiled app; its author handed it over with
-  permission. Installed [REA](https://github.com/morluto/rea) and Ghidra and
+- The reference app shipped only as a compiled binary; its author handed it
+  over with permission. Installed [REA](https://github.com/morluto/rea) and Ghidra and
   analysed a copy of the binary.
 - Wrote [`SPEC.md`](SPEC.md): screens, the `.wilco` show format, `.jsonl`
   transcripts, OSC/MIDI/HTTP messages, the `_wilco._tcp` peer protocol, and
-  0.2.0's known bugs — including the root cause of its crash when deleting a
+  the reference app's known bugs — including the root cause of its crash when deleting a
   channel.
 - Chose a clean rebuild from the spec over patching decompiled code, which for
   Swift is unmaintainable.
 - New Xcode project under bundle ID `io.github.ic3burg.wilco`, with the
-  0.2.0 licensing (TurboActivate) dropped. Behavioural evidence from the
+  reference app's licensing (TurboActivate) dropped. Behavioural evidence from the
   original build stays local and out of this public repo.
 
 ### Features rebuilt
 
 | Area | What it does | Status |
 |---|---|---|
-| Show editor | Sidebar of channels, inspector, reorder, autosave; opens 0.2.0 shows and backs up the original once. Deleting a channel no longer crashes. | verified |
+| Show editor | Sidebar of channels, inspector, reorder, autosave; opens existing shows and backs up the original once. Deleting a channel no longer crashes. | verified |
 | Audio capture | Drives the interface directly with per-channel meters; rebuilds capture if the driver stalls or the device is unplugged. Several input devices at once, chosen from the sidebar. | verified |
-| Transcription | Each channel transcribed on-device by Apple's speech engine (macOS 26+) or Whisper; transcripts written as 0.2.0-compatible `.jsonl`. | verified |
+| Transcription | Each channel transcribed on-device by Apple's speech engine (macOS 26+) or Whisper; transcripts written as `.jsonl`. | verified |
 | Automation | Phrase rules fire OSC (UDP / TCP / SLIP), MIDI, webhooks, notifications and cue markers; highlights in the transcript; Activity log. | tested |
-| Post-show report | Run of show, chat log and Channels tabs in 0.2.0's style: stats header, channel and moment chips, search with `"exact phrases"`, per-channel stats and a traffic heatmap. Export to HTML, SRT and VTT. Statistics checked against 0.2.0's own report for a real session. | built, awaiting user test |
-| Look & Feel | Text size, timecode, newest-first, follow live, motion style, matrix column widths/collapse/text size; Light, Dark or Match System. Imports 0.2.0's preferences once. | built, awaiting user test |
+| Post-show report | Run of show, chat log and Channels tabs in the reference app's style: stats header, channel and moment chips, search with `"exact phrases"`, per-channel stats and a traffic heatmap. Export to HTML, SRT and VTT. Statistics checked against the reference app's own report for a real session. | built, awaiting user test |
+| Look & Feel | Text size, timecode, newest-first, follow live, motion style, matrix column widths/collapse/text size; Light, Dark or Match System. Imports existing preferences once. | built, awaiting user test |
 | Live transcript | Restyled to match the report: live header with duration and counts, channel chips, clock-over-elapsed time column. | built, awaiting user test |
 | HTML export | Self-contained page mirroring the report window, light/dark aware, printable, opens to a tab via `#view=`. | built, awaiting user test |
 
@@ -66,7 +66,7 @@ Status key: **verified** means tried in the app on a real Mac;
 
 - **User testing:** the report restyle, Look & Feel, live transcript and HTML
   export need trying in the app.
-- **Moment detection** finds more markers than 0.2.0 did (37 vs 26 on one
+- **Moment detection** finds more markers than the reference app did (37 vs 26 on one
   session); tighten the phrase lists if the extras are noise.
 - **Not yet rebuilt** (choose next): peer sharing between Macs (`_wilco._tcp`),
   MCP server, MOS, automatic updates via Sparkle, Vor preset.
@@ -85,10 +85,10 @@ Status key: **verified** means tried in the app on a real Mac;
   Automatically, a channel writes English whatever language is spoken.
   Tested with a French clip read by the Mac's French voice. Older show files
   open with it off.
-- **Settings → Languages**, laid out like 0.2.0's: Global Vocabulary, the
-  shared Whisper model (picker, 0.2.0's descriptions, Install with progress),
+- **Settings → Languages**, laid out like the reference app's: Global Vocabulary, the
+  shared Whisper model (picker, model descriptions, Install with progress),
   and Speech Models: one row for each language and engine the channels use,
-  with Installed / Install / Not available. Unlike 0.2.0 it can also
+  with Installed / Install / Not available. Unlike the reference app it can also
   **remove** Whisper models that aren't in use, and release long-form
   languages no channel needs (macOS deletes those once no other app uses
   them). Downloads carry on if Settings is closed.
@@ -123,7 +123,7 @@ Status key: **verified** means tried in the app on a real Mac;
   chunk limit to about 10 s.
 - **Next session:** the user is starting a new feature. Still not rebuilt:
   peer sharing (`_wilco._tcp`), MCP server, MOS, Sparkle updates, Vor preset.
-- Quit the old 0.2.0 app while testing; it shares the audio input and speech
+- Quit the reference app while testing; it shares the audio input and speech
   hardware.
 
 ## 2026-11-12 — Sidebar alignment and Configurations
@@ -137,7 +137,7 @@ Status key: **verified** means tried in the app on a real Mac;
 
 ### Features
 
-- **Configurations** (new; 0.2.0 had nothing like it, the idea comes from
+- **Configurations** (new; the reference app had nothing like it, the idea comes from
   ProdCom). A configuration is a whole saved show: channels, folders,
   inputs, device, rules, highlights, OSC destinations, vocabulary and
   Whisper model.
@@ -151,7 +151,7 @@ Status key: **verified** means tried in the app on a real Mac;
     file on disk keeps every line). Cue markers are kept.
   - The Configurations window lists them with channel count and save date:
     New, Duplicate, Rename, Delete (not the loaded one), Import and Export
-    `.wilco` files (0.2.0 show files import too).
+    `.wilco` files.
   - The first launch turns the current show into the first configuration.
     Stored in `Application Support/Wilco/Configurations/`, one plain
     `.wilco` per configuration; the show format is unchanged.
@@ -248,6 +248,11 @@ starts from a single fresh commit.
   on this Mac. The app has no import code for older locations.
 - `ShowStore` no longer makes a one-time backup of the show file.
 - Copyright in the app is now "Copyright © 2026 Omar Davis".
+- No version number or name for the reference app anywhere in the project.
+  Docs call it "the reference app". Code comments explain behaviour on its
+  own terms (e.g. why the inspector never stores an array index). Two
+  tests were renamed (`importsFormatV1Fixture`,
+  `mscGoUsesLightingGeneralFormat`).
 - Format fixtures renamed `show-v1.wilco` and `session-v1.jsonl`; the
   format suite is now `FileFormatTests`. 195 tests, passing; the app builds
   with no new warnings.
@@ -259,8 +264,6 @@ starts from a single fresh commit.
 - **Verify in the app:** Wilco opens with the show, configurations,
   transcripts, Whisper models and look & feel all in place.
 - **New app icon.** The headset icon is inherited and should be replaced.
-- **Open question:** comments and SPEC.md still say "0.2.0" for the earlier
-  app (e.g. "the 0.2.0 crash"). Waiting on the user: keep, or reword them.
 - The local-only branch `old-history` keeps the pre-squash commits. Delete
   it (`git branch -D old-history`) once it's no longer wanted.
 - Configurations checklist and deferred minors from the previous section

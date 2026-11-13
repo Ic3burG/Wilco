@@ -69,7 +69,7 @@ public struct HighlightRule: Codable, Equatable, Identifiable, Sendable {
 
 /// What a rule does when it fires.
 ///
-/// Uses Swift's synthesized `Codable`, which is the format 0.2.0 wrote:
+/// Uses Swift's synthesized `Codable`, which is the stored format:
 /// `{"osc":{"destinationID":…,"address":…,"arguments":[…]}}`.
 public enum AutomationAction: Codable, Equatable, Sendable {
     case osc(destinationID: UUID, address: String, arguments: [OSCArgument])
@@ -89,8 +89,8 @@ public enum MIDIMessageSpec: Codable, Equatable, Sendable {
     case mscGo(deviceID: UInt8, cueNumber: String, cueList: String)
 }
 
-/// A typed OSC argument. Named `OSCMessage.Argument` in 0.2.0; the JSON is
-/// identical because synthesized coding uses case names, not type names.
+/// A typed OSC argument. Synthesized coding uses case names, not type names,
+/// so renaming this type never changes the JSON.
 public enum OSCArgument: Codable, Equatable, Sendable {
     case int(Int32)
     case float(Float)

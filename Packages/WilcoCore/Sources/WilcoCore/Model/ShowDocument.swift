@@ -2,8 +2,8 @@ import Foundation
 
 /// A show: everything Wilco saves in a `.wilco` file.
 ///
-/// The JSON layout matches 0.2.0 (`formatVersion` 1) so existing shows
-/// open unchanged. Decoding tolerates missing keys by falling back to the
+/// The JSON layout is `formatVersion` 1, so existing shows open
+/// unchanged. Decoding tolerates missing keys by falling back to the
 /// defaults below, the way a newer field added to an older file should behave.
 public struct ShowDocument: Codable, Equatable, Sendable {
     public static let currentFormatVersion = 1
@@ -15,15 +15,15 @@ public struct ShowDocument: Codable, Equatable, Sendable {
     public var deviceUID: String?
     public var channels: [ChannelConfig]
     public var groups: [ChannelGroup]
-    /// Top-level sidebar order of folders and ungrouped channels. Not in
-    /// 0.2.0, which ignores it; `nil` means folders first, then channels.
+    /// Top-level sidebar order of folders and ungrouped channels. Optional:
+    /// older shows lack it, and `nil` means folders first, then channels.
     /// Read through `sidebarChildren(of:)`, which repairs stale entries.
     public var sidebarOrder: [SidebarItem]? = nil
     public var rules: [AutomationRule]
     public var highlights: [HighlightRule]
     public var destinations: [OSCDestination]
     public var globalVocabulary: [String]
-    /// Raw value of ``WhisperModel``. Kept as a string, as in 0.2.0, so an
+    /// Raw value of ``WhisperModel``. Kept as a string so an
     /// unknown model name from a newer file does not fail the whole show.
     public var whisperModel: String
     public var mcpEnabled: Bool

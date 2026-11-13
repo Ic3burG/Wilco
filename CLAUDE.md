@@ -1,10 +1,9 @@
 # CLAUDE.md
 
 Wilco is a macOS app for live comms transcription in show control. It is a
-clean rebuild of an earlier app (0.2.0) that shipped only as a compiled
-binary. Read these before starting work:
+clean rebuild of a reference app that shipped only as a compiled binary. Read these before starting work:
 
-- `docs/SPEC.md`: what 0.2.0 does (screens, file formats, OSC/MIDI/HTTP
+- `docs/SPEC.md`: what the app does (screens, file formats, OSC/MIDI/HTTP
   messages, the `_wilco._tcp` peer protocol, known bugs). It is the source of
   truth for behaviour.
 - `docs/PROGRESS.md`: the session log. Its last "Next steps" section says
@@ -37,7 +36,7 @@ binary. Read these before starting work:
 | `Packages/WilcoCore/Sources/WilcoControl` | OSC (UDP/TCP/SLIP) and MIDI output |
 | `Packages/WilcoCore/Tests/WilcoCoreTests/Fixtures` | Real show and `.jsonl` files (identifying text replaced) for format tests |
 | `Config/` | Info.plist and entitlements |
-| `reference/` | Local-only 0.2.0 evidence (see below) |
+| `reference/` | Local-only evidence from the reference app (see below) |
 
 Put testable logic in the package and keep the app target thin. New logic
 gets tests. A bug fix gets a regression test.
@@ -47,13 +46,14 @@ gets tests. A bug fix gets a regression test.
 - **Keep files opening.** Existing `.wilco` shows, `.jsonl` transcripts,
   Whisper model folders and preferences must keep opening. New fields in a
   show need defaults so older files still decode.
-- **Don't name the earlier app.** Don't use its name or identifiers
-  anywhere in the project, including code, comments, docs and commit
-  messages. Call it "0.2.0" when you need to refer to it.
+- **Don't name or version the reference app.** No name, identifiers or
+  version number for it anywhere in the project: code, comments, docs and
+  commit messages. Say "the reference app" in docs; in code comments, explain
+  the behaviour without pointing at another app.
 - **`reference/` stays private.** It holds the original binary, the user's
   real show and crash logs, and is gitignored apart from its README. Never
   commit its contents or quote personal data from it in public docs or commit
-  messages. Analyse `reference/app-0.2.0.app`, never the
+  messages. Analyse `reference/reference-app.app`, never the
   installed copy in `/Applications`.
 - **Rebuild from the spec; don't port decompiled code.** Use REA/Ghidra
   output to learn behaviour, then write fresh Swift.
@@ -71,7 +71,7 @@ gets tests. A bug fix gets a regression test.
 
 ## Testing in the app
 
-- Quit the old 0.2.0 app first; it shares the audio input and speech
+- Quit the reference app first; it shares the audio input and speech
   hardware.
 - In `PROGRESS.md`, "verified" means the user tried it in the app on a real
   Mac and "tested" means automated tests only. Don't call something verified

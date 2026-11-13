@@ -89,7 +89,7 @@
   - `func migrateIfEmpty(from current: ShowDocument) throws -> UUID?`: if the folder has no readable configurations, creates one from `current` (keeping its name) and returns its ID; otherwise `nil`
 
 - [ ] **Step 1: Write the failing tests**
-  - `imports020Fixture`: import the `show-v0.2.0.wilco` fixture (load via `Bundle.module.url(forResource: "Fixtures/show-v0.2.0.wilco", withExtension: nil)`, as `LegacyFormatTests` does) → one imported; `document(id)` equals `WilcoJSON.decoder().decode(ShowDocument.self, from: fixtureData)`
+  - `importsFormatV1Fixture`: import the `show-v1.wilco` fixture (load via `Bundle.module.url(forResource: "Fixtures/show-v1.wilco", withExtension: nil)`, as `FileFormatTests` does) → one imported; `document(id)` equals `WilcoJSON.decoder().decode(ShowDocument.self, from: fixtureData)`
   - `importKeepsGoodFilesAndReportsBad`: one good file and one `"{ nope"` file → `imported.count == 1`, `failed == [badURL]`
   - `importBlankNameBecomesNewShow`: file `{"name":"  "}` → the imported name is "New Show"
   - `importClashGetsNumber`: existing "Arena", import a file named "Arena" → "Arena 2"
@@ -222,7 +222,7 @@
 ### Task 7: Docs and hand-off for in-app testing
 
 **Files:**
-- Modify: `docs/SPEC.md` (in §3 files, add the `Configurations/` folder as new in the rebuild, not in 0.2.0), `README.md` (add Configurations as "tested" in the status table), `docs/PROGRESS.md` (dated session section)
+- Modify: `docs/SPEC.md` (in §3 files, add the `Configurations/` folder as new in the rebuild), `README.md` (add Configurations as "tested" in the status table), `docs/PROGRESS.md` (dated session section)
 
 - [ ] **Step 1: Update the docs** in the existing plain style. PROGRESS lists the in-app checks for the user:
   - save two setups and switch between them

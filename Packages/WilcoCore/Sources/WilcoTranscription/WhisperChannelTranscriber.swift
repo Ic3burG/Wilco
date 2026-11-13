@@ -14,7 +14,7 @@ public actor WhisperModelStore {
         self.downloadBase = downloadBase
     }
 
-    /// Where WhisperKit keeps a model under `downloadBase` (the 0.2.0 layout).
+    /// Where WhisperKit keeps a model under `downloadBase` (WhisperKit's standard layout).
     public nonisolated func folder(for model: WhisperModel) -> URL {
         downloadBase.appending(path: "models/argmaxinc/whisperkit-coreml/\(model.variant)", directoryHint: .isDirectory)
     }

@@ -6,7 +6,7 @@ import Testing
 struct ChannelGroupTests {
     // MARK: Order
 
-    /// A 0.2.0 show has no stored sidebar order.
+    /// An older show has no stored sidebar order.
     @Test func withoutStoredOrderFoldersComeFirst() {
         let f = GroupedShow()
         #expect(f.show.sidebarOrder == nil)

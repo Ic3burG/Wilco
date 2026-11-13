@@ -169,7 +169,7 @@ struct MIDIMessageTests {
                 == [[0x3016_0102, 0x0304_0506], [0x3031_0700, 0x0000_0000]])
     }
 
-    @Test func mscGoMatchesWilco020() {
+    @Test func mscGoUsesLightingGeneralFormat() {
         #expect(MIDIMessageSpec.mscGo(deviceID: 1, cueNumber: "5.5", cueList: "2").bytes
                 == [0xF0, 0x7F, 0x01, 0x02, 0x01, 0x01] + Array("5.5".utf8) + [0x00] + Array("2".utf8) + [0xF7])
         #expect(MIDIMessageSpec.mscGo(deviceID: 0x7F, cueNumber: "12", cueList: "").bytes

@@ -48,5 +48,5 @@ Requires macOS 15 or later and Xcode 26 or later.
 | `Wilco/` | The SwiftUI app |
 | `Packages/WilcoCore` | Model, audio capture, transcription and control, each its own target with tests |
 | `Config/` | Info.plist and entitlements |
-| `docs/SPEC.md` | Data formats, protocols, UI and known 0.2.0 bugs |
+| `docs/SPEC.md` | Data formats, protocols, UI and known bugs |
 | `docs/PROGRESS.md` | Work log, updated at the end of every session |

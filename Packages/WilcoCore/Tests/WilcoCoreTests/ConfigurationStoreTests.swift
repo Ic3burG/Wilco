@@ -109,7 +109,7 @@ struct ConfigurationStoreTests {
         return url
     }
 
-    @Test func imports020Fixture() throws {
+    @Test func importsFormatV1Fixture() throws {
         let url = try #require(Bundle.module.url(forResource: "Fixtures/show-v1.wilco", withExtension: nil))
         let expected = try WilcoJSON.decoder().decode(ShowDocument.self, from: Data(contentsOf: url))
 
