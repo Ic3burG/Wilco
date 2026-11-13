@@ -15,7 +15,8 @@ extension BenchEngine {
             },
             makeFactory: {
                 // A fresh model per run, so each run pays its own load.
-                factory(recognizer: BenchV2Recognizer(model: BenchParakeetModel(version: .v2)))
+                let recognizer = BenchV2Recognizer(model: BenchParakeetModel(version: .v2))
+                return factory { recognizer }
             }
         ),
         BenchEngine(
@@ -28,8 +29,9 @@ extension BenchEngine {
             makeFactory: {
                 // The app's recognizer, reading FluidAudio's own cache so an
                 // existing download is reused.
-                let cache = AsrModels.defaultCacheDirectory(for: .v3).deletingLastPathComponent()
-                return factory(recognizer: ParakeetRecognizer(store: ParakeetModelStore(directory: cache), language: nil))
+                // One recognizer per channel over one shared store, as the app builds them.
+                let store = ParakeetModelStore(directory: sharedCache)
+                return factory { ParakeetRecognizer(store: store, language: nil) }
             }
         ),
         BenchEngine(
@@ -46,10 +48,12 @@ extension BenchEngine {
             makeFactory: {
                 // Every channel boosts the same words, as a show's global
                 // vocabulary would. English, because boosting is English only.
-                factory(recognizer: ParakeetRecognizer(
-                    store: ParakeetModelStore(directory: sharedCache), language: .english,
-                    vocabulary: ClipLibrary.vocabulary
-                ))
+                // One recognizer (and boosting session) per channel over one
+                // shared store, as the app builds them.
+                let store = ParakeetModelStore(directory: sharedCache)
+                return factory {
+                    ParakeetRecognizer(store: store, language: .english, vocabulary: ClipLibrary.vocabulary)
+                }
             }
         ),
     ]
@@ -64,10 +68,10 @@ extension BenchEngine {
             ? nil : "the model isn't downloaded (wilco-bench --install \(id))"
     }
 
-    private static func factory(recognizer: some UtteranceRecognizer) -> BenchChannelFactory {
+    private static func factory(recognizer: @escaping @Sendable () -> some UtteranceRecognizer) -> BenchChannelFactory {
         { channel in
             UtteranceChannelTranscriber(
-                channelID: channel.id, source: channel.source, sessionOffset: 0, recognizer: recognizer,
+                channelID: channel.id, source: channel.source, sessionOffset: 0, recognizer: recognizer(),
                 onEvent: channel.onEvent, onStatus: channel.onStatus
             )
         }
