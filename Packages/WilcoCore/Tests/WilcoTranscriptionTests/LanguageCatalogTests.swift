@@ -1,3 +1,4 @@
+import FluidAudio
 import Foundation
 import Testing
 import WilcoCore
@@ -9,6 +10,17 @@ struct LanguageCatalogTests {
         let options = await LanguageCatalog.options(for: .whisper)
         #expect(options.first == .autoDetect)
         #expect(options.contains { $0.id == "en" && $0.name.contains("English") })
+    }
+
+    @Test func parakeetOffersDetectPlusItsLanguages() async {
+        let options = await LanguageCatalog.options(for: .parakeet)
+        #expect(options.first == .autoDetect)
+        #expect(options.contains { $0.id == "en" })
+        #expect(options.count == Language.allCases.count + 1)
+    }
+
+    @Test func parakeetMatchesOnLanguageAlone() {
+        #expect(LanguageCatalog.selection(for: "en_US", engine: .parakeet, in: []) == "en")
     }
 
     @Test func whisperMatchesOnLanguageAlone() {

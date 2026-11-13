@@ -31,8 +31,8 @@ struct FileFormatTests {
         #expect(decoded.engine == .parakeet)
     }
 
-    @Test func parakeetIsNotSelectableYet() {
-        #expect(!SpeechEngine.selectable.contains(.parakeet))
+    @Test func parakeetIsSelectable() {
+        #expect(SpeechEngine.selectable.contains(.parakeet))
         #expect(SpeechEngine.selectable.contains(.whisper))
     }
 

@@ -59,6 +59,7 @@ All under `~/Library/Application Support/Wilco/` [file]:
 | `Configurations/‹UUID›.wilco` | **New in the rebuild, not in the reference app.** Saved show setups, one plain `ShowDocument` each (same format as `Current.wilco`). `Current.wilco` stays the autosaved working copy; a configuration changes only on Save. The loaded one's UUID is in `UserDefaults` `configurations.loaded`. See `docs/superpowers/specs/2026-11-12-configurations-design.md`. |
 | `Transcripts/Session yyyy-MM-dd HHmm-ss.jsonl` | One `TranscriptSegment` JSON object per line, appended as each line is finalised (`TranscriptWriter`). *"Every finalised line is written to disk as it happens, so clearing the on-screen log does not discard the record."* |
 | `WhisperModels/models/argmaxinc/whisperkit-coreml/openai_whisper-<variant>/` | WhisperKit's standard download layout. **Reuse this path** so existing downloads (3 GB here) carry over. |
+| `ParakeetModels/‹model repository›/` | Parakeet speech and vocabulary models, one folder per repository (~600 MB). New in the rebuild. |
 
 `.wilco` is also a document type (`ShowFile: FileDocument`) for
 import/export of shows, and `SubtitleFile: FileDocument` exports **SRT / VTT**.
@@ -104,7 +105,7 @@ struct ChannelConfig {
 struct ChannelGroup { var id: UUID; var name: String; var symbol: String }
 
 enum ChannelTint: String { red, orange, yellow, green, teal, cyan, blue, indigo, purple, pink, gray }
-enum SpeechEngine: String { longForm, dictation, whisper }
+enum SpeechEngine: String { longForm, dictation, whisper, parakeet }  // parakeet is new in the rebuild
 enum SpeechLatencyProfile: String { leadAndCorrect, single }
 enum WhisperModel: String { tiny, base, small, large }
   // → openai_whisper-tiny / -base / -small / -large-v3  (~75 MB / ~145 MB / ~470 MB / ~1.5 GB)
@@ -195,6 +196,7 @@ Per channel, one `ChannelTranscribing` implementation:
 | `longForm` | `SpeechTranscriber` (macOS 26) | *"Continuous speech model. Best for an open ring where people talk over each other. Downloads a model per language."* |
 | `dictation` | `DictationTranscriber` (macOS 26) | *"Uses the dictation model macOS already has — no download, more languages. Tuned for short calls like 'standby' and 'go'."* |
 | `whisper` | WhisperKit | One multilingual model shared by every Whisper channel (`WhisperModelManager` caches one `WhisperKit` per model). The only engine below macOS 26. |
+| `parakeet` | FluidAudio (NVIDIA Parakeet TDT 0.6B v3) | **New in the rebuild, not in the reference app.** One multilingual model on the Neural Engine, shared by every Parakeet channel; detects 25 European languages. Vocabulary boosting (a CTC model) applies to English channels only. No translate to English. |
 
 `leadAndCorrect` latency profile (Apple engines): two analyzer "lanes" — a
 fast **lead** pass shows italic volatile words, an accurate **anchor** pass

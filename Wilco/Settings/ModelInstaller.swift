@@ -11,6 +11,8 @@ final class ModelInstaller {
     /// One speech model: Whisper's are named by size, Apple's by engine and language.
     enum Item: Hashable {
         case whisper(WhisperModel)
+        /// Parakeet is one model for every channel, plus its vocabulary model.
+        case parakeet
         case apple(SpeechEngine, localeIdentifier: String)
     }
 
@@ -21,6 +23,11 @@ final class ModelInstaller {
     private(set) var generation = 0
 
     let whisperStore = WhisperModelStore()
+    let parakeetStore: ParakeetModelStore
+
+    init(parakeetStore: ParakeetModelStore) {
+        self.parakeetStore = parakeetStore
+    }
 
     func isBusy(_ item: Item) -> Bool { progress[item] != nil }
 
@@ -39,6 +46,8 @@ final class ModelInstaller {
                 switch item {
                 case .whisper(let model):
                     try await whisperStore.download(model, progress: report)
+                case .parakeet:
+                    try await parakeetStore.install(progress: report)
                 case .apple(let engine, let locale):
                     try await SpeechAssets.install(engine: engine, localeIdentifier: locale, progress: report)
                 }
@@ -55,6 +64,9 @@ final class ModelInstaller {
         switch item {
         case .whisper(let model):
             do { try whisperStore.remove(model) } catch { errors[item] = error.localizedDescription }
+            generation += 1
+        case .parakeet:
+            do { try parakeetStore.remove() } catch { errors[item] = error.localizedDescription }
             generation += 1
         case .apple(_, let locale):
             Task {

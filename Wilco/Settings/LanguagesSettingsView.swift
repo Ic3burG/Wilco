@@ -9,6 +9,9 @@ struct LanguagesSettingsView: View {
     @Environment(AppModel.self) private var model
 
     @State private var whisperSizes: [WhisperModel: Int64] = [:]
+    @State private var parakeetSize: Int64?
+    @State private var parakeetSpeechInstalled: Bool?
+    @State private var parakeetVocabularyInstalled = false
     @State private var appleStatus: [ModelInstaller.Item: SpeechAssetStatus] = [:]
     @State private var reserved: [String] = []
 
@@ -24,6 +27,7 @@ struct LanguagesSettingsView: View {
             }
 
             whisperSection
+            parakeetSection
             speechModelsSection
         }
         .formStyle(.grouped)
@@ -72,6 +76,47 @@ struct LanguagesSettingsView: View {
         }
     }
 
+    // MARK: Parakeet
+
+    private var parakeetSection: some View {
+        Section {
+            LabeledContent("Download") { parakeetStatus }
+            if let parakeetSize {
+                LabeledContent {
+                    Button("Remove") { installer.remove(.parakeet) }
+                        .disabled(installer.isBusy(.parakeet))
+                } label: {
+                    Text("On disk")
+                    Text(parakeetSize.formatted(.byteCount(style: .file)))
+                }
+            }
+        } header: {
+            Text("Parakeet Model")
+        } footer: {
+            Text("Parakeet TDT v3 runs on the Neural Engine. One model serves every Parakeet channel and detects 25 European languages. Vocabulary applies to English channels, and terms shorter than 3 characters are ignored. ~600 MB with the vocabulary model.")
+        }
+    }
+
+    /// Installed only when both the speech model and the vocabulary model are
+    /// there; a Mac with only the speech model offers the missing download.
+    @ViewBuilder
+    private var parakeetStatus: some View {
+        if parakeetSpeechInstalled == true, !parakeetVocabularyInstalled, installer.progress[.parakeet] == nil {
+            HStack {
+                if let error = installer.errors[.parakeet] {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange).help(error)
+                }
+                Button("Install Vocabulary Model") { installer.install(.parakeet) }
+                    .help("The speech model is installed. This fetches the small model that boosts show vocabulary.")
+            }
+        } else {
+            status(
+                for: .parakeet,
+                apple: parakeetSpeechInstalled.map { $0 && parakeetVocabularyInstalled ? .installed : .notInstalled }
+            )
+        }
+    }
+
     // MARK: Apple and per-channel models
 
     /// One row per language and engine the show's channels use, plus any
@@ -104,6 +149,8 @@ struct LanguagesSettingsView: View {
                     if row.unused {
                         Button("Remove") { installer.remove(.apple(.longForm, localeIdentifier: row.localeIdentifier)) }
                             .help("Tell macOS Wilco no longer needs this language. It is deleted once no other app uses it.")
+                    } else if row.engine == .parakeet {
+                        parakeetStatus
                     } else if !row.engine.isApple {
                         status(for: .whisper(selectedWhisper), installed: whisperSizes[selectedWhisper] != nil)
                     } else {
@@ -174,6 +221,13 @@ struct LanguagesSettingsView: View {
             for whisper in WhisperModel.allCases { sizes[whisper] = store.sizeOnDisk(of: whisper) }
             return sizes
         }.value
+        let parakeet = installer.parakeetStore
+        let parakeetState = await Task.detached {
+            (parakeet.isInstalled(), parakeet.isVocabularyInstalled(), parakeet.sizeOnDisk())
+        }.value
+        parakeetSpeechInstalled = parakeetState.0
+        parakeetVocabularyInstalled = parakeetState.1
+        parakeetSize = parakeetState.2
         reserved = await SpeechAssets.reservedLocaleIdentifiers()
         var statuses: [ModelInstaller.Item: SpeechAssetStatus] = [:]
         for row in requirements where row.engine.isApple && !row.unused {

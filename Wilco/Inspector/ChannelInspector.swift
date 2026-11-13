@@ -1,3 +1,4 @@
+import FluidAudio
 import SwiftUI
 import WilcoCore
 import WilcoTranscription
@@ -36,6 +37,7 @@ struct ChannelInspector: View {
 }
 
 private struct ChannelForm: View {
+    @Environment(AppModel.self) private var model
     @Binding var channel: ChannelConfig
     let groups: [ChannelGroup]
     let devices: [AudioDeviceInfo]
@@ -134,9 +136,9 @@ private struct ChannelForm: View {
                             .tag(languageSelection.wrappedValue)
                     }
                 }
-                .help(channel.engine == .whisper
-                      ? "Whisper can detect the spoken language itself, or be told which to expect"
-                      : "Apple's engines need to be told which language to expect")
+                .help(channel.engine.isApple
+                      ? "Apple's engines need to be told which language to expect"
+                      : "\(channel.engine.displayName) can detect the spoken language itself, or be told which to expect")
                 if channel.engine == .whisper {
                     Toggle("Translate to English", isOn: Binding(
                         get: { channel.translateToEnglish },
@@ -148,7 +150,7 @@ private struct ChannelForm: View {
                     Text("Fast, then corrected").tag(SpeechLatencyProfile.leadAndCorrect)
                     Text("Single pass").tag(SpeechLatencyProfile.single)
                 }
-                .disabled(channel.engine == .whisper)
+                .disabled(!channel.engine.isApple)
                 .help("A quick model shows words as they are spoken; an accurate one replaces them a moment later. Roughly twice the CPU per channel.")
             }
 
@@ -157,7 +159,16 @@ private struct ChannelForm: View {
             } header: {
                 Text("Channel Vocabulary")
             } footer: {
-                Text("Terms listed here are biased into this channel's recogniser. Crew names, venue names and cue labels are the ones worth adding.")
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Terms listed here are biased into this channel's recogniser. Crew names, venue names and cue labels are the ones worth adding.")
+                    if channel.engine == .parakeet {
+                        Text("Parakeet ignores terms shorter than 3 characters.")
+                        if ParakeetLanguages.language(for: channel.localeIdentifier) != .english,
+                           !(channel.vocabulary.isEmpty && model.document.globalVocabulary.isEmpty) {
+                            Text("Vocabulary applies to English channels only.")
+                        }
+                    }
+                }
             }
 
             Section {
@@ -171,9 +182,13 @@ private struct ChannelForm: View {
             languageOptions = await LanguageCatalog.options(for: channel.engine)
         }
         .onChange(of: channel.engine) { _, engine in
-            // Only Whisper can detect the language, so pick one for Apple's engines.
-            if engine != .whisper, channel.localeIdentifier.isEmpty {
+            // Apple's engines can't detect the language, so pick one. Parakeet
+            // can, but vocabulary only applies to English, so start there.
+            guard channel.localeIdentifier.isEmpty else { return }
+            if engine.isApple {
                 channel.localeIdentifier = Locale.current.identifier
+            } else if engine == .parakeet {
+                channel.localeIdentifier = "en"
             }
         }
     }

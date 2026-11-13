@@ -116,8 +116,8 @@ public enum SpeechEngine: String, Codable, CaseIterable, Sendable {
     /// NVIDIA Parakeet through FluidAudio: one shared multilingual model.
     case parakeet
 
-    /// The engines the Inspector offers. Parakeet joins once it can transcribe.
-    public static var selectable: [SpeechEngine] { [.longForm, .dictation, .whisper] }
+    /// The engines the Inspector offers.
+    public static var selectable: [SpeechEngine] { [.longForm, .dictation, .whisper, .parakeet] }
 
     /// What a new channel uses: long-form speech on macOS 26 and later,
     /// Whisper before that.

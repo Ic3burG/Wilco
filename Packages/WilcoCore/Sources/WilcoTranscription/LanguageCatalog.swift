@@ -1,4 +1,5 @@
 import Foundation
+import FluidAudio
 import Speech
 import WhisperKit
 import WilcoCore
@@ -22,6 +23,13 @@ public enum LanguageCatalog {
                 ? await DictationTranscriber.supportedLocales
                 : await SpeechTranscriber.supportedLocales
             return sorted(locales.map { LanguageOption(id: $0.identifier, name: displayName(for: $0.identifier)) })
+        }
+        if engine == .parakeet {
+            // The language the model was told to expect; Detect leaves it open.
+            let languages = Language.allCases.map {
+                LanguageOption(id: $0.rawValue, name: displayName(for: $0.rawValue))
+            }
+            return [.autoDetect] + sorted(languages)
         }
         // Whisper is one multilingual model: it wants a bare language code.
         let whisper = Set(Constants.languages.values).map {

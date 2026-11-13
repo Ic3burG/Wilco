@@ -26,9 +26,11 @@ final class TranscriptionController {
 
     private var running: [ChannelConfig.ID: Running] = [:]
     private let whisperModels = WhisperModelStore()
-    private let parakeetModels = ParakeetModelStore()
+    private let parakeetModels: ParakeetModelStore
 
-    init() {
+    init(parakeetModels: ParakeetModelStore) {
+        self.parakeetModels = parakeetModels
+
         (updates, continuation) = AsyncStream.makeStream()
     }
 

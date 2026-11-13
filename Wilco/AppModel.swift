@@ -97,15 +97,19 @@ final class AppModel {
     @ObservationIgnored private var capture: MultiDeviceCapture!
     @ObservationIgnored private var deviceWatcher: AudioDevices?
     @ObservationIgnored private var meterTimer: Timer?
-    @ObservationIgnored private let transcription = TranscriptionController()
+    @ObservationIgnored private let transcription: TranscriptionController
     @ObservationIgnored private var writer: TranscriptWriter?
     @ObservationIgnored private var reportedWriteFailure = false
     @ObservationIgnored private var evaluator = AutomationEvaluator()
     @ObservationIgnored private let performer = ActionPerformer()
     /// Speech model downloads started from Settings.
-    let installer = ModelInstaller()
+    let installer: ModelInstaller
 
     init(store: ShowStore = ShowStore(), configurationStore: ConfigurationStore = ConfigurationStore()) {
+        // One Parakeet store for Settings and running channels, so a removed model is seen by both.
+        let parakeetModels = ParakeetModelStore()
+        installer = ModelInstaller(parakeetStore: parakeetModels)
+        transcription = TranscriptionController(parakeetModels: parakeetModels)
         self.store = store
         self.configurationStore = configurationStore
         let loaded = store.load()
