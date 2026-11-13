@@ -60,10 +60,19 @@ public enum ChannelTranscribers {
         source: AudioSource,
         sessionOffset: Double,
         whisperModels: WhisperModelStore,
+        parakeetModels: ParakeetModelStore,
         onEvent: @escaping TranscriptionHandler,
         onStatus: @escaping StatusHandler
     ) -> any ChannelTranscriber {
-        // Parakeet shares the Whisper path until its own transcriber exists.
+        if configuration.engine == .parakeet {
+            return UtteranceChannelTranscriber(
+                channelID: configuration.channelID, source: source, sessionOffset: sessionOffset,
+                recognizer: ParakeetRecognizer(
+                    store: parakeetModels, language: ParakeetLanguages.language(for: configuration.localeIdentifier)
+                ),
+                onEvent: onEvent, onStatus: onStatus
+            )
+        }
         if configuration.engine.isApple, #available(macOS 26, *) {
             return AppleChannelTranscriber(
                 configuration: configuration, source: source, sessionOffset: sessionOffset,

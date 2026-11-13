@@ -26,6 +26,7 @@ final class TranscriptionController {
 
     private var running: [ChannelConfig.ID: Running] = [:]
     private let whisperModels = WhisperModelStore()
+    private let parakeetModels = ParakeetModelStore()
 
     init() {
         (updates, continuation) = AsyncStream.makeStream()
@@ -55,6 +56,7 @@ final class TranscriptionController {
                 source: AudioSource(ring: ring, sampleRate: { capture.sampleRate(for: id) }),
                 sessionOffset: Date().timeIntervalSince(sessionStart),
                 whisperModels: whisperModels,
+                parakeetModels: parakeetModels,
                 onEvent: { updates.yield(.event($0)) },
                 onStatus: { updates.yield(.status(id, $0)) }
             )

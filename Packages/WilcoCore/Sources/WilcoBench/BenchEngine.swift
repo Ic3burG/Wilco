@@ -111,7 +111,7 @@ extension BenchEngine {
             configuration.vocabulary = channel.vocabulary
             return ChannelTranscribers.make(
                 configuration: configuration, source: channel.source, sessionOffset: 0,
-                whisperModels: models, onEvent: channel.onEvent, onStatus: channel.onStatus
+                whisperModels: models, parakeetModels: ParakeetModelStore(), onEvent: channel.onEvent, onStatus: channel.onStatus
             )
         }
     }
