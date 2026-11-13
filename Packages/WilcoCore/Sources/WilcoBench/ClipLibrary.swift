@@ -50,10 +50,34 @@ public enum ClipLibrary {
         "Standing by.",
     ]
 
-    /// System voices with different accents, used where installed.
-    public static let preferredVoices = [
-        "Samantha", "Daniel", "Karen", "Moira", "Rishi", "Tessa",
-        "Eddy (English (UK))", "Flo (English (US))", "Reed (English (US))", "Shelley (English (UK))",
+    /// A voice as `say -v ?` lists it.
+    public struct SystemVoice: Equatable, Sendable {
+        /// The name `say -v` takes, e.g. "Rishi (English (India))".
+        public var name: String
+        public var locale: String
+
+        public init(name: String, locale: String) {
+            self.name = name
+            self.locale = locale
+        }
+
+        /// The name without macOS's qualifier: "Rishi". macOS lists the same
+        /// voice as "Rishi" or "Rishi (English (India))" depending on its
+        /// voice assets, so voices are chosen and cached by this and the locale.
+        public var baseName: String {
+            name.range(of: " (").map { String(name[..<$0.lowerBound]) } ?? name
+        }
+
+        var label: String { "\(baseName) \(locale)" }
+    }
+
+    /// System voices with different accents, used where installed, in this order.
+    public static let preferredVoices: [SystemVoice] = [
+        .init(name: "Samantha", locale: "en_US"), .init(name: "Daniel", locale: "en_GB"),
+        .init(name: "Karen", locale: "en_AU"), .init(name: "Moira", locale: "en_IE"),
+        .init(name: "Rishi", locale: "en_IN"), .init(name: "Tessa", locale: "en_ZA"),
+        .init(name: "Eddy", locale: "en_GB"), .init(name: "Flo", locale: "en_US"),
+        .init(name: "Reed", locale: "en_US"), .init(name: "Shelley", locale: "en_GB"),
     ]
 
     /// Every phrase in up to `voiceLimit` voices, rendered by `say` once and
@@ -62,24 +86,25 @@ public enum ClipLibrary {
     public static func synthesized(
         sampleRate: Double, cacheDirectory: URL, voiceLimit: Int = 4
     ) throws -> (clips: [BenchClip], voices: [String]) {
-        let installed = try installedVoices()
-        let voices = Array(preferredVoices.filter(installed.contains).prefix(voiceLimit))
-        guard !voices.isEmpty else { throw BenchError("None of the benchmark voices are installed: \(preferredVoices)") }
+        let voices = pick(preferredVoices, from: parseVoices(try run("/usr/bin/say", ["-v", "?"])), limit: voiceLimit)
+        guard !voices.isEmpty else {
+            throw BenchError("None of the benchmark voices are installed: \(preferredVoices.map(\.label))")
+        }
         try FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
 
         var clips: [BenchClip] = []
         for voice in voices {
             for phrase in phrases {
-                let key = SHA256.hash(data: Data("\(voice)|\(phrase)|\(Int(sampleRate))".utf8))
+                let key = SHA256.hash(data: Data("\(voice.label)|\(phrase)|\(Int(sampleRate))".utf8))
                     .prefix(8).map { String(format: "%02x", $0) }.joined()
                 let file = cacheDirectory.appending(path: "\(key).wav")
                 if !FileManager.default.fileExists(atPath: file.path) {
-                    try say(phrase, voice: voice, to: file, sampleRate: sampleRate)
+                    try say(phrase, voice: voice.name, to: file, sampleRate: sampleRate)
                 }
                 clips.append(BenchClip(text: phrase, samples: try readMono(file, sampleRate: sampleRate)))
             }
         }
-        return (clips, voices)
+        return (clips, voices.map(\.label))
     }
 
     /// Recordings in `folder`, each `name.wav` (or .aif, .caf, .m4a, .mp3,
@@ -103,14 +128,28 @@ public enum ClipLibrary {
         return clips
     }
 
-    private static func installedVoices() throws -> Set<String> {
-        let output = try run("/usr/bin/say", ["-v", "?"])
-        // Lines look like "Samantha            en_US    # Hello! …"; the
-        // name can contain spaces, so cut it before the locale column.
-        return Set(output.split(separator: "\n").compactMap { line -> String? in
-            guard let range = line.range(of: #"\s+[a-z]{2,3}_[A-Za-z0-9]+\s+#"#, options: .regularExpression) else { return nil }
-            return String(line[..<range.lowerBound])
-        })
+    /// Lines look like "Samantha (English (US)) en_US    # Hello! …". The
+    /// name can contain spaces and brackets, so it's cut before the locale.
+    static func parseVoices(_ listing: String) -> [SystemVoice] {
+        listing.split(separator: "\n").compactMap { line in
+            guard let range = line.range(of: #"\s+[a-z]{2,3}_[A-Za-z0-9]+\s+#"#, options: .regularExpression) else {
+                return nil
+            }
+            let locale = line[range].trimmingCharacters(in: CharacterSet.whitespaces.union(["#"]))
+            return SystemVoice(name: String(line[..<range.lowerBound]).trimmingCharacters(in: .whitespaces), locale: locale)
+        }
+    }
+
+    /// The installed voice for each wanted one, by base name and locale.
+    /// Standard voices win over "Enhanced" and "Premium" downloads, which
+    /// not every Mac has.
+    static func pick(_ wanted: [SystemVoice], from installed: [SystemVoice], limit: Int) -> [SystemVoice] {
+        let standardFirst = installed.filter { !$0.name.contains("Enhanced") && !$0.name.contains("Premium") }
+            + installed.filter { $0.name.contains("Enhanced") || $0.name.contains("Premium") }
+        let found = wanted.compactMap { want in
+            standardFirst.first { $0.baseName == want.baseName && $0.locale == want.locale }
+        }
+        return Array(found.prefix(limit))
     }
 
     private static func say(_ text: String, voice: String, to file: URL, sampleRate: Double) throws {

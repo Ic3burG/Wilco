@@ -29,17 +29,22 @@ public struct BenchEngine: Sendable {
     public var summary: String
     /// Why this engine can't run on this Mac now, or nil when it can.
     public var unavailableReason: @Sendable () async -> String?
+    /// Downloads the engine's model, reporting progress from 0 to 1, for
+    /// `wilco-bench --install`. Nil when the app installs it instead.
+    public var install: (@Sendable (_ progress: @escaping @Sendable (Double) -> Void) async throws -> Void)?
     /// Called at the start of each run.
     public var makeFactory: @Sendable () -> BenchChannelFactory
 
     public init(
         id: String, summary: String,
         unavailableReason: @escaping @Sendable () async -> String?,
+        install: (@Sendable (_ progress: @escaping @Sendable (Double) -> Void) async throws -> Void)? = nil,
         makeFactory: @escaping @Sendable () -> BenchChannelFactory
     ) {
         self.id = id
         self.summary = summary
         self.unavailableReason = unavailableReason
+        self.install = install
         self.makeFactory = makeFactory
     }
 }
@@ -53,7 +58,7 @@ extension BenchEngine {
               summary: "Apple long-form, one pass"),
         apple(id: "apple-dictation", engine: .dictation, profile: .leadAndCorrect,
               summary: "Apple dictation, fast then corrected"),
-    ] + WhisperModel.allCases.map(whisper)
+    ] + WhisperModel.allCases.map(whisper) + parakeet
 
     public static func named(_ id: String) -> BenchEngine? {
         builtIn.first { $0.id == id }

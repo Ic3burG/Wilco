@@ -10,6 +10,7 @@ From `Packages/WilcoCore`:
 
 ```sh
 swift run -c release wilco-bench --list
+swift run -c release wilco-bench --install parakeet-v2,parakeet-v3   # fetch models the app doesn't manage
 swift run -c release wilco-bench                      # every engine that can run here
 swift run -c release wilco-bench --engines whisper-base,apple-longform --channels 1,8,16,32
 ```
@@ -21,6 +22,7 @@ share the speech hardware, and keep the Mac otherwise quiet.
 | Option | Default | |
 |---|---|---|
 | `--engines a,b` | every available engine | See `--list`. |
+| `--install a,b` | | Download those engines' models, then exit. For engines the app doesn't manage yet (Parakeet). Apple and Whisper models are installed from Wilco's Languages settings. |
 | `--channels 1,8,…` | `1,8,16,32` | One run per count. |
 | `--duration S` | `60` | Seconds of audio per run. |
 | `--duty F` | `0.3` | Share of time each channel talks. Comms is mostly quiet; `0.6` is a busy ring. |
@@ -74,6 +76,7 @@ Add an entry to `BenchEngine.builtIn` with:
 - `id`: the name used with `--engines` and in reports.
 - `unavailableReason`: return a short reason when its model isn't on this
   Mac, or `nil` when it can run.
+- `install` (optional): download the model, for `--install`.
 - `makeFactory`: called once per run. Load or share the model here, then
   return a closure that builds one `ChannelTranscriber` per `BenchChannel`.
 
@@ -84,6 +87,16 @@ start), and sends `TranscriptionEvent`s to `channel.onEvent`. Set
 Send partial text with `isFinal: false` if the engine has it. A candidate
 model can be benchmarked this way before it has a `SpeechEngine` case or any
 app UI.
+
+**A model that transcribes whole utterances** (most do: Whisper, Parakeet,
+Canary, Cohere) needs much less. Conform it to `UtteranceRecognizer` in
+`WilcoTranscription`: a `prepare()` that loads it once, and a
+`recognize(_:)` that takes 16 kHz mono samples and returns text. Then wrap
+it in `UtteranceChannelTranscriber`, which reads the channel, resamples and
+cuts at pauses the same way the Whisper path does.
+`WilcoBench/ParakeetEngine.swift` is the example. Put the model's package
+dependency on the `WilcoBench` target only, so the app doesn't link it until
+it's adopted.
 
 ## Results
 

@@ -353,3 +353,82 @@ M1 Max, 60 s runs, 30% talk time, `say` speech. Full table:
   slower than the default, not lighter.
 - Unchanged from earlier: configurations checklist in the app, deferred
   minors, delete `old-history` when no longer needed.
+
+## 2026-11-13 — Parakeet in the benchmark
+
+### Tooling
+
+- **Parakeet TDT 0.6B v2 and v3** are benchmark engines (`parakeet-v2`,
+  `parakeet-v3`), run through FluidAudio 0.18.3 on the Neural Engine. One
+  model serves every channel. FluidAudio is a dependency of `WilcoBench`
+  only, so the app doesn't link it yet.
+- **`UtteranceRecognizer` and `UtteranceChannelTranscriber`** (in
+  `WilcoTranscription`): a model that transcribes whole utterances now only
+  needs `prepare()` and `recognize(samples)`. The transcriber reads the
+  channel, resamples to 16 kHz and cuts at pauses, as the Whisper path
+  does. Parakeet is the first user; it's how the app would adopt it.
+- **`wilco-bench --install a,b`** downloads models the app doesn't manage
+  (Parakeet).
+- **Voice selection** matches `say` voices by name and locale, preferring
+  the standard voice over Enhanced/Premium ones. macOS had renamed
+  "Samantha" to "Samantha (English (US))", which dropped her from the set
+  without warning. Runs now use Samantha, Daniel, Karen and Moira.
+- 4 new package tests (voice listing, voice picking, the utterance
+  transcriber, a model that fails to load); 220 in all.
+
+### Results
+
+M1 Max, 60 s runs, `say` speech. Full tables:
+[`2026-11-13-m1-max-say.md`](benchmarks/2026-11-13-m1-max-say.md) (every
+engine, 30% talk time) and
+[`2026-11-13-m1-max-say-64ch.md`](benchmarks/2026-11-13-m1-max-say-64ch.md)
+(32 and 64 channels, 60% talk time).
+
+At 32 channels, 30% talk time:
+
+| Engine | WER | Missed | Final delay p50 / p95 | Keeps up |
+|---|---:|---:|---|:---:|
+| parakeet-v3 | 3.1% | 0/266 | 0.67 / 0.77 s | yes |
+| parakeet-v2 | 3.9% | 0/266 | 0.68 / 0.76 s | yes |
+| apple-longform | 6.6% | 1/266 | 0.95 / 1.64 s | yes |
+| whisper-base | 7.4% | 0/266 | 0.76 / 0.95 s | yes |
+| whisper-small | 1.6% | 0/266 | 5.90 / 7.44 s | no |
+| apple-longform-single | 5.2% | 0/266 | 3.67 / 8.59 s | no |
+| apple-dictation | 11.0% | 30/266 | 2.08 / 3.46 s | no |
+
+- **Parakeet meets the bar set last session**: as fast as Whisper base at
+  32 channels, and more accurate than everything that keeps up. Its delay
+  is flat from 1 to 32 channels.
+- **Only Parakeet keeps up at 64 channels** on a busy ring (60% talk):
+  parakeet-v2 had 4.3% WER, 0 missed, 0.75 s p95, using 77% of one core.
+  Whisper base fell behind there (12 s p95, dropped audio); Apple long-form
+  kept up but at 15.9% WER.
+- **v2 against v3** depends on the voices: v2 was ahead with the earlier
+  voices (5.4% vs 7.4%), v3 with these (3.1% vs 3.9%). Call it a tie on
+  English; v3 also covers 25 languages.
+- Whisper small is still the most accurate, but only up to 16 channels.
+- Whisper base missed the "keeps up" bar once at 16 channels (3.1 s p95)
+  but passed at 32. Probably a one-off stall; worth watching.
+- First load of a Parakeet model takes about 26 s (compiling for the Neural
+  Engine); later loads take 0.2 s.
+- Still `say` speech, a best case. WER can only be compared within one run,
+  since the voices changed between runs.
+
+### Found along the way
+
+- Moving or renaming the project folder breaks the package build:
+  `.build` keeps absolute paths to FluidAudio's binary frameworks. Deleting
+  `Packages/WilcoCore/.build` fixes it.
+
+### Next steps / where we left off
+
+- **Benchmark real comms audio** (`--corpus`) for Parakeet v2/v3, Whisper
+  base and Apple long-form. Those numbers decide whether to adopt Parakeet.
+- If Parakeet holds up: add it as a `SpeechEngine` in the app, with model
+  download in the Languages settings, through `UtteranceChannelTranscriber`.
+  Decide v2 (English) or v3 (multilingual), or offer both.
+- Check FluidAudio's licence and the Parakeet model's CC-BY-4.0 attribution
+  before shipping it.
+- Unchanged from earlier: Apple "one pass" profile naming, configurations
+  checklist in the app, deferred minors, delete `old-history` when no
+  longer needed.

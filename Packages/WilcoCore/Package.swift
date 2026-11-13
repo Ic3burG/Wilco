@@ -12,6 +12,9 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/argmaxinc/WhisperKit", from: "1.1.1"),
+        // Parakeet on the Neural Engine. Benchmark only until it's adopted;
+        // pinned because the API changes between 0.x releases.
+        .package(url: "https://github.com/FluidInference/FluidAudio", exact: "0.18.3"),
     ],
     targets: [
         .target(name: "WilcoCore"),
@@ -29,7 +32,11 @@ let package = Package(
         ),
         .target(
             name: "WilcoBench",
-            dependencies: ["WilcoCore", "WilcoTranscription"]
+            dependencies: [
+                "WilcoCore",
+                "WilcoTranscription",
+                .product(name: "FluidAudio", package: "FluidAudio"),
+            ]
         ),
         .executableTarget(
             name: "wilco-bench",

@@ -279,3 +279,37 @@ struct BenchReportTests {
         #expect(table.contains("1.0%"), "WER column: \(table)")
     }
 }
+
+@Suite("Voice selection")
+struct VoiceSelectionTests {
+    // macOS lists the same voice under different names over time: "Rishi"
+    // one day, "Rishi (English (India))" after a voice update.
+    private let listing = """
+        Daniel (English (UK)) en_GB    # Hello! My name is Daniel.
+        Eddy (German (Germany)) de_DE    # Hallo! Ich heiße Eddy.
+        Eddy (English (UK)) en_GB    # Hello! My name is Eddy.
+        Karen               en_AU    # Hello! My name is Karen.
+        Samantha (Enhanced) en_US    # Hello! My name is Samantha.
+        Samantha (English (US)) en_US    # Hello! My name is Samantha.
+        Rishi               en_IN    # Hello! My name is Rishi.
+        """
+
+    @Test func readsNamesAndLocales() {
+        let voices = ClipLibrary.parseVoices(listing)
+        #expect(voices.count == 7)
+        #expect(voices[0] == ClipLibrary.SystemVoice(name: "Daniel (English (UK))", locale: "en_GB"))
+        #expect(voices[3].baseName == "Karen")
+        #expect(voices[0].baseName == "Daniel")
+    }
+
+    @Test func matchesByBaseNameAndLocaleInPreferenceOrder() {
+        let picked = ClipLibrary.pick(
+            [.init(name: "Samantha", locale: "en_US"), .init(name: "Moira", locale: "en_IE"),
+             .init(name: "Eddy", locale: "en_GB"), .init(name: "Karen", locale: "en_AU")],
+            from: ClipLibrary.parseVoices(listing), limit: 3
+        )
+        // Moira isn't installed; Eddy is the English one, not the German;
+        // Samantha is the standard voice, not the Enhanced download.
+        #expect(picked.map(\.name) == ["Samantha (English (US))", "Eddy (English (UK))", "Karen"])
+    }
+}

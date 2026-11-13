@@ -13,6 +13,7 @@ let usage = """
     Usage: wilco-bench [options]
 
       --list                 Show the engines and whether each can run here.
+      --install a,b,…        Download these engines' models, then exit.
       --engines a,b,…        Engines to run (default: every available one).
       --channels 1,8,…       Channel counts to try (default: 1,8,16,32).
       --duration SECONDS     Length of each run (default: 60).
@@ -28,6 +29,7 @@ let usage = """
 
 struct Options {
     var list = false
+    var install: [String] = []
     var engines: [String]?
     var channels = [1, 8, 16, 32]
     var duration = 60.0
@@ -59,6 +61,7 @@ func parse(_ arguments: [String]) -> Options {
     while let argument = iterator.next() {
         switch argument {
         case "--list": options.list = true
+        case "--install": options.install = list(argument) { $0 }
         case "--engines": options.engines = list(argument) { $0 }
         case "--channels": options.channels = list(argument) { Int($0).flatMap { $0 > 0 ? $0 : nil } }
         case "--duration": options.duration = number(argument) { $0 > 0 }
@@ -100,6 +103,23 @@ func machineDescription() -> String {
 }
 
 let options = parse(Array(CommandLine.arguments.dropFirst()))
+
+if !options.install.isEmpty {
+    for id in options.install {
+        guard let engine = BenchEngine.named(id) else { fail("no engine called \(id); see --list") }
+        guard let install = engine.install else { fail("\(id) is installed from Wilco, not here; see --list") }
+        log("Installing \(id)…")
+        do {
+            try await install { fraction in
+                FileHandle.standardError.write(Data(String(format: "\r  %3.0f%%", fraction * 100).utf8))
+            }
+            log("\r  done.")
+        } catch {
+            fail("could not install \(id): \(error.localizedDescription)")
+        }
+    }
+    exit(0)
+}
 
 // Which engines can run here.
 var available: [BenchEngine] = []
