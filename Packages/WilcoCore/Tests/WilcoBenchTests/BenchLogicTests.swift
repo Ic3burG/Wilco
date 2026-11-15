@@ -102,6 +102,127 @@ struct ScenarioTests {
     }
 }
 
+@Suite("Conversation scenario")
+struct ConversationScenarioTests {
+    /// Three calls in each of four voices, 1.5–2.5 s long.
+    private let clips = (0..<12).map { ConversationClip(duration: 1.5 + Double($0 % 3) * 0.5, voice: $0 / 3) }
+
+    @Test func sameSeedGivesSameConversations() {
+        let a = Scenario.generateConversations(channels: 8, duration: 120, seed: 3, clips: clips)
+        let b = Scenario.generateConversations(channels: 8, duration: 120, seed: 3, clips: clips)
+        #expect(a == b)
+        #expect(a.channels.count == 8)
+        #expect(a.channels[0] != a.channels[1])
+    }
+
+    @Test func exchangesHaveTurnsThatMergeAndVoicesThatReturn() {
+        let scenario = Scenario.generateConversations(channels: 8, duration: 120, seed: 3, clips: clips)
+        var backToBack = 0, returning = 0
+        for channel in scenario.channels {
+            #expect(!channel.isEmpty)
+            #expect(channel.last!.end <= 120)
+            let exchanges = Dictionary(grouping: channel) { $0.exchange! }
+            for (_, turns) in exchanges {
+                #expect((2...5).contains(turns.count), "\(turns.count) turns")
+                #expect((2...4).contains(Set(turns.map(\.voice)).count))
+                var seen: Set<Int> = []
+                for (previous, next) in zip(turns, turns.dropFirst()) {
+                    let gap = next.start - previous.end
+                    #expect(gap >= 0.1 - 1e-9 && gap <= 0.8 + 1e-9, "gap \(gap)")
+                    #expect(next.voice != previous.voice, "a turn is a different voice")
+                    if gap < 0.5 { backToBack += 1 }
+                }
+                for turn in turns {
+                    if seen.contains(turn.voice!) { returning += 1 }
+                    seen.insert(turn.voice!)
+                    #expect(clips[turn.clip].voice == turn.voice)
+                }
+            }
+            for (previous, next) in zip(channel, channel.dropFirst()) where previous.exchange != next.exchange {
+                let quiet = next.start - previous.end
+                #expect(quiet >= 25 - 1e-9 && quiet <= 40 + 1e-9, "quiet \(quiet)")
+            }
+        }
+        #expect(backToBack > 0)
+        #expect(returning > 0)
+    }
+}
+
+@Suite("Voice scoring")
+struct VoiceScoringTests {
+    /// One exchange: voices 0, 1, 0, 1, 0, each turn on its own line.
+    private let turns = [0.0, 3, 6, 9, 12].enumerated().map { index, start in
+        ScheduledUtterance(clip: index, start: start, duration: 2, voice: index % 2, exchange: 1)
+    }
+
+    private func piece(_ voice: String?, at offset: Double, line: UUID = UUID()) -> ObservedEvent {
+        ObservedEvent(text: "x", isFinal: true, sessionOffset: offset, arrival: offset + 3, lineID: line,
+                      stage: .annotated(voice: voice, exchange: 1))
+    }
+
+    @Test func countsMissedAndFalseChangesAndReturningLetters() {
+        let score = Scorer.scoreVoices(utterances: turns, events: [
+            piece("A", at: 0), piece("B", at: 3), piece("A", at: 6),
+            // The change at 9 s is missed, and one is found inside that turn.
+            piece("A", at: 9), piece("B", at: 10.5),
+            piece("A", at: 12),
+        ])
+        #expect(score.changes == 4)
+        #expect(score.missedChanges == 1)
+        #expect(score.falseChanges == 1)
+        #expect(score.returningTurns == 3)
+        #expect(score.correctLetters == 2)
+        #expect(score.letterAccuracy == 2.0 / 3.0)
+    }
+
+    @Test func aMergedTurnIsAMissedChange() {
+        let merged = [
+            ScheduledUtterance(clip: 0, start: 0, duration: 2, voice: 0, exchange: 1),
+            ScheduledUtterance(clip: 1, start: 2.3, duration: 2, voice: 1, exchange: 1),
+        ]
+        let score = Scorer.scoreVoices(utterances: merged, events: [piece("A", at: 0)])
+        #expect(score.changes == 1)
+        #expect(score.missedChanges == 1)
+        #expect(score.falseChanges == 0)
+    }
+
+    @Test func aNewExchangeIsNotAChange() {
+        let calls = [
+            ScheduledUtterance(clip: 0, start: 0, duration: 2, voice: 0, exchange: 1),
+            ScheduledUtterance(clip: 1, start: 30, duration: 2, voice: 1, exchange: 2),
+        ]
+        let events = [
+            piece("A", at: 0),
+            ObservedEvent(text: "x", isFinal: true, sessionOffset: 30, arrival: 33,
+                          stage: .annotated(voice: "A", exchange: 2)),
+        ]
+        let score = Scorer.scoreVoices(utterances: calls, events: events)
+        #expect(score.changes == 0)
+        #expect(score.missedChanges == 0)
+        #expect(score.falseChanges == 0)
+    }
+
+    @Test func countsLinesWithoutLettersAndAnnotationsThatNeverCame() {
+        let annotated = UUID(), lost = UUID()
+        let score = Scorer.scoreVoices(utterances: Array(turns.prefix(2)), events: [
+            ObservedEvent(text: "x", isFinal: true, sessionOffset: 0, arrival: 2.5, lineID: annotated, stage: .recognized),
+            piece(nil, at: 0, line: annotated),
+            ObservedEvent(text: "x", isFinal: true, sessionOffset: 3, arrival: 5.5, lineID: lost, stage: .recognized),
+        ])
+        #expect(score.lines == 1)
+        #expect(score.unlettered == 1)
+        #expect(score.missingAnnotations == 1)
+    }
+
+    @Test func scoresAddUpAcrossChannels() {
+        let a = VoiceScore(changes: 4, missedChanges: 1, falseChanges: 1, returningTurns: 3, correctLetters: 2,
+                           lines: 6, unlettered: 0, missingAnnotations: 0)
+        let total = a + a
+        #expect(total.changes == 8)
+        #expect(total.letterAccuracy == 2.0 / 3.0)
+    }
+}
+
 @Suite("Scorer")
 struct ScorerTests {
     private let utterances = [
@@ -137,19 +258,25 @@ struct ScorerTests {
     @Test func twoStageLinesCountOnceWithRulesAndDisplayDelays() {
         // Rules see the recognised line; the screen shows its annotated
         // pieces later. Words are counted once, from the recognised line.
-        let score = Scorer.score(utterances: utterances, texts: texts, events: [
-            ObservedEvent(text: "Standby cue 5.", isFinal: true, sessionOffset: 1, arrival: 3.5, stage: .recognized),
-            ObservedEvent(text: "Standby", isFinal: true, sessionOffset: 1, arrival: 3.75,
+        let first = UUID(), second = UUID()
+        let events = [
+            ObservedEvent(text: "Standby cue 5.", isFinal: true, sessionOffset: 1, arrival: 3.5, lineID: first,
+                          stage: .recognized),
+            ObservedEvent(text: "Standby", isFinal: true, sessionOffset: 1, arrival: 3.75, lineID: first,
                           stage: .annotated(voice: "A", exchange: 1)),
-            ObservedEvent(text: "cue 5.", isFinal: true, sessionOffset: 1.8, arrival: 4,
+            ObservedEvent(text: "cue 5.", isFinal: true, sessionOffset: 1.8, arrival: 4, lineID: first,
                           stage: .annotated(voice: "B", exchange: 1)),
-            ObservedEvent(text: "Q5 go.", isFinal: true, sessionOffset: 5.1, arrival: 8, stage: .recognized),
-        ])
+            ObservedEvent(text: "Q5 go.", isFinal: true, sessionOffset: 5.1, arrival: 8, lineID: second,
+                          stage: .recognized),
+        ]
+        let score = Scorer.score(utterances: utterances, texts: texts, events: events, watchedUntil: 20)
         #expect(score.wordErrors.errors == 0)
         #expect(score.hypothesis == "Standby cue 5. Q5 go.")
         #expect(score.finalLatencies == [0.5, 1])
-        // The second call's annotation never came, so it has no display delay.
-        #expect(score.displayLatencies == [1])
+        // The second call's annotation never came: it counts as arriving when
+        // the run stopped watching, a lower bound on its delay.
+        #expect(score.displayLatencies == [1, 13])
+        #expect(score.missingAnnotations == 1)
         #expect(score.missed == 0)
     }
 
@@ -168,6 +295,22 @@ struct ScorerTests {
         ])
         #expect(score.wordErrors.errors == 0)
         #expect(score.missed == 1)
+    }
+
+    @Test func backToBackCallsInOneLineAreMergedNotMissed() {
+        // Two turns 0.25 s apart come out as one line: it answers both, and its
+        // delay runs from the end of the second.
+        let turns = [
+            ScheduledUtterance(clip: 0, start: 1, duration: 2),
+            ScheduledUtterance(clip: 1, start: 3.25, duration: 2),
+        ]
+        let score = Scorer.score(utterances: turns, texts: texts, events: [
+            event("standby cue five cue five go", at: 1, arrives: 5.75),
+        ])
+        #expect(score.missed == 0)
+        #expect(score.merged == 1)
+        #expect(score.finalLatencies == [0.5])
+        #expect(score.displayLatencies == [0.5])
     }
 
     @Test func orderIsBySessionTimeNotArrival() {
@@ -307,6 +450,70 @@ struct BenchReportTests {
     }
 }
 
+@Suite("Keeping up with voices")
+struct VoiceKeepUpTests {
+    private func result(display: [Double], backlog: Double, voices: Bool) -> RunResult {
+        var r = RunResult(
+            engine: voices ? "parakeet-v3-voices" : "parakeet-v3", channels: 32, duration: 60, dutyCycle: 0.2,
+            speechSeconds: 100, utterances: 100, missed: 0, wordErrors: WordErrors(),
+            finalLatency: LatencySummary([0.5, 0.7]), displayLatency: LatencySummary(display),
+            firstWordLatency: nil, startSeconds: 1, drainSeconds: 0.5, droppedFrames: 0,
+            processCPU: 1, systemCPU: 0.2, peakMemoryMB: 500, failures: []
+        )
+        r.displayBacklog = backlog
+        if voices {
+            r.voices = VoiceScore(changes: 10, missedChanges: 2, falseChanges: 1, returningTurns: 4,
+                                  correctLetters: 3, lines: 20, unlettered: 1, missingAnnotations: 0)
+        }
+        return r
+    }
+
+    @Test func cuesKeepUpOnFinalDelayAlone() {
+        let r = result(display: [5, 6], backlog: 6, voices: false)
+        #expect(r.cuesKeepUp)
+        #expect(r.displayKeepsUp == nil)
+        #expect(r.keepsUp)
+    }
+
+    @Test func voicesMustAlsoKeepTheDisplayWithinThreeSeconds() {
+        #expect(result(display: [0.8, 1.2], backlog: 1, voices: true).keepsUp)
+        let slow = result(display: [0.8, 4], backlog: 1, voices: true)
+        #expect(slow.cuesKeepUp)
+        #expect(slow.displayKeepsUp == false)
+        #expect(!slow.keepsUp)
+        #expect(!result(display: [0.8, 1.2], backlog: 3.5, voices: true).keepsUp)
+    }
+
+    @Test func reportShowsTheVoiceTable() {
+        let report = BenchReport(date: Date(timeIntervalSince1970: 0), machine: "Test Mac", osVersion: "27.2",
+                                 corpus: "say", results: [result(display: [0.8, 1.2], backlog: 1, voices: true)])
+        let text = report.markdown()
+        #expect(text.contains("## Voice changes"))
+        #expect(text.contains("| parakeet-v3-voices | 32 | 2/10 | 1 | 75% |"), "\(text)")
+    }
+}
+
+@Suite("Corpus speakers")
+struct CorpusSpeakerTests {
+    @Test func readsASpeakerMarkPerLine() throws {
+        let marked = try ClipLibrary.transcript("A: Standby lighting cue five.\nA: Lighting five, go.\n")
+        #expect(marked.text == "Standby lighting cue five. Lighting five, go.")
+        #expect(marked.speaker == "A")
+        let plain = try ClipLibrary.transcript("Standby lighting cue five.")
+        #expect(plain.speaker == nil)
+        #expect(plain.text == "Standby lighting cue five.")
+    }
+
+    @Test func refusesTwoSpeakersInOneRecording() {
+        #expect(throws: BenchError.self) { try ClipLibrary.transcript("A: Standby.\nB: Standing by.") }
+    }
+
+    @Test func speakersBecomeVoiceNumbers() {
+        // Unmarked recordings share one voice of their own.
+        #expect(ClipLibrary.voiceNumbers(for: ["B", nil, "A", "B"]) == [2, 0, 1, 2])
+    }
+}
+
 @Suite("Clip vocabulary")
 struct ClipVocabularyTests {
     @Test func everyTermIsSpokenInAPhrase() {
@@ -318,6 +525,13 @@ struct ClipVocabularyTests {
 
     @Test func vocabularyEngineIsListed() {
         #expect(BenchEngine.named("parakeet-v3-vocab") != nil)
+    }
+
+    @Test func voiceEnginesAreListed() {
+        for id in ["parakeet-v3-voices", "apple-longform-voices", "whisper-base-voices"] {
+            #expect(BenchEngine.named(id)?.detectsVoiceChanges == true, "\(id)")
+        }
+        #expect(BenchEngine.named("parakeet-v3")?.detectsVoiceChanges == false)
     }
 }
 

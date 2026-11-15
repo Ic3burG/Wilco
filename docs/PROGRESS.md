@@ -466,3 +466,44 @@ over one shared model store, as the app does. Full table in
   channels with the Mac awake was clean (0/29 missed for both engines).
 - Long benchmarks need the lid open or the Mac on power with
   `caffeinate -dims`.
+
+## 2026-11-15 (in progress) — Voice change benchmark
+
+`wilco-bench --conversation` gives each channel exchanges between voices:
+2–5 turns among 2–4 `say` voices, 0.1–0.8 s between turns (the shorter gaps
+merge into one line), 25–40 s between exchanges. The `-voices` engines
+(`parakeet-v3-voices`, `apple-longform-voices`, `whisper-base-voices`) run
+with voice changes on and get a second table: missed and false voice
+changes, letters right for returning voices, lines without a letter,
+annotations that never came, merged calls, and display delay and backlog.
+`--voice-threshold` sets the threshold. Corpus transcripts can mark the
+speaker with `A: ` at the start of a line. Tested, not verified.
+
+Fixed in the bench: backlog and "keeps up" counted the voice annotations as
+final lines. Cue backlog now counts rule lines only, and `-voices` engines
+must also keep the display within 3 s (p95 and backlog). Annotations that
+never arrive are counted, and they count in the display delay at the time
+the run stopped. Turns merged into an earlier line count as "merged", not
+missed, and that line's delay runs from the end of the last turn in it.
+
+Full table: `docs/benchmarks/2026-11-15-m1-max-say-voices.md`. At 32
+channels:
+
+| Engine | Changes missed | False | Letters right | Final p95 | Display p95 | Keeps up |
+|---|---:|---:|---:|---:|---:|:---:|
+| parakeet-v3-voices | 81/134 | 0 | 80% | 0.72 s | 0.90 s | yes |
+| apple-longform-voices | 30/134 | 3 | 87% | 5.76 s | 5.80 s | no |
+| whisper-base-voices | 82/134 | 0 | 80% | 1.87 s | 2.04 s | yes |
+
+- **Voice changes stay off by default.** Not every `-voices` engine keeps up
+  at 32 channels. The limit is Apple long-form at 32 conversation channels:
+  it fails without voice changes too (final p95 5.99 s). With Parakeet,
+  voice changes cost 7% of one core and 0.18 s of display delay at 32.
+- Threshold stays 0.5. At 8 channels, 0.4 / 0.5 / 0.6 gave 48 / 53 / 56
+  missed changes of 85 and 77% / 94% / 97% letters right, with no false
+  changes at any of them.
+- Most missed changes are merged turns (63 of Parakeet's 81 at 32
+  channels), since a line keeps one letter for now. Splitting lines where
+  the voice changes is next, and this run is the baseline for it.
+- `say` voices are far more distinct than real people. The threshold needs
+  checking on real comms.

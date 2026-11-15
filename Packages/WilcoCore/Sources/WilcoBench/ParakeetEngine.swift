@@ -58,6 +58,28 @@ extension BenchEngine {
         ),
     ]
 
+    /// v3 as the app runs it with voice changes on: one recognizer per channel,
+    /// one voice model shared by all of them.
+    static let parakeetVoices = BenchEngine(
+        id: "parakeet-v3-voices",
+        summary: "Parakeet TDT 0.6B v3 with voice changes (WeSpeaker voiceprints)",
+        unavailableReason: { unavailable(version: .v3, id: "parakeet-v3") ?? voiceModelMissing() },
+        install: installVoiceModel,
+        detectsVoiceChanges: true,
+        makeFactory: {
+            let store = ParakeetModelStore(directory: sharedCache)
+            let voiceprints = WeSpeakerVoiceprints()
+            return { channel in
+                VoiceModelFirst(voiceprints: voiceprints, transcriber: UtteranceChannelTranscriber(
+                    channelID: channel.id, source: channel.source, sessionOffset: 0,
+                    recognizer: ParakeetRecognizer(store: store, language: nil),
+                    voiceChanges: channel.voiceChanges, voiceprints: voiceprints,
+                    onEvent: channel.onEvent, onStatus: channel.onStatus
+                ))
+            }
+        }
+    )
+
     /// FluidAudio's own model cache, so an existing download is reused.
     private static var sharedCache: URL {
         AsrModels.defaultCacheDirectory(for: .v3).deletingLastPathComponent()

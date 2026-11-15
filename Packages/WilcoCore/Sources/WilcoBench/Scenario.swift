@@ -7,12 +7,30 @@ public struct ScheduledUtterance: Codable, Equatable, Sendable {
     /// Seconds from the start of the run.
     public var start: Double
     public var duration: Double
+    /// Who says it, in conversation runs: the clip's voice.
+    public var voice: Int?
+    /// Which exchange on its channel the call belongs to, in conversation
+    /// runs. Letters are only compared within one exchange.
+    public var exchange: Int?
     public var end: Double { start + duration }
 
-    public init(clip: Int, start: Double, duration: Double) {
+    public init(clip: Int, start: Double, duration: Double, voice: Int? = nil, exchange: Int? = nil) {
         self.clip = clip
         self.start = start
         self.duration = duration
+        self.voice = voice
+        self.exchange = exchange
+    }
+}
+
+/// What a conversation needs to know about a clip.
+public struct ConversationClip: Equatable, Sendable {
+    public var duration: Double
+    public var voice: Int
+
+    public init(duration: Double, voice: Int) {
+        self.duration = duration
+        self.voice = voice
     }
 }
 
@@ -51,6 +69,65 @@ public struct Scenario: Equatable, Sendable {
             return utterances
         }
         return Scenario(duration: duration, dutyCycle: dutyCycle, channels: channels)
+    }
+
+    /// Turns between voices in an exchange: 0.1–0.8 s. Clips from `say` end
+    /// with about 0.2 s of their own silence, so the shorter gaps fall under
+    /// the segmenter's 0.7 s pause and two voices land in one line.
+    public static let turnGap = 0.1...0.8
+    /// Quiet between exchanges: longer than the default exchange gap (20 s),
+    /// so each exchange starts its letters again from A.
+    public static let exchangeQuiet = 25.0...40.0
+
+    /// Each channel holds exchanges of 2–5 turns among 2–4 voices, like a
+    /// stage manager calling a cue and departments answering. Neighbouring
+    /// turns are always different voices, and voices come back within an
+    /// exchange. Only whole exchanges are placed.
+    public static func generateConversations(
+        channels channelCount: Int, duration: Double, seed: UInt64, clips: [ConversationClip]
+    ) -> Scenario {
+        let byVoice = Dictionary(grouping: clips.indices) { clips[$0].voice }
+        let voices = byVoice.keys.sorted()
+        precondition(voices.count >= 2, "a conversation needs at least two voices")
+        let channels = (0..<channelCount).map { index -> [ScheduledUtterance] in
+            var random = SplitMix64(seed: seed &+ UInt64(index) &* 0x9E37_79B9_7F4A_7C15)
+            var time = random.unit() * min(3, duration / 4)
+            var exchange = 1
+            var utterances: [ScheduledUtterance] = []
+            while true {
+                // Who's in it, then who speaks each turn.
+                var cast = voices
+                for i in cast.indices.reversed() { cast.swapAt(i, random.index(below: i + 1)) }
+                cast = Array(cast.prefix(min(cast.count, 2 + random.index(below: 3))))
+                let turnCount = 2 + random.index(below: 4)
+                var speakers = [cast[0], cast[1]]
+                while speakers.count < turnCount {
+                    let others = cast.filter { $0 != speakers.last }
+                    speakers.append(others[random.index(below: others.count)])
+                }
+
+                var placed: [ScheduledUtterance] = []
+                var at = time
+                for (turn, voice) in speakers.enumerated() {
+                    if turn > 0 { at += turnGap.lowerBound + random.unit() * (turnGap.upperBound - turnGap.lowerBound) }
+                    let options = byVoice[voice]!
+                    let clip = options[random.index(below: options.count)]
+                    placed.append(ScheduledUtterance(
+                        clip: clip, start: at, duration: clips[clip].duration, voice: voice, exchange: exchange
+                    ))
+                    at += clips[clip].duration
+                }
+                guard at <= duration - minimumGap else { break }
+                utterances += placed
+                exchange += 1
+                time = at + exchangeQuiet.lowerBound
+                    + random.unit() * (exchangeQuiet.upperBound - exchangeQuiet.lowerBound)
+            }
+            return utterances
+        }
+        let speech = channels.joined().map(\.duration).reduce(0, +)
+        let share = duration > 0 && channelCount > 0 ? speech / (duration * Double(channelCount)) : 0
+        return Scenario(duration: duration, dutyCycle: share, channels: channels)
     }
 }
 

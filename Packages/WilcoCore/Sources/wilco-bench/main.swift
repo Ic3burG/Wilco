@@ -1,5 +1,6 @@
 import Foundation
 import WilcoBench
+import WilcoCore
 
 // Multichannel transcription benchmark. Run from Packages/WilcoCore:
 //
@@ -25,6 +26,12 @@ let usage = """
                              (default: ./bench-results).
       --stop-when-behind     Skip an engine's larger channel counts once it
                              can't keep up.
+      --conversation         Channels hold exchanges between voices (2–5 turns,
+                             some back to back) instead of lone calls, and
+                             `-voices` engines are scored on voice changes.
+                             --duty doesn't apply.
+      --voice-threshold D    Voice-change threshold for `-voices` engines
+                             (default: the app's, \(VoiceChangeSettings.standard.threshold)).
     """
 
 struct Options {
@@ -39,6 +46,8 @@ struct Options {
     var voices = 4
     var out = URL(fileURLWithPath: "bench-results", isDirectory: true)
     var stopWhenBehind = false
+    var conversation = false
+    var voiceThreshold = VoiceChangeSettings.standard.threshold
 }
 
 func parse(_ arguments: [String]) -> Options {
@@ -71,6 +80,8 @@ func parse(_ arguments: [String]) -> Options {
         case "--voices": options.voices = number(argument) { $0 > 0 }
         case "--out": options.out = URL(fileURLWithPath: value(argument), isDirectory: true)
         case "--stop-when-behind": options.stopWhenBehind = true
+        case "--conversation": options.conversation = true
+        case "--voice-threshold": options.voiceThreshold = number(argument) { $0 > 0 && $0 < 2 }
         case "-h", "--help": print(usage); exit(0)
         default: fail("unknown option \(argument)")
         }
@@ -163,8 +174,12 @@ do {
     fail(error.localizedDescription)
 }
 
-let runner = BenchRunner(clips: clips, sampleRate: sampleRate)
+var runner = BenchRunner(clips: clips, sampleRate: sampleRate)
+runner.voiceChanges.threshold = options.voiceThreshold
 let durations = clips.map { $0.duration(sampleRate: sampleRate) }
+if options.conversation, Set(clips.map(\.voice)).count < 2 {
+    fail("--conversation needs at least two voices (more `say` voices, or speaker marks in the corpus)")
+}
 let started = Date()
 let stamp = {
     let formatter = DateFormatter()
@@ -192,18 +207,26 @@ var report = BenchReport(
 log("Measuring idle CPU…")
 report.idleSystemCPU = await BenchRunner.idleSystemCPU()
 log(String(format: "Mac idle: %.0f%% of all cores busy", (report.idleSystemCPU ?? 0) * 100))
-log("\(report.machine) · \(engines.count) engine(s) × channels \(options.channels) · \(Int(options.duration)) s runs, \(Int(options.duty * 100))% talk time")
+log("\(report.machine) · \(engines.count) engine(s) × channels \(options.channels) · \(Int(options.duration)) s runs, "
+    + (options.conversation ? "conversations" : "\(Int(options.duty * 100))% talk time")
+    + (engines.contains(where: \.detectsVoiceChanges) ? " · voice threshold \(options.voiceThreshold)" : ""))
 print(BenchReport.tableHeader)
 for engine in engines {
     for channels in options.channels {
-        let scenario = Scenario.generate(
-            channelCount: channels, clipDurations: durations,
-            duration: options.duration, dutyCycle: options.duty, seed: options.seed
-        )
+        let scenario = options.conversation
+            ? Scenario.generateConversations(
+                channels: channels, duration: options.duration, seed: options.seed,
+                clips: clips.map { $0.conversationClip(sampleRate: sampleRate) }
+            )
+            : Scenario.generate(
+                channelCount: channels, clipDurations: durations,
+                duration: options.duration, dutyCycle: options.duty, seed: options.seed
+            )
         log("→ \(engine.id) × \(channels) channels (\(scenario.utteranceCount) calls)…")
         let result = await runner.run(engine: engine, scenario: scenario)
         report.results.append(result)
         print(BenchReport.tableRow(result))
+        if result.voices != nil { log("  voices: " + BenchReport.voiceRow(result)) }
         save()
         if options.stopWhenBehind, !result.keepsUp {
             log("  \(engine.id) fell behind at \(channels) channels; skipping larger counts.")
