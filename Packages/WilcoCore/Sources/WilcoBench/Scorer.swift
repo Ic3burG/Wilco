@@ -1,4 +1,5 @@
 import Foundation
+import WilcoCore
 
 /// A transcription event as the benchmark saw it arrive.
 public struct ObservedEvent: Equatable, Sendable {
@@ -8,20 +9,40 @@ public struct ObservedEvent: Equatable, Sendable {
     public var sessionOffset: Double
     /// When the event reached us, in run seconds.
     public var arrival: Double
+    public var stage: LineStage
 
-    public init(text: String, isFinal: Bool, sessionOffset: Double, arrival: Double) {
+    public init(text: String, isFinal: Bool, sessionOffset: Double, arrival: Double, stage: LineStage = .complete) {
         self.text = text
         self.isFinal = isFinal
         self.sessionOffset = sessionOffset
         self.arrival = arrival
+        self.stage = stage
+    }
+
+    /// A final line as rules see it: `.complete` or `.recognized`. Each line
+    /// is counted once, so its `.annotated` pieces are not.
+    var isRuleLine: Bool {
+        guard isFinal else { return false }
+        if case .annotated = stage { return false }
+        return true
+    }
+
+    /// A final line as the transcript shows it: `.complete` or `.annotated`.
+    var isDisplayLine: Bool {
+        isFinal && stage != .recognized
     }
 }
 
 /// How one channel came out.
 public struct ChannelScore: Equatable, Sendable {
     public var wordErrors: WordErrors
-    /// Per answered utterance: seconds from the end of speech to its last final line.
+    /// Per answered utterance: seconds from the end of speech to its last
+    /// final line (`.complete` or `.recognized`, when rules can act on it).
     public var finalLatencies: [Double]
+    /// Per displayed utterance: seconds from the end of speech to its last
+    /// line on screen (`.complete` or `.annotated`). Equals the final delay
+    /// when lines aren't annotated.
+    public var displayLatencies: [Double]
     /// Per answered utterance: seconds from the start of speech to the first words shown.
     public var firstWordLatencies: [Double]
     /// Utterances no final line was attributed to.
@@ -36,14 +57,17 @@ public enum Scorer {
     /// merges or splits lines differently isn't penalised for that alone.
     public static func score(utterances: [ScheduledUtterance], texts: [String], events: [ObservedEvent]) -> ChannelScore {
         var finalArrivals = [[Double]](repeating: [], count: utterances.count)
+        var displayArrivals = [[Double]](repeating: [], count: utterances.count)
         var firstArrival = [Double?](repeating: nil, count: utterances.count)
         for event in events {
             guard let index = utterance(for: event.sessionOffset, in: utterances) else { continue }
-            if event.isFinal { finalArrivals[index].append(event.arrival) }
+            if event.isRuleLine { finalArrivals[index].append(event.arrival) }
+            if event.isDisplayLine { displayArrivals[index].append(event.arrival) }
             firstArrival[index] = min(firstArrival[index] ?? .infinity, event.arrival)
         }
 
         var finalLatencies: [Double] = []
+        var displayLatencies: [Double] = []
         var firstWordLatencies: [Double] = []
         var missed = 0
         for (index, utterance) in utterances.enumerated() {
@@ -52,13 +76,16 @@ public enum Scorer {
             } else {
                 missed += 1
             }
+            if let last = displayArrivals[index].max() {
+                displayLatencies.append(last - utterance.end)
+            }
             if let first = firstArrival[index] {
                 firstWordLatencies.append(first - utterance.start)
             }
         }
 
         let reference = utterances.map { texts[$0.clip] }.joined(separator: " ")
-        let hypothesis = events.filter(\.isFinal)
+        let hypothesis = events.filter(\.isRuleLine)
             .sorted { ($0.sessionOffset, $0.arrival) < ($1.sessionOffset, $1.arrival) }
             .map(\.text).joined(separator: " ")
         return ChannelScore(
@@ -67,6 +94,7 @@ public enum Scorer {
                 hypothesis: TranscriptNormalizer.words(hypothesis)
             ),
             finalLatencies: finalLatencies,
+            displayLatencies: displayLatencies,
             firstWordLatencies: firstWordLatencies,
             missed: missed,
             reference: reference,

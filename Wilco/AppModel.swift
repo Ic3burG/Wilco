@@ -101,6 +101,8 @@ final class AppModel {
     @ObservationIgnored private var writer: TranscriptWriter?
     @ObservationIgnored private var reportedWriteFailure = false
     @ObservationIgnored private var evaluator = AutomationEvaluator()
+    /// Keywords of recognised lines, kept until their annotated pieces arrive.
+    @ObservationIgnored private var pendingLines = PendingLines()
     @ObservationIgnored private let performer = ActionPerformer()
     /// Speech model downloads started from Settings.
     let installer: ModelInstaller
@@ -211,6 +213,7 @@ final class AppModel {
         writer = TranscriptWriter(url: DataLocations.transcripts.appending(path: TranscriptFile.fileName(for: start)))
         reportedWriteFailure = false
         evaluator.reset()
+        pendingLines = PendingLines()
         capture.start(taps: document.captureTaps)
         transcription.reconcile(show: document, capture: capture, sessionStart: start)
         meterTimer?.invalidate()
@@ -243,29 +246,68 @@ final class AppModel {
         case .event(let event):
             let show = document
             let now = Date()
-            var firings: [AutomationEvaluator.Firing] = []
-            guard let segment = timeline.apply(event, at: now, annotate: { segment in
-                segment.highlights = AutomationEvaluator.highlights(for: segment.text, channelID: segment.channelID, in: show)
-                firings = evaluator.evaluate(segment, in: show, at: now)
-                var seen = Set<String>()
-                segment.matchedKeywords = firings.flatMap(\.matched).filter { seen.insert($0.lowercased()).inserted }
-            }) else { return }
-            do {
-                try writer?.append(segment)
-            } catch where !reportedWriteFailure {
-                reportedWriteFailure = true
-                lastMessage = "Could not write the transcript file: \(error.localizedDescription). Lines are still shown on screen."
-            } catch {}
-            let channelName = show.channel(id: segment.channelID)?.name ?? "Unknown channel"
-            for firing in firings {
-                let context = TemplateContext(
-                    text: segment.text, channel: channelName, keyword: firing.matched.first ?? "",
-                    date: segment.timestamp, offset: segment.sessionOffset
+            switch event.stage {
+            case .complete:
+                // One stage: rules, display and file all get the line now.
+                var firings: [AutomationEvaluator.Firing] = []
+                guard let segment = timeline.apply(event, at: now, annotate: { segment in
+                    segment.highlights = AutomationEvaluator.highlights(for: segment.text, channelID: segment.channelID, in: show)
+                    firings = evaluator.evaluate(segment, in: show, at: now)
+                    segment.matchedKeywords = AutomationEvaluator.matchedKeywords(firings)
+                }) else { return }
+                write(segment)
+                perform(firings, text: segment.text, channelID: segment.channelID, date: segment.timestamp,
+                        offset: segment.sessionOffset, show: show)
+            case .recognized:
+                // Cues come first: rules fire on the recognised line without
+                // waiting for voice analysis. It shows as in progress and is
+                // stored when its annotated pieces arrive.
+                timeline.apply(event, at: now)
+                let text = event.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard event.isFinal, !text.isEmpty else { return }
+                let firings = evaluator.evaluate(text: text, channelID: event.channelID, in: show, at: now)
+                pendingLines.recognized(
+                    event.lineID, text: text, keywords: AutomationEvaluator.matchedKeywords(firings), at: now
                 )
-                performer.perform(firing.rule, context: context, show: show, channelID: segment.channelID)
+                perform(firings, text: text, channelID: event.channelID, date: now, offset: event.sessionOffset, show: show)
+            case .annotated:
+                // Rules already ran on the recognised line; each piece gets
+                // its own highlights and the keywords it said.
+                guard let segment = timeline.apply(event, at: now, annotate: { segment in
+                    segment.highlights = AutomationEvaluator.highlights(for: segment.text, channelID: segment.channelID, in: show)
+                    segment.matchedKeywords = pendingLines.keywords(forPiece: segment.text, of: event.lineID, at: now)
+                }) else { return }
+                write(segment)
             }
         case .status(let channelID, let status):
             transcriberStatus[channelID] = status
+        }
+    }
+
+    /// Appends a stored line (`.complete` or `.annotated`, never
+    /// `.recognized`) to the session file.
+    private func write(_ segment: TranscriptSegment) {
+        do {
+            try writer?.append(segment)
+        } catch where !reportedWriteFailure {
+            reportedWriteFailure = true
+            lastMessage = "Could not write the transcript file: \(error.localizedDescription). Lines are still shown on screen."
+        } catch {}
+    }
+
+    private func perform(
+        _ firings: [AutomationEvaluator.Firing], text: String, channelID: UUID, date: Date, offset: Double,
+        show: ShowDocument
+    ) {
+        guard !firings.isEmpty else { return }
+        let channelName = show.channel(id: channelID)?.name ?? "Unknown channel"
+        for firing in firings {
+            // Rules run before voice analysis, so `{voice}` is always empty here.
+            let context = TemplateContext(
+                text: text, channel: channelName, keyword: firing.matched.first ?? "",
+                date: date, offset: offset, voice: ""
+            )
+            performer.perform(firing.rule, context: context, show: show, channelID: channelID)
         }
     }
 

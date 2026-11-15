@@ -126,6 +126,33 @@ struct ScorerTests {
         #expect(score.missed == 0)
     }
 
+    @Test func completeLinesShowWhenTheyArrive() {
+        let score = Scorer.score(utterances: utterances, texts: texts, events: [
+            event("Standby cue 5.", at: 1, arrives: 3.5),
+            event("Q5 go.", at: 5.1, arrives: 8),
+        ])
+        #expect(score.displayLatencies == score.finalLatencies)
+    }
+
+    @Test func twoStageLinesCountOnceWithRulesAndDisplayDelays() {
+        // Rules see the recognised line; the screen shows its annotated
+        // pieces later. Words are counted once, from the recognised line.
+        let score = Scorer.score(utterances: utterances, texts: texts, events: [
+            ObservedEvent(text: "Standby cue 5.", isFinal: true, sessionOffset: 1, arrival: 3.5, stage: .recognized),
+            ObservedEvent(text: "Standby", isFinal: true, sessionOffset: 1, arrival: 3.75,
+                          stage: .annotated(voice: "A", exchange: 1)),
+            ObservedEvent(text: "cue 5.", isFinal: true, sessionOffset: 1.8, arrival: 4,
+                          stage: .annotated(voice: "B", exchange: 1)),
+            ObservedEvent(text: "Q5 go.", isFinal: true, sessionOffset: 5.1, arrival: 8, stage: .recognized),
+        ])
+        #expect(score.wordErrors.errors == 0)
+        #expect(score.hypothesis == "Standby cue 5. Q5 go.")
+        #expect(score.finalLatencies == [0.5, 1])
+        // The second call's annotation never came, so it has no display delay.
+        #expect(score.displayLatencies == [1])
+        #expect(score.missed == 0)
+    }
+
     @Test func countsUtterancesWithNoFinalLineAsMissed() {
         let score = Scorer.score(utterances: utterances, texts: texts, events: [
             event("standby cue five", at: 1, arrives: 4),

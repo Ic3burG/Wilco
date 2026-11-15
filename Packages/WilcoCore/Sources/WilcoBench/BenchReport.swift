@@ -12,8 +12,11 @@ public struct RunResult: Codable, Equatable, Sendable {
     /// Calls no final line was attributed to.
     public var missed: Int
     public var wordErrors: WordErrors
-    /// Seconds from the end of a call to its final line.
+    /// Seconds from the end of a call to its final line (when rules can act on it).
     public var finalLatency: LatencySummary?
+    /// Seconds from the end of a call to its line on screen, after voice
+    /// analysis. Matches `finalLatency` when lines aren't annotated.
+    public var displayLatency: LatencySummary?
     /// Seconds from the start of a call to the first words on screen.
     public var firstWordLatency: LatencySummary?
     /// Time for every channel to be listening (includes loading the model).
@@ -75,8 +78,8 @@ public struct BenchReport: Codable, Equatable, Sendable {
     }
 
     public static let tableHeader = """
-        | Engine | Ch | WER | Missed | Final delay p50 / p95 / max | First words p50 | Backlog | Start | CPU (us) | CPU (Mac) | Memory | Dropped | Keeps up |
-        |---|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|:---:|
+        | Engine | Ch | WER | Missed | Final delay p50 / p95 / max | Display p95 | First words p50 | Backlog | Start | CPU (us) | CPU (Mac) | Memory | Dropped | Keeps up |
+        |---|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|:---:|
         """
 
     public static func tableRow(_ r: RunResult) -> String {
@@ -88,6 +91,7 @@ public struct BenchReport: Codable, Equatable, Sendable {
             String(format: "%.1f%%", r.wordErrorRate * 100),
             "\(r.missed)/\(r.utterances)",
             delay,
+            s(r.displayLatency?.p95),
             s(r.firstWordLatency?.p50),
             s(r.drainSeconds),
             s(r.startSeconds),
@@ -113,7 +117,8 @@ public struct BenchReport: Codable, Equatable, Sendable {
         lines += results.map(Self.tableRow)
         lines += [
             "",
-            "WER: word error rate over each channel's whole transcript. Final delay: end of a call to its final line. "
+            "WER: word error rate over each channel's whole transcript. Final delay: end of a call to its final line, "
+                + "when rules can act on it. Display: end of a call to its line on screen, after voice analysis. "
                 + "Backlog: how long after the audio stopped the last line arrived. CPU (us): cores this process used "
                 + "(100% = one core). CPU (Mac): share of all cores busy. Keeps up: no failures or dropped audio, "
                 + "≤ 5% of calls missed, p95 delay and backlog ≤ \(Int(RunResult.acceptableDelay)) s.",

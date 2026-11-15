@@ -43,6 +43,9 @@ public struct TranscriptionEvent: Equatable, Sendable {
 public struct TranscriptTimeline: Sendable {
     public private(set) var segments: [TranscriptSegment] = []
     public private(set) var volatile: [UUID: String] = [:]
+    /// The line a channel's volatile text belongs to while it waits for voice
+    /// analysis, so the annotation clears that line and not newer words.
+    private var awaitingAnnotation: [UUID: UUID] = [:]
     public let maximumSegments: Int
 
     public init(maximumSegments: Int = 5_000) {
@@ -52,6 +55,10 @@ public struct TranscriptTimeline: Sendable {
     /// Applies an event; returns the new segment when a line settles.
     /// `annotate` adds what automation found (keywords, highlights) before
     /// the line is stored.
+    ///
+    /// A `.complete` line settles at once. A `.recognized` line shows as the
+    /// channel's words in progress until its `.annotated` pieces arrive; each
+    /// piece settles as its own segment carrying its voice and exchange.
     @discardableResult
     public mutating func apply(
         _ event: TranscriptionEvent,
@@ -59,19 +66,39 @@ public struct TranscriptTimeline: Sendable {
         annotate: (inout TranscriptSegment) -> Void = { _ in }
     ) -> TranscriptSegment? {
         let text = event.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let channel = event.channelID
         guard event.isFinal else {
-            volatile[event.channelID] = text.isEmpty ? nil : text
+            volatile[channel] = text.isEmpty ? nil : text
+            awaitingAnnotation[channel] = nil
             return nil
         }
-        volatile[event.channelID] = nil
+        var voice: String?, exchange: Int?
+        switch event.stage {
+        case .complete:
+            volatile[channel] = nil
+            awaitingAnnotation[channel] = nil
+        case .recognized:
+            volatile[channel] = text.isEmpty ? nil : text
+            awaitingAnnotation[channel] = text.isEmpty ? nil : event.lineID
+            return nil
+        case .annotated(let pieceVoice, let pieceExchange):
+            if awaitingAnnotation[channel] == event.lineID {
+                volatile[channel] = nil
+                awaitingAnnotation[channel] = nil
+            }
+            voice = pieceVoice
+            exchange = pieceExchange
+        }
         guard !text.isEmpty else { return nil }
         var segment = TranscriptSegment(
-            channelID: event.channelID,
+            channelID: channel,
             text: text,
             timestamp: date,
             sessionOffset: event.sessionOffset,
             isFinal: true,
-            confidence: event.confidence
+            confidence: event.confidence,
+            voice: voice,
+            exchange: exchange
         )
         annotate(&segment)
         segments.append(segment)
@@ -89,9 +116,11 @@ public struct TranscriptTimeline: Sendable {
         if let channelID {
             segments.removeAll { $0.channelID == channelID }
             volatile[channelID] = nil
+            awaitingAnnotation[channelID] = nil
         } else {
             segments = []
             volatile = [:]
+            awaitingAnnotation = [:]
         }
     }
 }

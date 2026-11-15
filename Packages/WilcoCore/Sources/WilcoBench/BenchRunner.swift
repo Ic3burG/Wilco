@@ -118,6 +118,7 @@ public struct BenchRunner: Sendable {
             missed: scores.map(\.missed).reduce(0, +),
             wordErrors: scores.map(\.wordErrors).reduce(WordErrors(), +),
             finalLatency: LatencySummary(scores.flatMap(\.finalLatencies)),
+            displayLatency: LatencySummary(scores.flatMap(\.displayLatencies)),
             firstWordLatency: LatencySummary(scores.flatMap(\.firstWordLatencies)),
             startSeconds: startSeconds,
             drainSeconds: drainSeconds,
@@ -175,7 +176,8 @@ private final class Recorder: Sendable {
             guard let origin = state.origin else { return }
             let arrival = Double((now - origin) / .microseconds(1)) / 1_000_000
             state.events[channel].append(ObservedEvent(
-                text: event.text, isFinal: event.isFinal, sessionOffset: event.sessionOffset, arrival: arrival
+                text: event.text, isFinal: event.isFinal, sessionOffset: event.sessionOffset, arrival: arrival,
+                stage: event.stage
             ))
             if event.isFinal { state.lastFinalArrival = max(state.lastFinalArrival ?? 0, arrival) }
         }
