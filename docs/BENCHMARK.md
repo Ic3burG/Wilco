@@ -82,7 +82,7 @@ exchanges from the recordings, and needs at least two speakers.
 | Column | Meaning |
 |---|---|
 | WER | Word error rate over each channel's whole transcript. Text is normalised first: case, punctuation, "Q5" = "cue 5" = "cue five", "stand by" = "standby". |
-| Missed | Calls with no final line. An engine that merges two calls into one line shows as missed here, but its words still count in WER. "Merged" calls followed the previous call by less than 1.2 s (only conversations do this) and are answered by its line instead of counting as missed. |
+| Missed | Calls with no final line. An engine that merges two calls into one line shows as missed here, but its words still count in WER. In conversation runs, a turn with no line of its own is "merged" (answered by the previous turn's line, not missed) when it is in the same exchange and that line was final only after the turn ended. Lone calls are never merged. |
 | Final delay | From the end of a call to its final line. This is when automation can fire. For merged calls, from the end of the last call in the line. |
 | Display p95 | From the end of a call to its line on screen. With voice changes on, that's after voice analysis; otherwise it matches the final delay. |
 | First words | From the start of a call to the first words on screen, partial or final. |

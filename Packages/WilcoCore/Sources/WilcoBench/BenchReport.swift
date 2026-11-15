@@ -40,8 +40,8 @@ public struct RunResult: Codable, Equatable, Sendable {
     public var voices: VoiceScore?
     /// The voice-change threshold the run used, for those engines.
     public var voiceThreshold: Double?
-    /// Calls answered by the previous call's line because they followed it
-    /// too closely to be cut apart (conversation runs). Not counted as missed.
+    /// Conversation turns answered by the previous turn's line in the same
+    /// exchange (final only after they ended). Not counted as missed.
     public var merged: Int?
 
     public struct Sample: Codable, Equatable, Sendable {
@@ -166,8 +166,9 @@ public struct BenchReport: Codable, Equatable, Sendable {
         lines += [
             "",
             "WER: word error rate over each channel's whole transcript. Missed: calls with no final line; "
-                + "\"merged\" calls followed the previous one too closely to be cut apart and are answered by its line, "
-                + "whose delay then runs from the end of the last call in it. Final delay: end of a call to its final "
+                + "\"merged\" turns (conversations only) have no line of their own but are answered by the previous "
+                + "turn's line in the same exchange, final only after they ended; that line's delay runs from the end "
+                + "of the last turn in it. Final delay: end of a call to its final "
                 + "line, when rules can act on it. Display: end of a call to its line on screen, after voice analysis. "
                 + "Backlog: how long after the audio stopped the last final line arrived. CPU (us): cores this "
                 + "process used (100% = one core). CPU (Mac): share of all cores busy. Keeps up: no failures or "

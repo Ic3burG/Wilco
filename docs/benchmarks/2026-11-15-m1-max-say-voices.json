@@ -19,9 +19,7 @@
       "duration" : 60,
       "dutyCycle" : 0.1912888888888889,
       "engine" : "parakeet-v3",
-      "failures" : [
-
-      ],
+      "failures" : [],
       "finalLatency" : {
         "max" : 0.7192583994831576,
         "mean" : 0.6854572366208505,
@@ -69,9 +67,7 @@
       "duration" : 60,
       "dutyCycle" : 0.21644444444444447,
       "engine" : "parakeet-v3",
-      "failures" : [
-
-      ],
+      "failures" : [],
       "finalLatency" : {
         "max" : 0.7374371835396829,
         "mean" : 0.6368238428538241,
@@ -123,9 +119,7 @@
       "duration" : 60,
       "dutyCycle" : 0.21733333333333338,
       "engine" : "parakeet-v3",
-      "failures" : [
-
-      ],
+      "failures" : [],
       "finalLatency" : {
         "max" : 0.7682618527217091,
         "mean" : 0.6371425792068157,
@@ -167,35 +161,33 @@
       "channels" : 32,
       "displayBacklog" : 0,
       "displayLatency" : {
-        "max" : 0.8130399777217105,
-        "mean" : 0.6321558653083162,
-        "p50" : 0.6447209091635067,
-        "p95" : 0.7207195736509675
+        "max" : 0.7370985197217097,
+        "mean" : 0.6270845868819596,
+        "p50" : 0.6382879117706874,
+        "p95" : 0.7270581859453742
       },
       "drainSeconds" : 0,
       "droppedFrames" : 0,
       "duration" : 60,
       "dutyCycle" : 0.20755555555555574,
       "engine" : "parakeet-v3",
-      "failures" : [
-
-      ],
+      "failures" : [],
       "finalLatency" : {
-        "max" : 0.8130399777217105,
-        "mean" : 0.6321558653083162,
-        "p50" : 0.6447209091635067,
-        "p95" : 0.7207195736509675
+        "max" : 0.7370985197217097,
+        "mean" : 0.6270845868819596,
+        "p50" : 0.6382879117706874,
+        "p95" : 0.7270581859453742
       },
       "firstWordLatency" : {
-        "max" : 11.292597408849321,
-        "mean" : 3.8666416372185957,
-        "p50" : 3.016182380984424,
-        "p95" : 7.7243285915258255
+        "max" : 11.269276450849324,
+        "mean" : 3.8615703587922385,
+        "p50" : 3.016875679197666,
+        "p95" : 7.695895468943327
       },
       "merged" : 63,
       "missed" : 0,
-      "peakMemoryMB" : 180.9538803100586,
-      "processCPU" : 0.2427355478335436,
+      "peakMemoryMB" : 207.235107421875,
+      "processCPU" : 0.24263111589698264,
       "samples" : [
         {
           "hypothesis" : "Standby lighting Q42 Can someone check the radio mic on track 4? Can I get a work light on stage right? Thank you, 5 minutes. Places please for the top of Act 2.",
@@ -207,8 +199,8 @@
         }
       ],
       "speechSeconds" : 398.506666666667,
-      "startSeconds" : 0.162480959,
-      "systemCPU" : 0.22726818711503247,
+      "startSeconds" : 0.201636917,
+      "systemCPU" : 0.19142485924642702,
       "utterances" : 192,
       "wordErrors" : {
         "deletions" : 5,
@@ -231,9 +223,7 @@
       "duration" : 60,
       "dutyCycle" : 0.1912888888888889,
       "engine" : "parakeet-v3-voices",
-      "failures" : [
-
-      ],
+      "failures" : [],
       "finalLatency" : {
         "max" : 0.7273378178528755,
         "mean" : 0.6930399873708506,
@@ -292,9 +282,7 @@
       "duration" : 60,
       "dutyCycle" : 0.21644444444444447,
       "engine" : "parakeet-v3-voices",
-      "failures" : [
-
-      ],
+      "failures" : [],
       "finalLatency" : {
         "max" : 0.7885972675396928,
         "mean" : 0.6358162165204904,
@@ -357,9 +345,7 @@
       "duration" : 60,
       "dutyCycle" : 0.21733333333333338,
       "engine" : "parakeet-v3-voices",
-      "failures" : [
-
-      ],
+      "failures" : [],
       "finalLatency" : {
         "max" : 0.7707595512008325,
         "mean" : 0.6352670449715214,
@@ -412,35 +398,33 @@
       "channels" : 32,
       "displayBacklog" : 0,
       "displayLatency" : {
-        "max" : 1.0009489151996647,
-        "mean" : 0.7127451026881608,
-        "p50" : 0.707424381317757,
-        "p95" : 0.8995997990221554
+        "max" : 0.9923568321996648,
+        "mean" : 0.7086176401842852,
+        "p50" : 0.7086397305209253,
+        "p95" : 0.8931870549402712
       },
       "drainSeconds" : 0,
       "droppedFrames" : 0,
       "duration" : 60,
       "dutyCycle" : 0.20755555555555574,
       "engine" : "parakeet-v3-voices",
-      "failures" : [
-
-      ],
+      "failures" : [],
       "finalLatency" : {
-        "max" : 0.7584167098531083,
-        "mean" : 0.6265892361067653,
-        "p50" : 0.6379991381924057,
-        "p95" : 0.7168072665396821
+        "max" : 0.7660699623250622,
+        "mean" : 0.6262919941765333,
+        "p50" : 0.6436479264124273,
+        "p95" : 0.7254181715738159
       },
       "firstWordLatency" : {
-        "max" : 11.287913492849322,
-        "mean" : 3.8610750080170457,
-        "p50" : 3.012587964984424,
-        "p95" : 7.636007342525824
+        "max" : 11.275847534849321,
+        "mean" : 3.860777766086813,
+        "p50" : 3.0045422979844236,
+        "p95" : 7.623783996582054
       },
       "merged" : 63,
       "missed" : 0,
-      "peakMemoryMB" : 654.1104736328125,
-      "processCPU" : 0.3168548057868568,
+      "peakMemoryMB" : 667.4541091918945,
+      "processCPU" : 0.3093969796021481,
       "samples" : [
         {
           "hypothesis" : "Standby lighting Q42 Can someone check the radio mic on track 4? Can I get a work light on stage right? Thank you, 5 minutes. Places please for the top of Act 2.",
@@ -452,8 +436,8 @@
         }
       ],
       "speechSeconds" : 398.506666666667,
-      "startSeconds" : 0.246646542,
-      "systemCPU" : 0.2169436265948068,
+      "startSeconds" : 0.2786295,
+      "systemCPU" : 0.24042715991882632,
       "utterances" : 192,
       "voiceThreshold" : 0.5,
       "voices" : {
@@ -487,9 +471,7 @@
       "duration" : 60,
       "dutyCycle" : 0.1912888888888889,
       "engine" : "apple-longform",
-      "failures" : [
-
-      ],
+      "failures" : [],
       "finalLatency" : {
         "max" : 1.5376909418528761,
         "mean" : 1.0710859419726102,
@@ -537,9 +519,7 @@
       "duration" : 60,
       "dutyCycle" : 0.21644444444444447,
       "engine" : "apple-longform",
-      "failures" : [
-
-      ],
+      "failures" : [],
       "finalLatency" : {
         "max" : 1.7184611241996652,
         "mean" : 0.9923934671136342,
@@ -591,9 +571,7 @@
       "duration" : 60,
       "dutyCycle" : 0.21733333333333338,
       "engine" : "apple-longform",
-      "failures" : [
-
-      ],
+      "failures" : [],
       "finalLatency" : {
         "max" : 1.8404677071996645,
         "mean" : 0.9703680867271657,
@@ -633,56 +611,54 @@
     },
     {
       "channels" : 32,
-      "displayBacklog" : 0,
+      "displayBacklog" : 9.961237416999992,
       "displayLatency" : {
-        "max" : 7.500838363089549,
-        "mean" : 2.202731255610976,
-        "p50" : 1.5225840994993503,
-        "p95" : 5.988328356121464
+        "max" : 13.858720147881407,
+        "mean" : 4.009402724665032,
+        "p50" : 1.6922912306935611,
+        "p95" : 9.730661046255783
       },
-      "drainSeconds" : 0,
+      "drainSeconds" : 5.680306000000002,
       "droppedFrames" : 0,
       "duration" : 60,
       "dutyCycle" : 0.20755555555555574,
       "engine" : "apple-longform",
-      "failures" : [
-
-      ],
+      "failures" : [],
       "finalLatency" : {
-        "max" : 7.500838363089549,
-        "mean" : 2.202731255610976,
-        "p50" : 1.5225840994993503,
-        "p95" : 5.988328356121464
+        "max" : 13.858720147881407,
+        "mean" : 4.009402724665032,
+        "p50" : 1.6922912306935611,
+        "p95" : 9.730661046255783
       },
       "firstWordLatency" : {
-        "max" : 44.361342483363345,
-        "mean" : 3.284676378091527,
-        "p50" : 2.5193958620256183,
-        "p95" : 7.378588628494917
+        "max" : 49.23893723336334,
+        "mean" : 4.982709315451742,
+        "p50" : 3.4307958164831573,
+        "p95" : 11.543994379589115
       },
       "merged" : 6,
       "missed" : 1,
-      "peakMemoryMB" : 620.7352905273438,
-      "processCPU" : 0.09373446568459078,
+      "peakMemoryMB" : 650.1258697509766,
+      "processCPU" : 0.0926779369953653,
       "samples" : [
         {
           "hypothesis" : "Standby lighting Q42.  Can someone check the radio mic on track for?  Can I get a work light on stage right?  Thank you, 5 minutes.  Places, please, for the top of act two.",
           "reference" : "Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Thank you, five minutes. Places please for the top of act two."
         },
         {
-          "hypothesis" : "Fog machine on, please.  Fog machine on, please.  Standby sound Q7 and Fly Q3.  Curt and out.  Standing by.  Jack is clear.  Second half beginners to the stage.  Please.",
+          "hypothesis" : "Fog machine on, please.  Fog machine on, please.  Standby sound Q7 and Fly Q3.  Kurt and out.  Standing by.  Jack is clear.  Second half beginners to the stage.  Please.",
           "reference" : "Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Curtain out. Standing by. Deck is clear. Second half beginners to the stage, please."
         }
       ],
       "speechSeconds" : 398.506666666667,
-      "startSeconds" : 0.046424833,
-      "systemCPU" : 0.33387311868927416,
+      "startSeconds" : 0.043807,
+      "systemCPU" : 0.329438878823404,
       "utterances" : 192,
       "wordErrors" : {
-        "deletions" : 1,
-        "insertions" : 8,
+        "deletions" : 2,
+        "insertions" : 6,
         "referenceWords" : 1057,
-        "substitutions" : 59
+        "substitutions" : 56
       }
     },
     {
@@ -699,9 +675,7 @@
       "duration" : 60,
       "dutyCycle" : 0.1912888888888889,
       "engine" : "apple-longform-voices",
-      "failures" : [
-
-      ],
+      "failures" : [],
       "finalLatency" : {
         "max" : 1.4847211088528756,
         "mean" : 1.0995247167726108,
@@ -760,9 +734,7 @@
       "duration" : 60,
       "dutyCycle" : 0.21644444444444447,
       "engine" : "apple-longform-voices",
-      "failures" : [
-
-      ],
+      "failures" : [],
       "finalLatency" : {
         "max" : 1.765109624199665,
         "mean" : 0.9893524897440694,
@@ -825,9 +797,7 @@
       "duration" : 60,
       "dutyCycle" : 0.21733333333333338,
       "engine" : "apple-longform-voices",
-      "failures" : [
-
-      ],
+      "failures" : [],
       "finalLatency" : {
         "max" : 1.853110748199665,
         "mean" : 0.9749552527455608,
@@ -880,35 +850,33 @@
       "channels" : 32,
       "displayBacklog" : 0,
       "displayLatency" : {
-        "max" : 6.78902701728137,
-        "mean" : 2.4273442175569233,
-        "p50" : 1.7560743764470566,
-        "p95" : 5.803188074356676
+        "max" : 6.331579144825426,
+        "mean" : 1.283204117038004,
+        "p50" : 1.1989535943605318,
+        "p95" : 2.0275236651996646
       },
       "drainSeconds" : 0,
       "droppedFrames" : 0,
       "duration" : 60,
       "dutyCycle" : 0.20755555555555574,
       "engine" : "apple-longform-voices",
-      "failures" : [
-
-      ],
+      "failures" : [],
       "finalLatency" : {
-        "max" : 6.75496405928137,
-        "mean" : 2.3729069408055725,
-        "p50" : 1.6460348802380658,
-        "p95" : 5.759388949356676
+        "max" : 6.2221641448254275,
+        "mean" : 1.2257823471947615,
+        "p50" : 1.1477981263069026,
+        "p95" : 1.9152463354470566
       },
       "firstWordLatency" : {
-        "max" : 44.45777994136334,
-        "mean" : 3.4047517362581954,
-        "p50" : 2.7311989430840953,
-        "p95" : 7.545379128738318
+        "max" : 42.929491733363335,
+        "mean" : 2.178570233252818,
+        "p50" : 1.4512753882736051,
+        "p95" : 4.14560696940358
       },
       "merged" : 6,
       "missed" : 1,
-      "peakMemoryMB" : 612.6104507446289,
-      "processCPU" : 0.1660024233186661,
+      "peakMemoryMB" : 644.2353363037109,
+      "processCPU" : 0.16976535832143733,
       "samples" : [
         {
           "hypothesis" : "Standby lighting Q42.  Can someone check the radio mic on track for?  Can I get a work light on stage right?  Thank you, 5 minutes.  Places, please, for the top of act two.",
@@ -920,8 +888,8 @@
         }
       ],
       "speechSeconds" : 398.506666666667,
-      "startSeconds" : 0.136273292,
-      "systemCPU" : 0.3351161132297771,
+      "startSeconds" : 0.142204125,
+      "systemCPU" : 0.3852948159873368,
       "utterances" : 192,
       "voiceThreshold" : 0.5,
       "voices" : {
@@ -932,11 +900,11 @@
         "missedChanges" : 30,
         "missingAnnotations" : 0,
         "returningTurns" : 46,
-        "unlettered" : 15
+        "unlettered" : 16
       },
       "wordErrors" : {
         "deletions" : 1,
-        "insertions" : 8,
+        "insertions" : 6,
         "referenceWords" : 1057,
         "substitutions" : 58
       }
@@ -955,9 +923,7 @@
       "duration" : 60,
       "dutyCycle" : 0.1912888888888889,
       "engine" : "whisper-base",
-      "failures" : [
-
-      ],
+      "failures" : [],
       "finalLatency" : {
         "max" : 0.833352754577227,
         "mean" : 0.7305145071208512,
@@ -1005,9 +971,7 @@
       "duration" : 60,
       "dutyCycle" : 0.21644444444444447,
       "engine" : "whisper-base",
-      "failures" : [
-
-      ],
+      "failures" : [],
       "finalLatency" : {
         "max" : 1.1661883261635069,
         "mean" : 0.7337512142358503,
@@ -1059,9 +1023,7 @@
       "duration" : 60,
       "dutyCycle" : 0.21733333333333338,
       "engine" : "whisper-base",
-      "failures" : [
-
-      ],
+      "failures" : [],
       "finalLatency" : {
         "max" : 1.0923461601635083,
         "mean" : 0.7246748946672518,
@@ -1103,54 +1065,52 @@
       "channels" : 32,
       "displayBacklog" : 0,
       "displayLatency" : {
-        "max" : 1.7319159643575457,
-        "mean" : 0.7690558908121922,
-        "p50" : 0.7319878907857458,
-        "p95" : 1.067097429237788
+        "max" : 1.7743447983575447,
+        "mean" : 0.7688534874504045,
+        "p50" : 0.7473982245396869,
+        "p95" : 1.0278034721622928
       },
       "drainSeconds" : 0,
       "droppedFrames" : 0,
       "duration" : 60,
       "dutyCycle" : 0.20755555555555574,
       "engine" : "whisper-base",
-      "failures" : [
-
-      ],
+      "failures" : [],
       "finalLatency" : {
-        "max" : 1.7319159643575457,
-        "mean" : 0.7690558908121922,
-        "p50" : 0.7319878907857458,
-        "p95" : 1.067097429237788
+        "max" : 1.7743447983575447,
+        "mean" : 0.7688534874504045,
+        "p50" : 0.7473982245396869,
+        "p95" : 1.0278034721622928
       },
       "firstWordLatency" : {
-        "max" : 11.550124783849324,
-        "mean" : 4.003541662722474,
-        "p50" : 3.0807720316554454,
-        "p95" : 8.06892275373832
+        "max" : 11.46232574284932,
+        "mean" : 4.0212753461204,
+        "p50" : 3.1093564066554458,
+        "p95" : 8.131469922185845
       },
       "merged" : 63,
-      "missed" : 0,
-      "peakMemoryMB" : 292.92311096191406,
-      "processCPU" : 0.21108209198565067,
+      "missed" : 1,
+      "peakMemoryMB" : 676.0322570800781,
+      "processCPU" : 0.18269075786120864,
       "samples" : [
         {
           "hypothesis" : "Stand by lighting Q42 Can someone check the radio mic on track 4? Can I get a work light on stage right? Thank you, 5 minutes. Places please for the top of Act 2.",
           "reference" : "Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Thank you, five minutes. Places please for the top of act two."
         },
         {
-          "hypothesis" : "fog machine on, please. fog machine on, please. Stand by sound Q7 and fly Q3. -Curden out. -Standing by. -Deg is clear. -Second half beginners to the stage, please.",
+          "hypothesis" : "fog machine on, please. fog machine on, please. Stand by sound Q7 and fly Q3. -Curden out! -Standing by! -Deg is clear! -Second half beginners To the stage, please!",
           "reference" : "Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Curtain out. Standing by. Deck is clear. Second half beginners to the stage, please."
         }
       ],
       "speechSeconds" : 398.506666666667,
-      "startSeconds" : 0.627799917,
-      "systemCPU" : 0.21842648394287129,
+      "startSeconds" : 0.620219209,
+      "systemCPU" : 0.34597037013712867,
       "utterances" : 192,
       "wordErrors" : {
-        "deletions" : 20,
-        "insertions" : 3,
+        "deletions" : 22,
+        "insertions" : 2,
         "referenceWords" : 1057,
-        "substitutions" : 59
+        "substitutions" : 56
       }
     },
     {
@@ -1167,9 +1127,7 @@
       "duration" : 60,
       "dutyCycle" : 0.1912888888888889,
       "engine" : "whisper-base-voices",
-      "failures" : [
-
-      ],
+      "failures" : [],
       "finalLatency" : {
         "max" : 0.8057372338528772,
         "mean" : 0.749658851120852,
@@ -1228,9 +1186,7 @@
       "duration" : 60,
       "dutyCycle" : 0.21644444444444447,
       "engine" : "whisper-base-voices",
-      "failures" : [
-
-      ],
+      "failures" : [],
       "finalLatency" : {
         "max" : 0.8493374960369309,
         "mean" : 0.6057546008856736,
@@ -1293,9 +1249,7 @@
       "duration" : 60,
       "dutyCycle" : 0.21733333333333338,
       "engine" : "whisper-base-voices",
-      "failures" : [
-
-      ],
+      "failures" : [],
       "finalLatency" : {
         "max" : 1.077989841775043,
         "mean" : 0.7213141328314315,
@@ -1348,65 +1302,63 @@
       "channels" : 32,
       "displayBacklog" : 0,
       "displayLatency" : {
-        "max" : 3.103355035163508,
-        "mean" : 0.9968292122773886,
-        "p50" : 0.8463921835396846,
-        "p95" : 2.0406848993633364
+        "max" : 3.3739186181635077,
+        "mean" : 1.1005211978704321,
+        "p50" : 0.8884033139012644,
+        "p95" : 2.2706659802909517
       },
       "drainSeconds" : 0,
       "droppedFrames" : 0,
       "duration" : 60,
       "dutyCycle" : 0.20755555555555574,
       "engine" : "whisper-base-voices",
-      "failures" : [
-
-      ],
+      "failures" : [],
       "finalLatency" : {
-        "max" : 3.0474696181635075,
-        "mean" : 0.9142907906186585,
-        "p50" : 0.7558146211915666,
-        "p95" : 1.8747547333633392
+        "max" : 3.343256410163507,
+        "mean" : 0.9851964830110567,
+        "p50" : 0.8202859604470563,
+        "p95" : 2.0087927096838456
       },
       "firstWordLatency" : {
-        "max" : 11.463979492849322,
-        "mean" : 4.11928561599971,
-        "p50" : 3.2475977535632707,
-        "p95" : 8.021314986955353
+        "max" : 11.43476920184932,
+        "mean" : 4.190313714059946,
+        "p50" : 3.232611413601936,
+        "p95" : 8.337974629738326
       },
-      "merged" : 58,
-      "missed" : 8,
-      "peakMemoryMB" : 766.9701232910156,
-      "processCPU" : 0.2863204709762605,
+      "merged" : 60,
+      "missed" : 4,
+      "peakMemoryMB" : 879.407600402832,
+      "processCPU" : 0.29569544928932645,
       "samples" : [
         {
           "hypothesis" : "Stand by lighting Q42 Can someone check the radio mic on track 4? Can I get a work light on stage right? Thank you, 5 minutes. Places please for the top of Act 2.",
           "reference" : "Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Thank you, five minutes. Places please for the top of act two."
         },
         {
-          "hypothesis" : "fog machine on, please. fog machine on, please. Stand by sound Q7 and fly Q3.",
+          "hypothesis" : "fog machine on, please. fog machine on, please. Stand by sound Q7 and fly Q3. -Curden out. -Standing by. -Deg is clear. -Second half beginners-to the stage, please.",
           "reference" : "Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Curtain out. Standing by. Deck is clear. Second half beginners to the stage, please."
         }
       ],
       "speechSeconds" : 398.506666666667,
-      "startSeconds" : 0.753763875,
-      "systemCPU" : 0.21683092060797535,
+      "startSeconds" : 0.8076415,
+      "systemCPU" : 0.2739575483546848,
       "utterances" : 192,
       "voiceThreshold" : 0.5,
       "voices" : {
         "changes" : 134,
-        "correctLetters" : 36,
+        "correctLetters" : 37,
         "falseChanges" : 0,
-        "lines" : 126,
-        "missedChanges" : 82,
+        "lines" : 128,
+        "missedChanges" : 81,
         "missingAnnotations" : 0,
-        "returningTurns" : 45,
+        "returningTurns" : 47,
         "unlettered" : 0
       },
       "wordErrors" : {
-        "deletions" : 53,
-        "insertions" : 3,
+        "deletions" : 34,
+        "insertions" : 4,
         "referenceWords" : 1057,
-        "substitutions" : 54
+        "substitutions" : 56
       }
     }
   ]

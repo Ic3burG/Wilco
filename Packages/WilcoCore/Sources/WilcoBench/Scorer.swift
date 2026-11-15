@@ -60,8 +60,8 @@ public struct ChannelScore: Equatable, Sendable {
     public var firstWordLatencies: [Double]
     /// Utterances no final line was attributed to.
     public var missed: Int
-    /// Calls with no line of their own, answered by the previous call's line
-    /// because they followed it too closely to be cut apart.
+    /// Conversation turns with no line of their own, answered by the previous
+    /// turn's line in the same exchange (final only after they ended).
     public var merged: Int = 0
     /// `.recognized` lines whose `.annotated` form never arrived.
     public var missingAnnotations: Int = 0
@@ -145,17 +145,20 @@ public enum Scorer {
             firstArrival[index] = min(firstArrival[index] ?? .infinity, event.arrival)
         }
 
-        // A call with no line of its own that follows the previous one closer
-        // than any pause the segmenter could cut at was merged into the
-        // previous call's line. That line answers both, and its delay runs
-        // from the end of the last call in it.
+        // In a conversation, a turn with no line of its own was merged into
+        // the previous turn's line when it's in the same exchange and that
+        // line was final only after the turn ended (a line finished earlier
+        // can't hold it). That line answers both, and its delay runs from the
+        // end of the last turn in it. Lone calls are never merged.
         var groups: [(first: Int, last: Int)] = []
         var missed = 0, merged = 0
         for index in utterances.indices {
             if !finalArrivals[index].isEmpty {
                 groups.append((index, index))
             } else if let group = groups.last, group.last == index - 1,
-                      utterances[index].start - utterances[index - 1].end < Scenario.minimumGap {
+                      let exchange = utterances[index].exchange, exchange == utterances[index - 1].exchange,
+                      let lineFinal = (group.first...group.last).flatMap({ finalArrivals[$0] }).max(),
+                      lineFinal >= utterances[index].end {
                 groups[groups.count - 1].last = index
                 merged += 1
             } else {

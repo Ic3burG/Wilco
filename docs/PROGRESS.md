@@ -483,22 +483,33 @@ Fixed in the bench: backlog and "keeps up" counted the voice annotations as
 final lines. Cue backlog now counts rule lines only, and `-voices` engines
 must also keep the display within 3 s (p95 and backlog). Annotations that
 never arrive are counted, and they count in the display delay at the time
-the run stopped. Turns merged into an earlier line count as "merged", not
-missed, and that line's delay runs from the end of the last turn in it.
+the run stopped. A conversation turn with no line of its own counts as
+"merged", not missed, when it's in the same exchange as the turn before
+and that turn's line was final only after it ended. The line's delay then
+runs from the end of the last turn in it. Lone calls are never merged.
 
 Full table: `docs/benchmarks/2026-11-15-m1-max-say-voices.md`. At 32
-channels:
+channels (re-run after the scoring was tightened):
 
 | Engine | Changes missed | False | Letters right | Final p95 | Display p95 | Keeps up |
 |---|---:|---:|---:|---:|---:|:---:|
-| parakeet-v3-voices | 81/134 | 0 | 80% | 0.72 s | 0.90 s | yes |
-| apple-longform-voices | 30/134 | 3 | 87% | 5.76 s | 5.80 s | no |
-| whisper-base-voices | 82/134 | 0 | 80% | 1.87 s | 2.04 s | yes |
+| parakeet-v3-voices | 81/134 | 0 | 80% | 0.73 s | 0.89 s | yes |
+| apple-longform-voices | 30/134 | 3 | 87% | 1.92 s | 2.03 s | yes |
+| whisper-base-voices | 81/134 | 0 | 79% | 2.01 s | 2.27 s | yes |
 
-- **Voice changes stay off by default.** Not every `-voices` engine keeps up
-  at 32 channels. The limit is Apple long-form at 32 conversation channels:
-  it fails without voice changes too (final p95 5.99 s). With Parakeet,
-  voice changes cost 7% of one core and 0.18 s of display delay at 32.
+- **New channels detect voice changes by default.** Channels in existing
+  shows open with it off. Every `-voices` engine kept up at 32 channels in
+  the re-run. Tested, not verified.
+- **Apple long-form at 32 channels varies from run to run**, with voice
+  changes on or off. Over four 32-channel runs `apple-longform-voices`
+  kept up three times, and plain `apple-longform` once (final p95 1.7–9.7 s).
+  Voice changes don't make it worse; the engine is the limit there.
+- Voice changes cost 7–11% of one core at 32 channels, and the display
+  trails the final line by 0.1–0.3 s. With Whisper the final p95 rose from
+  about 1.0 s to 2.0 s, probably because the voice model and Whisper share
+  the GPU.
+- The app has no voice model install button yet. Without the model, lines
+  get no letter but carry on as normal.
 - Threshold stays 0.5. At 8 channels, 0.4 / 0.5 / 0.6 gave 48 / 53 / 56
   missed changes of 85 and 77% / 94% / 97% letters right, with no false
   changes at any of them.

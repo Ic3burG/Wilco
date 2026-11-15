@@ -65,6 +65,7 @@ struct RecognitionTests {
     ) async throws -> [TranscriptionEvent] {
         var show = ShowDocument()
         var channel = show.addChannel(engine: engine)
+        channel.detectsVoiceChanges = false
         channel.localeIdentifier = language
         channel.translateToEnglish = translate
         channel.latencyProfile = .leadAndCorrect
@@ -124,6 +125,7 @@ struct RecognitionTests {
         guard #available(macOS 26, *) else { return }
         var show = ShowDocument()
         var channel = show.addChannel(engine: .longForm)
+        channel.detectsVoiceChanges = false
         channel.localeIdentifier = "en_US"
         let ring = AudioRingBuffer(capacity: 48_000 * 20)
         let transcriber = ChannelTranscribers.make(

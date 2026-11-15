@@ -301,8 +301,8 @@ struct ScorerTests {
         // Two turns 0.25 s apart come out as one line: it answers both, and its
         // delay runs from the end of the second.
         let turns = [
-            ScheduledUtterance(clip: 0, start: 1, duration: 2),
-            ScheduledUtterance(clip: 1, start: 3.25, duration: 2),
+            ScheduledUtterance(clip: 0, start: 1, duration: 2, voice: 0, exchange: 1),
+            ScheduledUtterance(clip: 1, start: 3.25, duration: 2, voice: 1, exchange: 1),
         ]
         let score = Scorer.score(utterances: turns, texts: texts, events: [
             event("standby cue five cue five go", at: 1, arrives: 5.75),
@@ -311,6 +311,34 @@ struct ScorerTests {
         #expect(score.merged == 1)
         #expect(score.finalLatencies == [0.5])
         #expect(score.displayLatencies == [0.5])
+    }
+
+    @Test func lonelyCallsAreNeverMergedEvenAtTheMinimumGap() throws {
+        // A busy ring clamps gaps to the 1.2 s minimum, which can come out a
+        // hair under it. An unanswered call there is missed, not merged.
+        let scenario = Scenario.generate(channelCount: 1, clipDurations: [1, 2, 3], duration: 300, dutyCycle: 0.9, seed: 1)
+        let calls = scenario.channels[0]
+        let dropped = try #require(calls.indices.dropFirst().first { calls[$0].start - calls[$0 - 1].end < Scenario.minimumGap })
+        let events = calls.indices.filter { $0 != dropped }.map {
+            event("x", at: calls[$0].start, arrives: calls[$0].end + 0.5)
+        }
+        let score = Scorer.score(utterances: calls, texts: ["x", "x", "x"], events: events)
+        #expect(score.missed == 1)
+        #expect(score.merged == 0)
+    }
+
+    @Test func aTurnFinishedAfterThePreviousLineArrivedIsMissed() {
+        // The first turn's line was final before the second turn ended, so it
+        // can't hold the second turn: that turn was dropped.
+        let turns = [
+            ScheduledUtterance(clip: 0, start: 1, duration: 2, voice: 0, exchange: 1),
+            ScheduledUtterance(clip: 1, start: 3.25, duration: 2, voice: 1, exchange: 1),
+        ]
+        let score = Scorer.score(utterances: turns, texts: texts, events: [
+            event("standby cue five", at: 1, arrives: 3.75),
+        ])
+        #expect(score.missed == 1)
+        #expect(score.merged == 0)
     }
 
     @Test func orderIsBySessionTimeNotArrival() {
