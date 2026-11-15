@@ -91,10 +91,41 @@ struct VoiceAnnotatorTests {
         )
         let first = line("first", at: 0)
         let second = line("second", at: 3)
-        queue.submit(first, audio: audio(1), lineStart: 0, lineEnd: 2)
-        queue.submit(second, audio: audio(2), lineStart: 3, lineEnd: 5)
+        queue.submit(first, audio: { audio(1) }, lineStart: 0, lineEnd: 2)
+        queue.submit(second, audio: { audio(2) }, lineStart: 3, lineEnd: 5)
         await queue.finish()
         #expect(log.events.withLock { $0 }.map(\.lineID) == [first.lineID, second.lineID])
+    }
+
+    @Test(.timeLimit(.minutes(1))) func fullQueueStillAnnotatesEveryLineInOrderWithoutItsAudio() async {
+        // Analysis takes 100 ms a line; twenty lines arrive at once.
+        let cap = VoiceAnnotationQueue.maximumPending
+        let extractor = FakeVoiceprints(delays: Array(repeating: .milliseconds(100), count: 40))
+        let log = Log()
+        let queue = VoiceAnnotationQueue(
+            annotator: VoiceAnnotator(settings: .standard, extractor: extractor),
+            onEvent: { event in log.events.withLock { $0.append(event) } }
+        )
+        let lines = (0..<20).map { line("line \($0)", at: Double($0) * 3) }
+        let fetched = Mutex(0)
+        for (i, recognised) in lines.enumerated() {
+            queue.submit(
+                recognised, audio: { fetched.withLock { $0 += 1 }; return audio(1) },
+                lineStart: Double(i) * 3, lineEnd: Double(i) * 3 + 2
+            )
+        }
+        await queue.finish()
+
+        // Never more than the cap's worth of audio held or fetched.
+        #expect(queue.mostPending <= cap)
+        #expect(fetched.withLock { $0 } == cap)
+        #expect(extractor.calls.withLock { $0 } == cap)
+        // Every line annotated exactly once, in order.
+        let events = log.events.withLock { $0 }
+        #expect(events.map(\.lineID) == lines.map(\.lineID))
+        // The admitted lines get the voice; the overflow ones none, in the same exchange.
+        #expect(events.prefix(cap).allSatisfy { $0.stage == .annotated(voice: "A", exchange: 1) })
+        #expect(events.dropFirst(cap).allSatisfy { $0.stage == .annotated(voice: nil, exchange: 1) })
     }
 
     // MARK: - Through a transcriber

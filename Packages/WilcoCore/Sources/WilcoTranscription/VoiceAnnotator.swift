@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 import WilcoCore
 
 /// Gives a channel's final lines their voice letters: voiceprints from the
@@ -33,12 +34,13 @@ public actor VoiceAnnotator {
     /// mono audio, which runs from `lineStart` to `lineEnd` (session offsets).
     ///
     /// For now a line stays whole and takes the letter of its longest piece.
-    /// When voice analysis fails the line still comes back, with no letter.
+    /// When voice analysis fails, or there is no audio, the line still comes
+    /// back, with no letter; it counts towards the exchange like any line.
     public func annotate(
         _ line: TranscriptionEvent, audio: [Float], lineStart: Double, lineEnd: Double
     ) async -> [TranscriptionEvent] {
         var prints: [Voiceprint] = []
-        if available {
+        if available, !audio.isEmpty {
             prints = (try? await extractor.voiceprints(of: audio, startingAt: lineStart)) ?? []
         }
         let pieces = tracker.assign(prints, lineStart: lineStart, lineEnd: max(lineEnd, lineStart))
@@ -58,9 +60,19 @@ public actor VoiceAnnotator {
 /// order they were submitted, off the transcriber's reading loop. Voice
 /// analysis can be slow (one model serves every channel), so the transcriber
 /// hands each line over and carries on recognising the next.
+///
+/// Bounded: at most `maximumPending` lines wait with their audio. A line
+/// arriving when that many are waiting is still annotated in its turn, but
+/// without its audio, so it gets no letter. That keeps memory and delay in
+/// check when analysis falls behind for a long show.
 final class VoiceAnnotationQueue: Sendable {
+    /// Lines (with their audio) allowed to wait for analysis, per channel,
+    /// counting the one being analysed.
+    static let maximumPending = 8
+
     private struct Job: Sendable {
         var line: TranscriptionEvent
+        /// Empty for a line that arrived when the queue was full.
         var audio: [Float]
         var lineStart: Double
         var lineEnd: Double
@@ -68,25 +80,47 @@ final class VoiceAnnotationQueue: Sendable {
 
     private let jobs: AsyncStream<Job>.Continuation
     private let worker: Task<Void, Never>
+    /// Lines waiting with audio, and the most there have been at once.
+    private final class Pending: Sendable {
+        let count = Mutex((now: 0, most: 0))
+    }
+    private let pending = Pending()
 
     init(annotator: VoiceAnnotator, onEvent: @escaping TranscriptionHandler) {
         let (stream, continuation) = AsyncStream<Job>.makeStream()
         jobs = continuation
+        let pending = pending
         worker = Task {
             await annotator.prepare()
             for await job in stream {
                 let events = await annotator.annotate(
                     job.line, audio: job.audio, lineStart: job.lineStart, lineEnd: job.lineEnd
                 )
+                if !job.audio.isEmpty { pending.count.withLock { $0.now -= 1 } }
                 for event in events { onEvent(event) }
             }
         }
     }
 
-    /// Queues a recognised line for annotation.
-    func submit(_ line: TranscriptionEvent, audio: [Float], lineStart: Double, lineEnd: Double) {
-        jobs.yield(Job(line: line, audio: audio, lineStart: lineStart, lineEnd: lineEnd))
+    /// Queues a recognised line for annotation. `audio` is only fetched when
+    /// there is room for it.
+    func submit(_ line: TranscriptionEvent, audio: () -> [Float], lineStart: Double, lineEnd: Double) {
+        let admitted = pending.count.withLock { p in
+            guard p.now < Self.maximumPending else { return false }
+            p.now += 1
+            p.most = max(p.most, p.now)
+            return true
+        }
+        let samples = admitted ? audio() : []
+        if admitted && samples.isEmpty {
+            // Nothing to hold, so it doesn't take a place.
+            pending.count.withLock { $0.now -= 1 }
+        }
+        jobs.yield(Job(line: line, audio: samples, lineStart: lineStart, lineEnd: lineEnd))
     }
+
+    /// The most lines that have waited with their audio at once.
+    var mostPending: Int { pending.count.withLock { $0.most } }
 
     /// Annotates every line already submitted, then stops. Nothing recognised
     /// is left without its annotation.
@@ -111,7 +145,7 @@ func deliverFinalLine(
     var recognised = line
     recognised.stage = .recognized
     onEvent(recognised)
-    voices.submit(recognised, audio: audio(), lineStart: lineStart, lineEnd: lineEnd)
+    voices.submit(recognised, audio: audio, lineStart: lineStart, lineEnd: lineEnd)
 }
 
 /// Stands in when voice changes are on but no voice model was given: every
