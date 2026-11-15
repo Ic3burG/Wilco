@@ -432,3 +432,37 @@ At 32 channels, 30% talk time:
 - Unchanged from earlier: Apple "one pass" profile naming, configurations
   checklist in the app, deferred minors, delete `old-history` when no
   longer needed.
+
+## 2026-11-13 (in progress) — Parakeet vocabulary benchmark
+
+Run on 2026-11-15, `say` speech, 60 s per run, on AC power with the Mac
+kept awake (`caffeinate`). Both engines build one recognizer per channel
+over one shared model store, as the app does. Full table in
+`docs/benchmarks/2026-11-13-m1-max-say-parakeet-vocab.md`.
+
+| Engine | 32 ch WER | Missed | p95 delay | CPU (us) | Keeps up |
+|---|---:|---:|---:|---:|:---:|
+| parakeet-v3 | 3.1% | 0/266 | 0.75 s | 40% | yes |
+| parakeet-v3-vocab | 2.6% | 0/266 | 0.76 s | 42% | yes |
+
+- **Decision: vocabulary boosting keeps up at 32 channels**, so the per-channel
+  "Use vocabulary" switch (Task 6) is skipped.
+- Boosting didn't make WER worse at any channel count: 38 word errors
+  against 46 at 32 channels, no deletions with or without it. Most of
+  what's left is numbers written as digits ("Q42" for "cue forty two").
+  The bench's terms are words Parakeet mostly hears right already, so this
+  says little about rarer show words.
+- Boosting adds about 0.3 s to start-up (loading the CTC model) and ~2% of
+  one core at 32 channels.
+
+### Found along the way
+
+- An earlier run (2026-11-13) looked broken: 50/60 calls missed at 8
+  channels with 1% CPU, millions of dropped frames at 32, a 31-minute
+  start for the vocabulary engine. Not a code defect. The power log shows
+  the Mac went into clamshell sleep on battery a minute after the run
+  started and stayed in sleep/dark-wake cycles for two hours. The CTC
+  model had finished downloading 17 minutes before the run. A repeat at 8
+  channels with the Mac awake was clean (0/29 missed for both engines).
+- Long benchmarks need the lid open or the Mac on power with
+  `caffeinate -dims`.
