@@ -76,7 +76,7 @@ struct RecognitionTests {
             configuration: configuration,
             source: AudioSource(ring: ring, sampleRate: { 48_000 }),
             sessionOffset: 0,
-            whisperModels: WhisperModelStore(), parakeetModels: ParakeetModelStore(),
+            whisperModels: WhisperModelStore(), parakeetModels: ParakeetModelStore(), voiceprints: nil,
             onEvent: { event in events.events.withLock { $0.append(event) } },
             onStatus: { status in events.statuses.withLock { $0.append(status) } }
         )
@@ -129,7 +129,7 @@ struct RecognitionTests {
         let transcriber = ChannelTranscribers.make(
             configuration: TranscriberConfiguration(channel: channel, show: show),
             source: AudioSource(ring: ring, sampleRate: { 48_000 }),
-            sessionOffset: 0, whisperModels: WhisperModelStore(), parakeetModels: ParakeetModelStore(),
+            sessionOffset: 0, whisperModels: WhisperModelStore(), parakeetModels: ParakeetModelStore(), voiceprints: nil,
             onEvent: { _ in }, onStatus: { _ in }
         )
         await transcriber.start()

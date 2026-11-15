@@ -38,10 +38,17 @@ public actor UtteranceChannelTranscriber: ChannelTranscriber {
     private let recognizer: any UtteranceRecognizer
     private let onEvent: TranscriptionHandler
     private let onStatus: StatusHandler
+    /// Nil when the channel doesn't detect voice changes.
+    private let annotator: VoiceAnnotator?
+    private var voices: VoiceAnnotationQueue?
     private var pump: Task<Void, Never>?
 
+    /// With `voiceChanges` set, each line goes out `.recognized` and then
+    /// `.annotated` with its voice letter; `voiceprints` is the app's shared
+    /// voice model (nil leaves lines without letters).
     public init(
         channelID: UUID, source: AudioSource, sessionOffset: Double, recognizer: any UtteranceRecognizer,
+        voiceChanges: VoiceChangeSettings? = nil, voiceprints: (any VoiceprintExtractor)? = nil,
         onEvent: @escaping TranscriptionHandler, onStatus: @escaping StatusHandler
     ) {
         self.channelID = channelID
@@ -50,6 +57,7 @@ public actor UtteranceChannelTranscriber: ChannelTranscriber {
         self.recognizer = recognizer
         self.onEvent = onEvent
         self.onStatus = onStatus
+        annotator = voiceChanges.map { VoiceAnnotator(settings: $0, extractor: voiceprints ?? UnavailableVoiceprints()) }
     }
 
     public func start() async {
@@ -63,6 +71,7 @@ public actor UtteranceChannelTranscriber: ChannelTranscriber {
         // Discard audio that queued while the model loaded.
         _ = source.ring.read(maxCount: source.ring.availableToRead)
         onStatus(.listening)
+        voices = annotator.map { VoiceAnnotationQueue(annotator: $0, onEvent: onEvent) }
         pump = Task { await self.run() }
     }
 
@@ -70,6 +79,9 @@ public actor UtteranceChannelTranscriber: ChannelTranscriber {
         pump?.cancel()
         await pump?.value
         pump = nil
+        // Lines already sent to rules still get their voice.
+        await voices?.finish()
+        voices = nil
     }
 
     private func run() async {
@@ -93,12 +105,18 @@ public actor UtteranceChannelTranscriber: ChannelTranscriber {
         guard let recognition = try? await recognizer.recognize(utterance.samples) else { return }
         let text = recognition.text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
-        onEvent(TranscriptionEvent(
+        let start = sessionOffset + utterance.startOffset
+        let line = TranscriptionEvent(
             channelID: channelID,
             text: text,
             isFinal: true,
-            sessionOffset: sessionOffset + utterance.startOffset,
+            sessionOffset: start,
             confidence: recognition.confidence
-        ))
+        )
+        deliverFinalLine(
+            line, voices: voices, onEvent: onEvent,
+            lineStart: start, lineEnd: start + Double(utterance.samples.count) / 16_000,
+            audio: { utterance.samples }
+        )
     }
 }

@@ -27,6 +27,9 @@ final class TranscriptionController {
     private var running: [ChannelConfig.ID: Running] = [:]
     private let whisperModels = WhisperModelStore()
     private let parakeetModels: ParakeetModelStore
+    /// The voice model, loaded once and shared by every channel that detects
+    /// voice changes. Until it's installed, their lines go out without letters.
+    private let voiceprints = WeSpeakerVoiceprints()
 
     init(parakeetModels: ParakeetModelStore) {
         self.parakeetModels = parakeetModels
@@ -59,6 +62,7 @@ final class TranscriptionController {
                 sessionOffset: Date().timeIntervalSince(sessionStart),
                 whisperModels: whisperModels,
                 parakeetModels: parakeetModels,
+                voiceprints: voiceprints,
                 onEvent: { updates.yield(.event($0)) },
                 onStatus: { updates.yield(.status(id, $0)) }
             )

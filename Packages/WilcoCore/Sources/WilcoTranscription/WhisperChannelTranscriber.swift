@@ -127,11 +127,15 @@ actor WhisperChannelTranscriber: ChannelTranscriber {
     private let models: WhisperModelStore
     private let onEvent: TranscriptionHandler
     private let onStatus: StatusHandler
+    /// Nil when the channel doesn't detect voice changes.
+    private let annotator: VoiceAnnotator?
+    private var voices: VoiceAnnotationQueue?
     private var pump: Task<Void, Never>?
 
     init(
         configuration: TranscriberConfiguration, source: AudioSource, sessionOffset: Double,
-        models: WhisperModelStore, onEvent: @escaping TranscriptionHandler, onStatus: @escaping StatusHandler
+        models: WhisperModelStore, voiceprints: (any VoiceprintExtractor)?,
+        onEvent: @escaping TranscriptionHandler, onStatus: @escaping StatusHandler
     ) {
         self.configuration = configuration
         self.source = source
@@ -139,6 +143,9 @@ actor WhisperChannelTranscriber: ChannelTranscriber {
         self.models = models
         self.onEvent = onEvent
         self.onStatus = onStatus
+        annotator = configuration.voiceChanges.map {
+            VoiceAnnotator(settings: $0, extractor: voiceprints ?? UnavailableVoiceprints())
+        }
     }
 
     func start() async {
@@ -152,6 +159,7 @@ actor WhisperChannelTranscriber: ChannelTranscriber {
         // Discard audio that queued while the model loaded.
         _ = source.ring.read(maxCount: source.ring.availableToRead)
         onStatus(.listening)
+        voices = annotator.map { VoiceAnnotationQueue(annotator: $0, onEvent: onEvent) }
         pump = Task { await self.run() }
     }
 
@@ -159,6 +167,9 @@ actor WhisperChannelTranscriber: ChannelTranscriber {
         pump?.cancel()
         await pump?.value
         pump = nil
+        // Lines already sent to rules still get their voice.
+        await voices?.finish()
+        voices = nil
     }
 
     private func run() async {
@@ -194,12 +205,18 @@ actor WhisperChannelTranscriber: ChannelTranscriber {
         guard !text.isEmpty else { return }
         let confidence = segments.isEmpty ? nil
             : Double(segments.map { exp($0.avgLogprob) }.reduce(0, +)) / Double(segments.count)
-        onEvent(TranscriptionEvent(
+        let start = sessionOffset + utterance.startOffset
+        let line = TranscriptionEvent(
             channelID: configuration.channelID,
             text: text,
             isFinal: true,
-            sessionOffset: sessionOffset + utterance.startOffset,
+            sessionOffset: start,
             confidence: confidence
-        ))
+        )
+        deliverFinalLine(
+            line, voices: voices, onEvent: onEvent,
+            lineStart: start, lineEnd: start + Double(utterance.samples.count) / 16_000,
+            audio: { utterance.samples }
+        )
     }
 }

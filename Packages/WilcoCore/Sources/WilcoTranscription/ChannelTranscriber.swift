@@ -57,6 +57,10 @@ public protocol ChannelTranscriber: Actor {
 
 /// Builds the transcriber a configuration asks for. Apple's engines need
 /// macOS 26; on older systems every channel falls back to Whisper.
+///
+/// `voiceprints` is the app's one voice model, shared by every channel that
+/// detects voice changes. Nil (or a model that isn't installed) leaves those
+/// channels' lines without letters; it never stops them transcribing.
 public enum ChannelTranscribers {
     public static func make(
         configuration: TranscriberConfiguration,
@@ -64,6 +68,7 @@ public enum ChannelTranscribers {
         sessionOffset: Double,
         whisperModels: WhisperModelStore,
         parakeetModels: ParakeetModelStore,
+        voiceprints: (any VoiceprintExtractor)?,
         onEvent: @escaping TranscriptionHandler,
         onStatus: @escaping StatusHandler
     ) -> any ChannelTranscriber {
@@ -74,18 +79,19 @@ public enum ChannelTranscribers {
                     store: parakeetModels, language: ParakeetLanguages.language(for: configuration.localeIdentifier),
                     vocabulary: configuration.vocabulary
                 ),
+                voiceChanges: configuration.voiceChanges, voiceprints: voiceprints,
                 onEvent: onEvent, onStatus: onStatus
             )
         }
         if configuration.engine.isApple, #available(macOS 26, *) {
             return AppleChannelTranscriber(
                 configuration: configuration, source: source, sessionOffset: sessionOffset,
-                onEvent: onEvent, onStatus: onStatus
+                voiceprints: voiceprints, onEvent: onEvent, onStatus: onStatus
             )
         }
         return WhisperChannelTranscriber(
             configuration: configuration, source: source, sessionOffset: sessionOffset,
-            models: whisperModels, onEvent: onEvent, onStatus: onStatus
+            models: whisperModels, voiceprints: voiceprints, onEvent: onEvent, onStatus: onStatus
         )
     }
 }
