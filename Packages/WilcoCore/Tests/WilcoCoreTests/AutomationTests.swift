@@ -75,6 +75,12 @@ struct TemplateTests {
         date: Date(timeIntervalSince1970: 1_794_104_725), offset: 3_725.4
     )
 
+    @Test func voicePlaceholderExpands() {
+        let context = TemplateContext(text: "Go", channel: "SM", keyword: "", date: .now, offset: 0, voice: "B")
+        #expect(context.expand("{channel}/{voice}") == "SM/B")
+        #expect(TemplateContext(text: "Go", channel: "SM", keyword: "", date: .now, offset: 0).expand("[{voice}]") == "[]")
+    }
+
     @Test func expandsEveryPlaceholder() {
         let tz = TimeZone(identifier: "America/Chicago")!
         #expect(context.expand("{channel}: {keyword} at {offset}", timeZone: tz) == "Stage Manager: hold at 1:02:05")

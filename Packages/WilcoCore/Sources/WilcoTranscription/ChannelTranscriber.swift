@@ -24,6 +24,8 @@ public struct TranscriberConfiguration: Equatable, Sendable {
     public var vocabulary: [String]
     /// Whisper only; Apple's engines ignore it.
     public var translateToEnglish: Bool
+    /// `nil` when the channel does not detect voice changes.
+    public var voiceChanges: VoiceChangeSettings?
 
     public init(channel: ChannelConfig, show: ShowDocument) {
         channelID = channel.id
@@ -33,6 +35,7 @@ public struct TranscriberConfiguration: Equatable, Sendable {
         whisperModel = WhisperModel(rawValue: show.whisperModel) ?? .base
         vocabulary = show.vocabulary(for: channel.id)
         translateToEnglish = channel.translateToEnglish
+        voiceChanges = channel.detectsVoiceChanges ? show.voiceChanges : nil
     }
 }
 

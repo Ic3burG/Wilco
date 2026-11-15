@@ -1,6 +1,6 @@
 import Foundation
 
-/// Fills `{text}`, `{channel}`, `{keyword}`, `{time}` and `{offset}` in
+/// Fills `{text}`, `{channel}`, `{keyword}`, `{time}`, `{offset}` and `{voice}` in
 /// action templates with what was heard.
 public struct TemplateContext: Sendable {
     public enum Escaping: Sendable {
@@ -23,13 +23,16 @@ public struct TemplateContext: Sendable {
     public var date: Date
     /// Seconds since the capture session started.
     public var offset: Double
+    /// The speaker's letter, or empty when unknown.
+    public var voice: String
 
-    public init(text: String, channel: String, keyword: String, date: Date, offset: Double) {
+    public init(text: String, channel: String, keyword: String, date: Date, offset: Double, voice: String = "") {
         self.text = text
         self.channel = channel
         self.keyword = keyword
         self.date = date
         self.offset = offset
+        self.voice = voice
     }
 
     public func expand(_ template: String, escaping: Escaping = .none, timeZone: TimeZone = .current) -> String {
@@ -39,6 +42,7 @@ public struct TemplateContext: Sendable {
             ("{keyword}", keyword),
             ("{time}", time(in: timeZone)),
             ("{offset}", Self.offsetText(offset)),
+            ("{voice}", voice),
         ]
         return values.reduce(template) { result, pair in
             result.replacingOccurrences(of: pair.0, with: Self.escape(pair.1, escaping))

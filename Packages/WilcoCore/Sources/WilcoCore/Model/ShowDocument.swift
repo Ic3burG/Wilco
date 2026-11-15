@@ -35,6 +35,8 @@ public struct ShowDocument: Codable, Equatable, Sendable {
     public var mosPort: UInt16
     public var mosID: String
     public var mosNCSID: String
+    /// Tuning for voice-change detection on channels that turn it on.
+    public var voiceChanges: VoiceChangeSettings = .standard
 
     public init(
         formatVersion: Int = ShowDocument.currentFormatVersion,
@@ -81,7 +83,7 @@ public struct ShowDocument: Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case formatVersion, name, deviceUID, channels, groups, sidebarOrder, rules, highlights,
              destinations, globalVocabulary, whisperModel, mcpEnabled, mcpPort,
-             networkEnabled, peerName, mosEnabled, mosHost, mosPort, mosID, mosNCSID
+             networkEnabled, peerName, mosEnabled, mosHost, mosPort, mosID, mosNCSID, voiceChanges
     }
 
     public init(from decoder: Decoder) throws {
@@ -111,6 +113,7 @@ public struct ShowDocument: Codable, Equatable, Sendable {
         mosPort = try c.decodeIfPresent(UInt16.self, forKey: .mosPort) ?? d.mosPort
         mosID = try c.decodeIfPresent(String.self, forKey: .mosID) ?? d.mosID
         mosNCSID = try c.decodeIfPresent(String.self, forKey: .mosNCSID) ?? d.mosNCSID
+        voiceChanges = try c.decodeIfPresent(VoiceChangeSettings.self, forKey: .voiceChanges) ?? d.voiceChanges
     }
 
     /// Channel IDs are the only stable handle on a channel. Positions change

@@ -21,6 +21,8 @@ public struct ChannelConfig: Codable, Equatable, Identifiable, Sendable {
     public var vocabulary: [String]
     /// Whisper only: write the transcript in English, whatever was spoken.
     public var translateToEnglish: Bool
+    /// Mark each line with a voice letter (A, B, ...) per exchange.
+    public var detectsVoiceChanges: Bool
 
     public init(
         id: UUID = UUID(),
@@ -35,7 +37,8 @@ public struct ChannelConfig: Codable, Equatable, Identifiable, Sendable {
         latencyProfile: SpeechLatencyProfile = .leadAndCorrect,
         isMuted: Bool = false,
         vocabulary: [String] = [],
-        translateToEnglish: Bool = false
+        translateToEnglish: Bool = false,
+        detectsVoiceChanges: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -50,6 +53,7 @@ public struct ChannelConfig: Codable, Equatable, Identifiable, Sendable {
         self.isMuted = isMuted
         self.vocabulary = vocabulary
         self.translateToEnglish = translateToEnglish
+        self.detectsVoiceChanges = detectsVoiceChanges
     }
 
     /// `localeIdentifier` for "Detect Automatically" (Whisper only).
@@ -65,7 +69,7 @@ public struct ChannelConfig: Codable, Equatable, Identifiable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case id, name, symbol, tint, deviceUID, deviceChannel, groupID, localeIdentifier,
-             engine, latencyProfile, isMuted, vocabulary, translateToEnglish
+             engine, latencyProfile, isMuted, vocabulary, translateToEnglish, detectsVoiceChanges
     }
 
     public init(from decoder: Decoder) throws {
@@ -87,6 +91,7 @@ public struct ChannelConfig: Codable, Equatable, Identifiable, Sendable {
         isMuted = try c.decodeIfPresent(Bool.self, forKey: .isMuted) ?? false
         vocabulary = try c.decodeIfPresent([String].self, forKey: .vocabulary) ?? []
         translateToEnglish = try c.decodeIfPresent(Bool.self, forKey: .translateToEnglish) ?? false
+        detectsVoiceChanges = try c.decodeIfPresent(Bool.self, forKey: .detectsVoiceChanges) ?? false
     }
 }
 

@@ -88,6 +88,12 @@ struct ShowDocument {            // formatVersion == 1
   var networkEnabled: Bool; var peerName: String
   var mosEnabled: Bool;  var mosHost: String; var mosPort: UInt16 // default 10540
   var mosID: String /* default "wilco" */;  var mosNCSID: String /* default "NCS" */
+  var voiceChanges: VoiceChangeSettings  // default .standard; tuning shared by channels with detectsVoiceChanges
+}
+struct VoiceChangeSettings {     // new in the rebuild
+  var threshold: Double          // default 0.5; cosine distance above which two voices differ (placeholder until tuned)
+  var exchangeGap: Double        // default 20; seconds of silence that start a new exchange
+  var shortLine: Double          // default 1.0; lines shorter than this (s) are too short to judge a voice by
 }
 
 struct ChannelConfig {
@@ -101,6 +107,7 @@ struct ChannelConfig {
   var latencyProfile: SpeechLatencyProfile
   var isMuted: Bool              // still captured + metered, not transcribed
   var vocabulary: [String]       // per-channel custom terms
+  var detectsVoiceChanges: Bool  // default false; new in the rebuild: mark lines with a voice letter
 }
 struct ChannelGroup { var id: UUID; var name: String; var symbol: String }
 
@@ -151,6 +158,8 @@ struct TranscriptSegment {       // one line of Transcripts/*.jsonl
   var sessionOffset: Double      // seconds since session start
   var isFinal: Bool; var confidence: Double?
   var matchedKeywords: [String]; var highlights: [SegmentHighlight]
+  var voice: String?             // new in the rebuild: speaker letter ("A", "B"...); omitted when nil
+  var exchange: Int?             // new in the rebuild: per-channel exchange counter; omitted when nil
 }
 struct SegmentHighlight { var phrase: String; var tint: ChannelTint }
 ```
@@ -224,7 +233,7 @@ highlight phrase (*"Rule phrases are biased in automatically"*).
 Highlights (`highlights(in:channelID:)`) only tint matching text.
 
 **Templates** — `TemplateContext.expand` replaces `{text}`, `{channel}`,
-`{keyword}`, `{time}`, `{offset}` [str/small-strings]. Defaults: webhook body
+`{keyword}`, `{time}`, `{offset}` [str/small-strings], and `{voice}` (new in the rebuild: the speaker letter, empty when unknown; expanded and escaped like the others). Defaults: webhook body
 `{"channel":"{channel}","text":"{text}"}`, notification body `Heard on {channel}`.
 
 **Built-in integration: Vor** (`IntegrationDescriptor`, getvor.app). Adds an
