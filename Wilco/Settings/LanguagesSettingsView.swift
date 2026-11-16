@@ -10,6 +10,7 @@ struct LanguagesSettingsView: View {
 
     @State private var whisperSizes: [WhisperModel: Int64] = [:]
     @State private var parakeetSize: Int64?
+    @State private var voiceSize: Int64?
     @State private var parakeetSpeechInstalled: Bool?
     @State private var parakeetVocabularyInstalled = false
     @State private var appleStatus: [ModelInstaller.Item: SpeechAssetStatus] = [:]
@@ -28,6 +29,7 @@ struct LanguagesSettingsView: View {
 
             whisperSection
             parakeetSection
+            voiceSection
             speechModelsSection
         }
         .formStyle(.grouped)
@@ -114,6 +116,45 @@ struct LanguagesSettingsView: View {
                 for: .parakeet,
                 apple: parakeetSpeechInstalled.map { $0 && parakeetVocabularyInstalled ? .installed : .notInstalled }
             )
+        }
+    }
+
+    // MARK: Voice changes
+
+    private var voiceSection: some View {
+        @Bindable var model = model
+        return Section {
+            LabeledContent("Telling voices apart") {
+                HStack {
+                    Text("Stricter").foregroundStyle(.secondary)
+                    Slider(value: $model.document.voiceChanges.threshold, in: 0.3...0.7)
+                        .frame(width: 160)
+                    Text("Looser").foregroundStyle(.secondary)
+                    Text(model.document.voiceChanges.threshold.formatted(.number.precision(.fractionLength(2))))
+                        .monospacedDigit()
+                        .frame(width: 36, alignment: .trailing)
+                }
+            }
+            Stepper(
+                "New exchange after \(Int(model.document.voiceChanges.exchangeGap)) s",
+                value: $model.document.voiceChanges.exchangeGap, in: 5...60, step: 1
+            )
+            LabeledContent("Voice model") { status(for: .voiceModel, installed: installer.voiceModelInstalled) }
+            if installer.voiceModelInstalled {
+                LabeledContent {
+                    Button("Remove") { installer.remove(.voiceModel) }
+                        .disabled(installer.isBusy(.voiceModel))
+                } label: {
+                    Text("On disk")
+                    if let voiceSize { Text(voiceSize.formatted(.byteCount(style: .file))) }
+                }
+            }
+            Button("Restore Defaults") { model.document.voiceChanges = .standard }
+                .disabled(model.document.voiceChanges == .standard)
+        } header: {
+            Text("Voice Changes")
+        } footer: {
+            Text("Letters mark who is speaking within one exchange, not who they are. Voiceprints are kept in memory only and never saved.")
         }
     }
 
@@ -228,6 +269,10 @@ struct LanguagesSettingsView: View {
         parakeetSpeechInstalled = parakeetState.0
         parakeetVocabularyInstalled = parakeetState.1
         parakeetSize = parakeetState.2
+        let voice = installer.voiceprints
+        let voiceState = await Task.detached { (voice.isInstalled(), Self.folderSize(DataLocations.voiceModels)) }.value
+        installer.setVoiceModelInstalled(voiceState.0)
+        voiceSize = voiceState.0 ? voiceState.1 : nil
         reserved = await SpeechAssets.reservedLocaleIdentifiers()
         var statuses: [ModelInstaller.Item: SpeechAssetStatus] = [:]
         for row in requirements where row.engine.isApple && !row.unused {
@@ -235,6 +280,15 @@ struct LanguagesSettingsView: View {
                 await SpeechAssets.status(engine: row.engine, localeIdentifier: row.localeIdentifier)
         }
         appleStatus = statuses
+    }
+
+    private nonisolated static func folderSize(_ url: URL) -> Int64? {
+        guard let files = FileManager.default.enumerator(at: url, includingPropertiesForKeys: [.totalFileAllocatedSizeKey]) else { return nil }
+        var total: Int64 = 0
+        for case let file as URL in files {
+            total += Int64((try? file.resourceValues(forKeys: [.totalFileAllocatedSizeKey]).totalFileAllocatedSize) ?? 0)
+        }
+        return total
     }
 
     private func languageName(_ row: Requirement) -> String {

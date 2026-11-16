@@ -48,6 +48,9 @@ struct TranscriptView: View {
             ? inProgress + appearance.ordered(settled)
             : settled + inProgress
         let liveEdge = appearance.newestFirst ? Self.top : Self.bottom
+        let turnStarts = VoiceBadge.turnStarts(in: settled.compactMap {
+            if case .line(let segment) = $0 { segment } else { nil }
+        })
 
         if items.isEmpty {
             emptyState.frame(maxHeight: .infinity)
@@ -57,7 +60,7 @@ struct TranscriptView: View {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         Color.clear.frame(height: 1).id(Self.top)
                         ForEach(items) { item in
-                            row(item, appearance: appearance)
+                            row(item, appearance: appearance, turnStarts: turnStarts)
                             Divider().padding(.leading, compact ? 10 : 20)
                         }
                         Color.clear.frame(height: 1).id(Self.bottom)
@@ -81,15 +84,22 @@ struct TranscriptView: View {
     private static let bottom = "bottom"
 
     @ViewBuilder
-    private func row(_ item: Item, appearance: TranscriptAppearance) -> some View {
+    private func row(_ item: Item, appearance: TranscriptAppearance, turnStarts: Set<UUID>) -> some View {
         let size = fontSize ?? appearance.fontSize
         switch item {
         case .line(let segment):
+            let channel = model.document.channel(id: segment.channelID)
             TranscriptRow(
-                channel: model.document.channel(id: segment.channelID), date: segment.timestamp,
+                channel: channel, date: segment.timestamp,
                 offset: segment.sessionOffset, text: segment.text, highlights: segment.highlights,
                 confidence: segment.confidence, showsChannel: scope.showsChannelNames,
-                showsTimecode: appearance.showTimecode, isVolatile: false, fontSize: size, compact: compact
+                showsTimecode: appearance.showTimecode, isVolatile: false, fontSize: size, compact: compact,
+                voiceLabel: VoiceBadge.label(
+                    voice: segment.voice, exchange: segment.exchange,
+                    detectsVoiceChanges: channel?.detectsVoiceChanges ?? false,
+                    modelInstalled: model.installer.voiceModelInstalled
+                ),
+                startsTurn: turnStarts.contains(segment.id)
             )
         case .marker(let marker):
             MarkerRow(
@@ -100,7 +110,12 @@ struct TranscriptView: View {
             TranscriptRow(
                 channel: channel, date: nil, offset: nil, text: text, highlights: [], confidence: nil,
                 showsChannel: scope.showsChannelNames, showsTimecode: appearance.showTimecode,
-                isVolatile: true, fontSize: size, compact: compact
+                isVolatile: true, fontSize: size, compact: compact,
+                // Keeps words in progress lined up with the settled lines above them.
+                voiceLabel: VoiceBadge.label(
+                    voice: nil, exchange: nil, detectsVoiceChanges: channel.detectsVoiceChanges,
+                    modelInstalled: model.installer.voiceModelInstalled
+                )
             )
         }
     }
@@ -311,11 +326,23 @@ struct TranscriptRow: View {
     let isVolatile: Bool
     let fontSize: Double
     var compact = false
+    /// The voice letter, or "" / "·" (see `VoiceBadge`); nil when this
+    /// channel has no letter column.
+    var voiceLabel: String?
+    /// The speaker differs from the line above on this channel.
+    var startsTurn = false
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             if showsTimecode {
                 TimeColumn(date: date, offset: offset, fontSize: fontSize)
+            }
+            if let voiceLabel {
+                Text(voiceLabel)
+                    .font(.system(size: fontSize, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(channel?.tint.color ?? .secondary)
+                    .frame(width: fontSize * 1.6, alignment: .center)
+                    .accessibilityLabel(voiceLabel.isEmpty || voiceLabel == "·" ? "Voice unknown" : "Voice \(voiceLabel)")
             }
             if showsChannel {
                 Text(channel?.name ?? "Removed channel")
@@ -333,7 +360,8 @@ struct TranscriptRow: View {
         }
         .font(.system(size: fontSize))
         .padding(.horizontal, compact ? 10 : 20)
-        .padding(.vertical, compact ? 5 : 8)
+        .padding(.top, (compact ? 5 : 8) + (startsTurn && voiceLabel != nil ? (compact ? 6 : 10) : 0))
+        .padding(.bottom, compact ? 5 : 8)
         .help(isUnsure ? "Low recognition confidence" : "")
     }
 

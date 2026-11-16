@@ -66,6 +66,32 @@ private struct ChannelForm: View {
         )
     }
 
+    private var voiceSection: some View {
+        let installer = model.installer
+        let installed = installer.voiceModelInstalled
+        return Section {
+            Toggle("Mark voice changes", isOn: $channel.detectsVoiceChanges)
+                .help("Letters each line by voice: A, B, C… Starts again after a silence.")
+            if channel.detectsVoiceChanges, !installed {
+                LabeledContent {
+                    if let fraction = installer.progress[.voiceModel] {
+                        HStack {
+                            ProgressView(value: fraction).frame(width: 80)
+                            Text(fraction.formatted(.percent.precision(.fractionLength(0)))).monospacedDigit()
+                        }
+                    } else {
+                        Button("Install Voice Model") { installer.install(.voiceModel) }
+                    }
+                } label: {
+                    Text("Voice model needed")
+                    Text(installer.errors[.voiceModel] ?? "Letters appear once it is installed (about 21 MB).")
+                }
+            }
+        } footer: {
+            Text("Letters mark who is speaking within one exchange, not who they are.")
+        }
+    }
+
     private let symbols = ["person.wave.2", "headphones", "lightbulb", "speaker.wave.2", "video", "theatermasks", "music.mic"]
 
     var body: some View {
@@ -153,6 +179,8 @@ private struct ChannelForm: View {
                 .disabled(!channel.engine.isApple)
                 .help("A quick model shows words as they are spoken; an accurate one replaces them a moment later. Roughly twice the CPU per channel.")
             }
+
+            voiceSection
 
             Section {
                 TokenListEditor(tokens: $channel.vocabulary, prompt: "Add a name, cue label or piece of jargon")

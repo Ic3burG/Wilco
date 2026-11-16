@@ -29,10 +29,11 @@ final class TranscriptionController {
     private let parakeetModels: ParakeetModelStore
     /// The voice model, loaded once and shared by every channel that detects
     /// voice changes. Until it's installed, their lines go out without letters.
-    private let voiceprints = WeSpeakerVoiceprints()
+    private let voiceprints: WeSpeakerVoiceprints
 
-    init(parakeetModels: ParakeetModelStore) {
+    init(parakeetModels: ParakeetModelStore, voiceprints: WeSpeakerVoiceprints) {
         self.parakeetModels = parakeetModels
+        self.voiceprints = voiceprints
 
         (updates, continuation) = AsyncStream.makeStream()
     }

@@ -110,8 +110,10 @@ final class AppModel {
     init(store: ShowStore = ShowStore(), configurationStore: ConfigurationStore = ConfigurationStore()) {
         // One Parakeet store for Settings and running channels, so a removed model is seen by both.
         let parakeetModels = ParakeetModelStore()
-        installer = ModelInstaller(parakeetStore: parakeetModels)
-        transcription = TranscriptionController(parakeetModels: parakeetModels)
+        // Likewise one voice model, so Settings and channels agree on whether it is installed.
+        let voiceprints = WeSpeakerVoiceprints()
+        installer = ModelInstaller(parakeetStore: parakeetModels, voiceprints: voiceprints)
+        transcription = TranscriptionController(parakeetModels: parakeetModels, voiceprints: voiceprints)
         self.store = store
         self.configurationStore = configurationStore
         let loaded = store.load()
