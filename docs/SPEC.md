@@ -260,6 +260,16 @@ search (`ShowReportSearch`) with channel and category filters, timeline bars
 self-contained HTML page** (template with light/dark CSS, `<nav class="tabs">`)
 and SRT/VTT subtitles.
 
+**Voice letters in exports.** A line recorded with a voice letter (`voice` in
+the `.jsonl`; channels with voice changes on) shows it in the HTML chat log
+as `<span class="voice">B</span>` after the channel name (the letter is
+HTML-escaped like any text, and is not part of the searched line text). In SRT and VTT the
+cue text is `Channel: B: text`. Lines with no letter, whether the voice was
+unknown or the line was never analysed, render exactly as before: the app's
+"·" for an unknown voice is not used in reports or subtitles. The voice CSS
+is added to the page only when some line has a letter, so reports of older
+sessions are byte-identical to before.
+
 ## 9. User interface
 
 Single main window (`MainWindowView`) — `NavigationSplitView`:

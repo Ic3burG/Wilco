@@ -18,7 +18,8 @@ public enum SubtitleExport {
             let start = message.elapsed
             let next = index + 1 < report.messages.count ? report.messages[index + 1].elapsed : .infinity
             let end = max(start + 0.5, min(next, start + maximumCueLength))
-            var text = "\(message.channelName): \(message.text)"
+            let said = message.voice.map { "\($0): \(message.text)" } ?? message.text
+            var text = "\(message.channelName): \(said)"
             if format == .vtt {
                 text = text.replacingOccurrences(of: "&", with: "&amp;")
                     .replacingOccurrences(of: "<", with: "&lt;")

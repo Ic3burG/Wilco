@@ -94,6 +94,9 @@ public struct ShowReport: Sendable {
         public var tint: ChannelTint
         public var text: String
         public var confidence: Double?
+        /// Who spoke within the channel's exchange ("A", "B"...); nil when
+        /// the channel doesn't tell voices apart or the voice is unknown.
+        public var voice: String?
     }
 
     public struct Marker: Identifiable, Sendable {
@@ -162,7 +165,7 @@ public enum ShowReportBuilder {
             let info = channel(line.channelID)
             messages.append(ShowReport.Message(
                 id: line.id, elapsed: line.sessionOffset, date: line.timestamp, channelID: line.channelID,
-                channelName: info.name, tint: info.tint, text: line.text, confidence: line.confidence
+                channelName: info.name, tint: info.tint, text: line.text, confidence: line.confidence, voice: line.voice
             ))
             messageCounts[line.channelID, default: 0] += 1
             offsets[line.channelID, default: []].append(line.sessionOffset)

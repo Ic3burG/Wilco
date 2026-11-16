@@ -15,7 +15,7 @@ public enum ShowReportHTML {
         <html lang="en"><head><meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>\(title) — \(date)</title>
-        <style>\(css)</style>
+        <style>\(css)\(report.messages.contains { $0.voice != nil } ? voiceCSS : "")</style>
         </head><body>
         <div class="bar">
           <div class="where"><b>Post-Show</b><span>\(session)</span></div>
@@ -68,8 +68,15 @@ public enum ShowReportHTML {
         #"<td class="time"><b>\#(escape(clock.string(from: date)))</b><span>\#(offset(elapsed))</span></td>"#
     }
 
-    private static func channelCell(_ name: String, _ tint: ChannelTint) -> String {
-        #"<td class="who" style="\#(swatch(tint))">\#(escape(name))</td>"#
+    private static func channelCell(_ name: String, _ tint: ChannelTint, voice: String? = nil) -> String {
+        #"<td class="who" style="\#(swatch(tint))">\#(escape(name))\#(voiceBadge(voice))</td>"#
+    }
+
+    /// The letter after the channel name, for lines whose voice is known.
+    /// Lines with an unknown voice show nothing, like lines never analysed.
+    static func voiceBadge(_ voice: String?) -> String {
+        guard let voice else { return "" }
+        return #" <span class="voice">\#(escape(voice))</span>"#
     }
 
     private static func runOfShow(_ report: ShowReport, clock: DateFormatter) -> String {
@@ -101,7 +108,7 @@ public enum ShowReportHTML {
             let title = message.confidence.map { #" title="\#(Int(($0 * 100).rounded()))% confidence""# } ?? ""
             return """
             <tr data-ch="\(message.channelID)">\(timeCell(message.date, message.elapsed, clock: clock))\
-            \(channelCell(message.channelName, message.tint))\
+            \(channelCell(message.channelName, message.tint, voice: message.voice))\
             <td class="said\(unsure ? " unsure" : "")"\(title)>\(escape(message.text))</td></tr>
             """
         }.joined(separator: "\n")
@@ -199,6 +206,9 @@ public enum ShowReportHTML {
         let (light, dark) = tint.hexColors
         return "--t:#\(light);--td:#\(dark)"
     }
+
+    /// Added only when a line has a letter, so reports of older sessions stay as they were.
+    private static let voiceCSS = "\n.voice{display:inline-block;min-width:1.4em;margin-left:4px;padding:0 4px;border-radius:4px;text-align:center;font-size:11px;font-weight:700;color:var(--ink);background:color-mix(in srgb,var(--t) 22%,transparent)}"
 
     private static let css = """
     :root{color-scheme:light dark;--bg:#fff;--side:#f5f5f7;--ink:#1d1d1f;--muted:#6e6e73;--faint:#a1a1a6;--line:#e5e5ea;--fill:#f0f0f2;--mark:#fde68a;--hit:#bfdbfe}
