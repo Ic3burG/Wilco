@@ -204,6 +204,52 @@ struct VoiceAnnotatorTests {
         #expect(await stage(annotator, 9) == .annotated(voice: "A", exchange: 1))
     }
 
+    /// A steady clock tests move by hand.
+    final class TestClock: Sendable {
+        let time = Mutex(0.0)
+        func now() -> Double { time.withLock { $0 } }
+        func advance(_ seconds: Double) { time.withLock { $0 += seconds } }
+    }
+
+    /// A model whose load takes `loadTime` seconds on `clock` and then fails.
+    final class SlowFailingVoiceprints: VoiceprintExtractor {
+        let clock: TestClock
+        let loadTime: Double
+        let prepares = Mutex(0)
+        init(clock: TestClock, loadTime: Double) {
+            self.clock = clock
+            self.loadTime = loadTime
+        }
+        func prepare() async throws {
+            prepares.withLock { $0 += 1 }
+            clock.advance(loadTime)
+            throw VoiceprintError.notInstalled
+        }
+        func voiceprints(of samples: [Float], startingAt offset: Double) async throws -> [Voiceprint] {
+            throw VoiceprintError.notInstalled
+        }
+    }
+
+    @Test func slowFailingLoadWaitsTheFullIntervalAfterItEnds() async {
+        let clock = TestClock()
+        let extractor = SlowFailingVoiceprints(clock: clock, loadTime: 10)
+        let annotator = VoiceAnnotator(settings: .standard, extractor: extractor, now: clock.now)
+        await annotator.prepare()
+        // The load ended at 10 s; 3 s later is too soon to try again.
+        clock.advance(3)
+        _ = await stage(annotator, 0)
+        #expect(extractor.prepares.withLock { $0 } == 1)
+        // A full interval after the failed load ended, it is tried again.
+        clock.advance(VoiceAnnotator.retryInterval - 3)
+        _ = await stage(annotator, 5)
+        #expect(extractor.prepares.withLock { $0 } == 2)
+    }
+
+    @Test func pendingLinesCoverEveryChannelsFullVoiceQueue() {
+        // 32 channels, each with a full queue plus the line being recognised.
+        #expect(PendingLines().maximumLines >= 32 * (VoiceAnnotationQueue.maximumPending + 1))
+    }
+
     @Test func restartedChannelStartsAFreshExchange() async {
         let before = VoiceAnnotator(settings: .standard, extractor: FakeVoiceprints())
         _ = await before.annotate(line("one", at: 0), audio: audio(1), lineStart: 0, lineEnd: 2)

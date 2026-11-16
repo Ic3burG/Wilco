@@ -25,7 +25,10 @@ public struct PendingLines: Sendable {
     /// Oldest first.
     private var lines: [Line] = []
 
-    public init(maximumLines: Int = 64, maximumAge: TimeInterval = 60) {
+    /// The default count covers 32 channels each with a full voice queue
+    /// (eight lines) and a line being recognised, with room to spare; age
+    /// is what normally forgets a line.
+    public init(maximumLines: Int = 512, maximumAge: TimeInterval = 60) {
         self.maximumLines = maximumLines
         self.maximumAge = maximumAge
     }

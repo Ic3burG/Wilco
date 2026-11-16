@@ -34,13 +34,15 @@ public actor VoiceAnnotator {
     /// Loads the voice model ahead of the first line. A model that won't load
     /// leaves lines without letters; it never stops the channel.
     public func prepare() async {
-        lastAttempt = now()
         do {
             try await extractor.prepare()
             available = true
         } catch {
             available = false
         }
+        // Timed from when the attempt ended, so a slow failing load still
+        // leaves a full interval before the next one.
+        lastAttempt = now()
     }
 
     /// The `.annotated` form of a recognised line. `audio` is the line's 16 kHz
