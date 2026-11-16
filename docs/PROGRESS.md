@@ -730,8 +730,70 @@ All of this is tested, not verified.
 
 All of this is tested, not verified.
 
+### Found in app testing (after the above)
+
+The user compared Long-form, Whisper and Parakeet on the same built-in
+mic. Parakeet and Whisper both **miss stretches of speech** that
+long-form keeps, and long-form builds better sentences. Across the four
+sessions of 2026-11-16, Parakeet captured 132–417 words and Whisper
+161–342 against long-form's 253–532: roughly 50–80%. Parakeet and Whisper
+lose the *same* stretches, and the sessions before previews existed show
+it too, so the model and the previews aren't the cause.
+
+**Root cause (reproduced, not yet fixed): `UtteranceSegmenter`'s noise
+floor locks out continuous speech.** Both utterance engines cut audio
+with it; Apple long-form streams without it.
+
+- During speech, `learnFloorDuringSpeech` raises the floor to the
+  quietest frame of the last 1 s. Continuous talking has no truly quiet
+  frame in 1 s, so the floor climbs to speech level. Speech needs
+  `rms > 4 × floor`, so ordinary speech starts counting as silence, and
+  after 0.7 s the utterance ends mid-sentence.
+- Between utterances, `noiseFloor = 0.95 × floor + 0.05 × rms` learns from
+  every frame not judged speech, including speech now under the
+  threshold. The floor stays at speech level and further talking is
+  dropped until the speaker gets louder or pauses for real.
+- Repro: a 10.5 s continuous `say` sentence ("The long form seems to do
+  the live transcription much faster…", via `sayClip`), with four echoes
+  (30/70/130/210 ms at 0.5/0.35/0.25/0.15) and ±0.002 hiss, scaled ×0.1
+  or ×0.3, goes through `UtteranceSegmenter(sampleRate: 16_000)` and only
+  **the first 4.8 s comes out** as one utterance; the rest is lost. Scaled
+  ×0.04 it gives nothing (below the 0.005 absolute minimum; may matter
+  for quiet mics). Loud speech followed by the same sentence at ×0.06
+  keeps 5.1 s of 20.9 s.
+- The benchmark missed it: its `say` calls are short, with gaps between
+  them. Add continuous long-talk clips (with room echo) to `wilco-bench`.
+
+**Handoff for the fix:**
+
+1. Write the failing test first: continuous room-echo speech (as in the
+   repro) must come through nearly complete (e.g. ≥ 90% of the audio in
+   utterances), and loud-then-quiet talking must not lock out. Put the
+   `say`-based version in `WilcoTranscriptionTests` (it has `sayClip`); a
+   synthetic version can go in `UtteranceSegmenterTests`.
+2. Keep `noiseThatStartsMidSpeechStillEndsTheUtterance` and
+   `steadyToneIsLearnedAsBackground` passing: rising hiss must still end
+   an utterance. That test is why floor learning during speech exists.
+3. Likely directions (decide from the tests): learn the floor only from
+   frames well below the speech level, e.g. a low percentile over a longer
+   window, or no learning while the level keeps varying like syllables;
+   cap how far it can rise during speech; and stop learning from
+   near-threshold frames between utterances so the floor can't lock at
+   speech level.
+4. Re-run `wilco-bench` (sweep and `--conversation`) to check final delay
+   and missed calls, then have the user compare against long-form on
+   their mic again. Whisper benefits from the same fix.
+
+**Also seen:** with voice changes on, Parakeet gave 6–15 voice letters per
+session and Whisper 7–12. If one person was talking (to confirm with the
+user), the voice threshold is far too sensitive for a laptop mic, and each
+false change splits a line. Turning voice changes off helped a little.
+Look at this after the segmenter fix, since the segmenter's mid-sentence
+cuts also feed the voice tracker.
+
 ### Next steps / where we left off
 
+- **Fix the segmenter lock-out first** (handoff above).
 - **Try it in the app:** speak on a Parakeet channel on "Fast, then
   corrected" and check the italics appear while talking and give way to
   the final line; switch to "Single pass" and check they stop.
