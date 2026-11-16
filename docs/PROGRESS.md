@@ -676,3 +676,56 @@ All of this is tested, not verified.
   rescue only for long, distinctive terms.
 - Earlier items still open: real-show test of voice letters, the voice
   threshold, and whether new Whisper channels start with voice changes off.
+
+## 2026-11-16 — Parakeet live preview
+
+### Features
+
+- **Parakeet shows words as they are spoken.** On a Parakeet channel set
+  to Latency "Fast, then corrected" (the default, so existing Parakeet
+  channels get it), the call still being spoken is transcribed again
+  about every 0.5 s and shown in italics, then replaced by the final line
+  at the pause, as on Apple channels. Previews start after 0.5 s of
+  speech, stop once a pause reaches 0.3 s, skip vocabulary boosting and
+  only reach the screen, not rules or outputs. "Single pass" turns them
+  off. The Latency picker is now enabled for Parakeet; Whisper still has
+  no preview.
+- **Final lines keep priority.** All Parakeet channels share one model. A
+  preview runs only while no channel's final line is being transcribed,
+  and otherwise is skipped rather than queued (`PreviewGate`). Final
+  lines never wait for the gate; at most one may wait behind a single
+  preview already running.
+- Design and plan: `docs/superpowers/specs/2026-11-16-parakeet-live-preview-design.md`,
+  `docs/superpowers/plans/2026-11-16-parakeet-live-preview.md`. SPEC §6
+  updated.
+
+### Tooling
+
+- `wilco-bench` engines `parakeet-v3-preview` and
+  `parakeet-v3-preview-voices`.
+
+### Numbers (`say` speech, M1 Max)
+
+- 32 channels: final p95 0.84 s with preview against 0.74 s without (bar:
+  within 0.25 s); median time to first words 2.9 s → 1.7 s; CPU 39% → 62%
+  of a core. One channel: first words 2.9 s → 0.7 s.
+- Conversation with voice changes, 32 channels, three alternating rounds:
+  preview equal or better every time (final p95 0.72–0.78 s against
+  0.74–0.82 s; first words 3.1 s → 2.2–2.5 s).
+- Three earlier runs stalled: every Neural Engine call slowed for 7–18 s,
+  **with or without preview**. Cause not confirmed; candidates are macOS
+  speech services and running without `caffeinate`. Details in
+  `docs/benchmarks/2026-11-16-m1-max-say-preview.md`.
+
+All of this is tested, not verified.
+
+### Next steps / where we left off
+
+- **Try it in the app:** speak on a Parakeet channel on "Fast, then
+  corrected" and check the italics appear while talking and give way to
+  the final line; switch to "Single pass" and check they stop.
+- Watch for the Neural Engine stall on a show Mac. If it shows up in real
+  use, find its cause (macOS speech services, power management) before
+  relying on 32 Parakeet channels.
+- Earlier items still open: real-show vocabulary check, voice letters on a
+  real show, the voice threshold.
