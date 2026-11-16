@@ -114,6 +114,25 @@ public struct ShowDocument: Codable, Equatable, Sendable {
         mosID = try c.decodeIfPresent(String.self, forKey: .mosID) ?? d.mosID
         mosNCSID = try c.decodeIfPresent(String.self, forKey: .mosNCSID) ?? d.mosNCSID
         voiceChanges = try c.decodeIfPresent(VoiceChangeSettings.self, forKey: .voiceChanges) ?? d.voiceChanges
+        let channelTerms = try c.decodeIfPresent([LegacyChannelVocabulary].self, forKey: .channels)?
+            .flatMap { $0.vocabulary ?? [] } ?? []
+        globalVocabulary = Self.adding(channelTerms, to: globalVocabulary)
+    }
+
+    /// Older shows kept vocabulary on each channel as well as on the show.
+    /// Only the show's list is edited now, so a channel's terms move into it
+    /// when the file opens rather than staying where nobody can see them.
+    private struct LegacyChannelVocabulary: Decodable {
+        var vocabulary: [String]?
+    }
+
+    /// `terms` appended to `list`, trimmed, skipping blanks and any term
+    /// already there in any letter case. `list` itself is left as it was.
+    static func adding(_ terms: [String], to list: [String]) -> [String] {
+        var seen = Set(list.map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() })
+        return list + terms
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty && seen.insert($0.lowercased()).inserted }
     }
 
     /// Channel IDs are the only stable handle on a channel. Positions change

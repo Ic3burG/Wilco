@@ -21,10 +21,15 @@ public struct ParakeetRecognizer: UtteranceRecognizer {
     let booster: ParakeetBooster?
 
     public init(store: ParakeetModelStore, language: Language?, vocabulary: [String] = []) {
+        self.init(store: store, language: language, vocabulary: vocabulary, rescorer: ParakeetVocabulary.rescorerConfig)
+    }
+
+    /// `rescorer` is for tests that compare rescorer settings.
+    init(store: ParakeetModelStore, language: Language?, vocabulary: [String], rescorer: VocabularyRescorer.Config) {
         self.store = store
         self.language = language
         booster = ParakeetVocabulary.applies(language: language, terms: vocabulary)
-            ? ParakeetBooster(store: store, terms: vocabulary) : nil
+            ? ParakeetBooster(store: store, terms: vocabulary, config: rescorer) : nil
     }
 
     public func prepare() async throws {

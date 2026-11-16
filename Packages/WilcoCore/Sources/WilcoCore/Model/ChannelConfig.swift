@@ -17,8 +17,6 @@ public struct ChannelConfig: Codable, Equatable, Identifiable, Sendable {
     public var latencyProfile: SpeechLatencyProfile
     /// A muted channel is still captured and metered, but not transcribed.
     public var isMuted: Bool
-    /// Terms biased into this channel's recogniser.
-    public var vocabulary: [String]
     /// Whisper only: write the transcript in English, whatever was spoken.
     public var translateToEnglish: Bool
     /// Mark each line with a voice letter (A, B, ...) per exchange.
@@ -36,7 +34,6 @@ public struct ChannelConfig: Codable, Equatable, Identifiable, Sendable {
         engine: SpeechEngine = .longForm,
         latencyProfile: SpeechLatencyProfile = .leadAndCorrect,
         isMuted: Bool = false,
-        vocabulary: [String] = [],
         translateToEnglish: Bool = false,
         detectsVoiceChanges: Bool = false
     ) {
@@ -51,7 +48,6 @@ public struct ChannelConfig: Codable, Equatable, Identifiable, Sendable {
         self.engine = engine
         self.latencyProfile = latencyProfile
         self.isMuted = isMuted
-        self.vocabulary = vocabulary
         self.translateToEnglish = translateToEnglish
         self.detectsVoiceChanges = detectsVoiceChanges
     }
@@ -69,7 +65,7 @@ public struct ChannelConfig: Codable, Equatable, Identifiable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case id, name, symbol, tint, deviceUID, deviceChannel, groupID, localeIdentifier,
-             engine, latencyProfile, isMuted, vocabulary, translateToEnglish, detectsVoiceChanges
+             engine, latencyProfile, isMuted, translateToEnglish, detectsVoiceChanges
     }
 
     public init(from decoder: Decoder) throws {
@@ -89,7 +85,6 @@ public struct ChannelConfig: Codable, Equatable, Identifiable, Sendable {
             .map { SpeechEngine(rawValue: $0) ?? .platformDefault } ?? .longForm
         latencyProfile = try c.decodeIfPresent(SpeechLatencyProfile.self, forKey: .latencyProfile) ?? .leadAndCorrect
         isMuted = try c.decodeIfPresent(Bool.self, forKey: .isMuted) ?? false
-        vocabulary = try c.decodeIfPresent([String].self, forKey: .vocabulary) ?? []
         translateToEnglish = try c.decodeIfPresent(Bool.self, forKey: .translateToEnglish) ?? false
         detectsVoiceChanges = try c.decodeIfPresent(Bool.self, forKey: .detectsVoiceChanges) ?? false
     }

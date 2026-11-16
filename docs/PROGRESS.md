@@ -615,3 +615,64 @@ All of it is tested, none of it verified in a real show yet.
   (cue delay trade-off above).
 - Push the branch so CI builds it with Xcode 26.6 before merging.
 - Deferred minors are listed in the final review; none block use.
+
+## 2026-11-16 — One show vocabulary, Parakeet boosting fix, Automation settings
+
+### Features and changes
+
+- **Show vocabulary only.** Channels no longer have their own vocabulary;
+  the Inspector section is gone and Settings → Languages → Global
+  Vocabulary is the one list. A show that has terms on its channels moves
+  them into the show's list when it opens (trimmed, case-insensitive
+  duplicates skipped), so nothing is lost or left hidden. The Inspector
+  still says when a non-English Parakeet channel won't boost the
+  vocabulary.
+- **Automation settings tidied.** The rules and highlights list is a
+  bordered list beside the editor instead of a full-height sidebar, which
+  ran up under the toolbar and covered the first tab. Phrases have their
+  own section; Match, Channels and Cooldown sit together under "When".
+  Footers are one line each.
+- **Word list fields** (rules, highlights, Global Vocabulary) show the
+  prompt inside a visible text field with a + button. In a grouped form the
+  prompt used to show as a row label beside an invisible field.
+
+### Fixes
+
+- **Parakeet vocabulary was replacing correct words.** In a real session
+  with four short terms, "a little bigger" came back "a little Panel",
+  "Okay" became "Omar" and "the dictionary" became "the Panel". Parakeet's
+  own text was as good as Whisper's; the vocabulary booster spoiled it.
+  For vocabularies of 10 terms or fewer FluidAudio runs an acoustic-only
+  "rescue" pass with no similarity check, so our 0.7 similarity floor
+  never applied to it. The rescue is now off.
+  - 112 `say` clips (4 voices, clean and with noise): terms inserted where
+    nobody said them went from 30 to 0; spoken terms kept went from 31 to
+    23 of 72. The cost is badly misheard names ("kineses" stays "kineses").
+    A made-up term can be a rule phrase and fire a cue, so a miss is the
+    better failure.
+  - A similarity floor on the rescue (0.4–0.6) was tried: 0.4 still
+    inserted "Omar" for "Okay"; 0.6 behaves like off.
+  - Regression test with real terms and lines that failed on clean audio;
+    it fails with the old setting.
+
+### Numbers (`say` speech, 8 channels)
+
+- Parakeet 1.3% WER, Parakeet with vocabulary 0.8%, Whisper base 5.5%;
+  nothing missed, p95 0.77–0.92 s. Clean `say` speech rarely triggered the
+  bad replacements, so this shows boosting still helps rather than proving
+  the live-mic fix.
+
+All of this is tested, not verified.
+
+### Next steps / where we left off
+
+- **Try it in the app:** speak on a Parakeet channel with the show's
+  highlight words and check nothing is substituted; look over Settings →
+  Automation and the new add fields.
+- Open a show that had channel vocabulary and check the terms appear in
+  Global Vocabulary.
+- **Benchmark real comms** with `--corpus` to measure vocabulary recall
+  on live-mic audio; if names are missed too often, consider a narrow
+  rescue only for long, distinctive terms.
+- Earlier items still open: real-show test of voice letters, the voice
+  threshold, and whether new Whisper channels start with voice changes off.

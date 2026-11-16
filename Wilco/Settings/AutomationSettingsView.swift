@@ -14,37 +14,42 @@ struct AutomationSettingsView: View {
     @State private var selection: AutomationSelection?
 
     var body: some View {
-        HSplitView {
+        // A bordered list beside the editor, not a split view: a sidebar-style
+        // list in a Settings tab runs up under the toolbar and crowds the tabs.
+        HStack(spacing: 0) {
             list
-                .frame(minWidth: 200, idealWidth: 230, maxWidth: 280)
+                .frame(width: 230)
+                .padding([.leading, .vertical], 20)
             editor
-                .frame(minWidth: 480, maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(width: 860, height: 600)
     }
 
     private var list: some View {
-        List(selection: $selection) {
-            Section("Rules") {
-                ForEach(model.document.rules) { rule in
-                    Label(rule.name.isEmpty ? "Untitled Rule" : rule.name,
-                          systemImage: rule.isEnabled ? "bolt.fill" : "bolt.slash")
-                        .tag(AutomationSelection.rule(rule.id))
-                }
-            }
-            Section("Highlights") {
-                ForEach(model.document.highlights) { highlight in
-                    Label {
-                        Text(highlight.name.isEmpty ? "Untitled Highlight" : highlight.name)
-                    } icon: {
-                        Image(systemName: "highlighter").foregroundStyle(highlight.tint.color)
+        VStack(spacing: 0) {
+            List(selection: $selection) {
+                Section("Rules") {
+                    ForEach(model.document.rules) { rule in
+                        Label(rule.name.isEmpty ? "Untitled Rule" : rule.name,
+                              systemImage: rule.isEnabled ? "bolt.fill" : "bolt.slash")
+                            .tag(AutomationSelection.rule(rule.id))
                     }
-                    .tag(AutomationSelection.highlight(highlight.id))
+                }
+                Section("Highlights") {
+                    ForEach(model.document.highlights) { highlight in
+                        Label {
+                            Text(highlight.name.isEmpty ? "Untitled Highlight" : highlight.name)
+                        } icon: {
+                            Image(systemName: "highlighter").foregroundStyle(highlight.tint.color)
+                        }
+                        .tag(AutomationSelection.highlight(highlight.id))
+                    }
                 }
             }
-        }
-        .safeAreaInset(edge: .bottom) {
-            HStack {
+            .listStyle(.bordered)
+            .alternatingRowBackgrounds(.disabled)
+            HStack(spacing: 4) {
                 Menu {
                     Button("New Rule", action: addRule)
                     Button("New Highlight", action: addHighlight)
@@ -61,7 +66,7 @@ struct AutomationSettingsView: View {
                     .disabled(selection == nil)
                 Spacer()
             }
-            .padding(8)
+            .padding(.vertical, 6)
         }
     }
 
@@ -161,21 +166,23 @@ private struct RuleEditor: View {
             }
 
             Section {
-                TokenListEditor(tokens: $rule.phrases, prompt: "Phrase to listen for")
-                MatchModePicker(mode: $rule.matchMode)
-                ChannelScopePicker(selection: $rule.channelIDs, channels: channels)
+                TokenListEditor(tokens: $rule.phrases, prompt: "Add a phrase, e.g. standby")
             } header: {
                 Text("Listen For")
             } footer: {
-                Text("Phrases match whole words, ignoring case, punctuation and whether the engine wrote “stand by” or “standby”. Phrases are also biased into the recogniser.")
+                Text("Whole words, ignoring case and punctuation. “Stand by” and “standby” match each other.")
             }
 
             Section {
+                MatchModePicker(mode: $rule.matchMode)
+                ChannelScopePicker(selection: $rule.channelIDs, channels: channels)
                 Stepper(value: $rule.cooldown, in: 0...600, step: 1) {
                     LabeledContent("Cooldown", value: "\(Int(rule.cooldown)) s")
                 }
+            } header: {
+                Text("When")
             } footer: {
-                Text("Cooldown suppresses repeat fires. Comms traffic repeats constantly, so a rule with no cooldown will fire a cue several times for one spoken standby.")
+                Text("Cooldown stops one spoken standby firing the cue several times.")
             }
 
             Section {
@@ -260,13 +267,18 @@ private struct HighlightEditor: View {
                 }
             }
             Section {
-                TokenListEditor(tokens: $highlight.phrases, prompt: "Word or phrase to highlight")
+                TokenListEditor(tokens: $highlight.phrases, prompt: "Add a word or phrase")
+            } header: {
+                Text("Words")
+            } footer: {
+                Text("Tinted wherever the transcript appears.")
+            }
+
+            Section {
                 MatchModePicker(mode: $highlight.matchMode)
                 ChannelScopePicker(selection: $highlight.channelIDs, channels: channels)
             } header: {
-                Text("Highlight")
-            } footer: {
-                Text("Matching words are tinted wherever the transcript appears. Phrases listed here are also biased into the recogniser, so they come back spelled correctly.")
+                Text("When")
             }
         }
         .formStyle(.grouped)

@@ -168,13 +168,16 @@ import WilcoCore
         try await store.install { _ in }
         let recognizer = ParakeetRecognizer(store: store, language: .english,
                                             vocabulary: ["Q5", "LX 42", "D.S.M.", "Kinesys"])
-        // Daniel: Parakeet hears "kineses", which the conservative
-        // thresholds correct. Samantha's "Kennes'" scores better on the audio
-        // than "Kinesys" at cbw 0, so it is (correctly) left alone.
-        let samples = try sayClip("Standby the Kinesys rig", voice: "Daniel (English (UK))")
+        // Daniel: Parakeet hears "kineses". Only the rescorer's acoustic
+        // rescue turned that into "Kinesys", and it took "rig" with it ("Stand
+        // by the Kinesys."). With the rescue off the line is left as heard:
+        // a missed term costs less than a wrong word, and far less than a
+        // rule phrase nobody said.
+        let samples = try sayClip("Standby the Kinesys rig", voice: sayVoice("Daniel"))
         let plain = try await ParakeetRecognizer(store: store, language: .english).recognize(samples)
         #expect(plain?.text.contains("Kinesys") == false)
-        #expect(try await recognizer.recognize(samples)?.text.contains("Kinesys") == true)
+        let boosted = try await recognizer.recognize(samples)
+        #expect(boosted?.text.lowercased().contains("rig") == true)
         // Every term survives tokenization, including ones the spotter skips.
         #expect(await recognizer.booster?.current()?.vocabulary.terms.count == 4)
     }
@@ -189,6 +192,40 @@ import WilcoCore
         let recognition = try await ParakeetRecognizer(store: store, language: .english, vocabulary: ["QLab"])
             .recognize(samples)
         #expect(recognition?.text.contains("12") == true)
+    }
+
+    /// Short, everyday terms must not replace words that sound nothing like
+    /// them. In a real session with "Omar", "Comm", "Panel" and "comms",
+    /// "a little bigger" came back "a little Panel", "Okay" became "Omar" and
+    /// "the dictionary" became "the Panel". None of these lines says a term.
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["WILCO_ASR_TESTS"] != nil))
+    func shortTermsLeaveUnrelatedWordsAlone() async throws {
+        let store = Self.testStore()
+        try await store.install { _ in }
+        let terms = ["comms", "Omar", "Comm", "Panel"]
+        let recognizer = ParakeetRecognizer(store: store, language: .english, vocabulary: terms)
+        // Each of these, in this voice, came back as a term with the
+        // rescorer's acoustic rescue on, even without added noise.
+        let lines: [(String, String)] = [
+            ("Um.", "Samantha"), ("Whisper.", "Samantha"), ("Whisper.", "Karen"),
+            ("And audio.", "Daniel"), ("Let's make this a little bigger.", "Karen"),
+        ]
+        for (line, voice) in lines {
+            let text = try await recognizer.recognize(sayClip(line, voice: sayVoice(voice)))?.text ?? ""
+            for term in terms {
+                #expect(!text.lowercased().contains(term.lowercased()), "\(term) in \"\(text)\" for \"\(line)\" (\(voice))")
+            }
+        }
+    }
+
+    /// A term that is said still comes back spelled the show's way.
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["WILCO_ASR_TESTS"] != nil))
+    func spokenShortTermIsKept() async throws {
+        let store = Self.testStore()
+        try await store.install { _ in }
+        let recognizer = ParakeetRecognizer(store: store, language: .english, vocabulary: ["Omar", "Panel"])
+        let text = try await recognizer.recognize(sayClip("Omar, check the panel please."))?.text ?? ""
+        #expect(text.contains("Omar"))
     }
 
     /// The app's model when installed; otherwise FluidAudio's default cache,

@@ -82,12 +82,11 @@ struct UtteranceSegmenterTests {
 
 @Suite("Recogniser vocabulary")
 struct VocabularyTests {
-    @Test func mergesShowChannelAndRulePhrasesWithoutDuplicates() {
+    @Test func mergesShowVocabularyAndRulePhrasesWithoutDuplicates() {
         var show = ShowDocument()
         let channel = show.addChannel()
         let other = show.addChannel()
-        show.globalVocabulary = ["Standby", "Pyro"]
-        show.updateChannel(id: channel.id) { $0.vocabulary = ["Omar", "pyro"] }
+        show.globalVocabulary = ["Standby", "Pyro", "Omar", "pyro"]
         show.rules = [
             AutomationRule(name: "All", phrases: ["go"]),
             AutomationRule(name: "Other only", phrases: ["house out"], channelIDs: [other.id]),

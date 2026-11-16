@@ -1,13 +1,11 @@
 import Foundation
 
 extension ShowDocument {
-    /// Terms biased into a channel's recogniser: show vocabulary, the
-    /// channel's own terms, then phrases of enabled rules and highlights that
-    /// listen to this channel. Phrases come back spelled the way rules expect.
+    /// Terms biased into a channel's recogniser: show vocabulary, then
+    /// phrases of enabled rules and highlights that listen to this channel. Phrases come back spelled the way rules expect.
     public func vocabulary(for channelID: ChannelConfig.ID) -> [String] {
         let applies = { (channelIDs: Set<UUID>) in channelIDs.isEmpty || channelIDs.contains(channelID) }
         var terms = globalVocabulary
-        terms += channel(id: channelID)?.vocabulary ?? []
         terms += rules.filter { $0.isEnabled && applies($0.channelIDs) }.flatMap(\.phrases)
         terms += highlights.filter { $0.isEnabled && applies($0.channelIDs) }.flatMap(\.phrases)
 

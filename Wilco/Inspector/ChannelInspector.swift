@@ -92,6 +92,15 @@ private struct ChannelForm: View {
         }
     }
 
+    /// A Parakeet channel that gets terms (the show's, or rule and highlight
+    /// phrases) but isn't English, so the terms do nothing on it.
+    private var vocabularyNotBoosted: Bool {
+        channel.engine == .parakeet && ParakeetVocabulary.noticeNeeded(
+            language: ParakeetLanguages.language(for: channel.localeIdentifier),
+            terms: model.document.vocabulary(for: channel.id)
+        )
+    }
+
     private let symbols = ["person.wave.2", "headphones", "lightbulb", "speaker.wave.2", "video", "theatermasks", "music.mic"]
 
     var body: some View {
@@ -147,7 +156,7 @@ private struct ChannelForm: View {
                 Text("A muted channel keeps capturing audio and metering, but stops feeding the recogniser.")
             }
 
-            Section("Recognition") {
+            Section {
                 if let status {
                     LabeledContent("Status", value: status.title)
                 }
@@ -178,28 +187,15 @@ private struct ChannelForm: View {
                 }
                 .disabled(!channel.engine.isApple)
                 .help("A quick model shows words as they are spoken; an accurate one replaces them a moment later. Roughly twice the CPU per channel.")
+            } header: {
+                Text("Recognition")
+            } footer: {
+                if vocabularyNotBoosted {
+                    Text("Show vocabulary applies to English channels only, so Parakeet won't boost it on this channel.")
+                }
             }
 
             voiceSection
-
-            Section {
-                TokenListEditor(tokens: $channel.vocabulary, prompt: "Add a name, cue label or piece of jargon")
-            } header: {
-                Text("Channel Vocabulary")
-            } footer: {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Terms listed here are biased into this channel's recogniser. Crew names, venue names and cue labels are the ones worth adding.")
-                    if channel.engine == .parakeet {
-                        Text("Parakeet ignores terms shorter than 3 characters.")
-                        if ParakeetVocabulary.noticeNeeded(
-                            language: ParakeetLanguages.language(for: channel.localeIdentifier),
-                            terms: model.document.vocabulary(for: channel.id)
-                        ) {
-                            Text("Vocabulary applies to English channels only.")
-                        }
-                    }
-                }
-            }
 
             Section {
                 Button("Clear This Channel's Transcript", action: onClear)

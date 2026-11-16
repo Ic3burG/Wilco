@@ -63,6 +63,32 @@ struct FileFormatTests {
         #expect(try WilcoJSON.decoder().decode(ShowDocument.self, from: reencoded) == original)
     }
 
+    /// Channels used to carry their own vocabulary. Those terms now join the
+    /// show's vocabulary when the file opens, so nothing biased before is
+    /// lost or left where it can't be seen or edited.
+    @Test func channelVocabularyMovesIntoShowVocabulary() throws {
+        let json = #"""
+        {"globalVocabulary":["Standby","Kinesys"],
+         "channels":[
+           {"id":"6F9619FF-8B86-D011-B42D-00CF4FC964FF","name":"SM","vocabulary":["DSM"," kinesys ","Pyro"]},
+           {"id":"7F9619FF-8B86-D011-B42D-00CF4FC964FF","name":"LX","vocabulary":["pyro","",  "Followspot"]},
+           {"id":"8F9619FF-8B86-D011-B42D-00CF4FC964FF","name":"Sound"}
+         ]}
+        """#
+        let show = try WilcoJSON.decoder().decode(ShowDocument.self, from: Data(json.utf8))
+        #expect(show.globalVocabulary == ["Standby", "Kinesys", "DSM", "Pyro", "Followspot"])
+        #expect(show.channels.count == 3)
+
+        let saved = try #require(String(data: WilcoJSON.encoder().encode(show), encoding: .utf8))
+        #expect(!saved.contains("\"vocabulary\""))
+    }
+
+    @Test func showVocabularyIsLeftAloneWithoutChannelTerms() throws {
+        let json = #"{"globalVocabulary":["Standby","standby"," Go "]}"#
+        let show = try WilcoJSON.decoder().decode(ShowDocument.self, from: Data(json.utf8))
+        #expect(show.globalVocabulary == ["Standby", "standby", " Go "])
+    }
+
     @Test func missingKeysFallBackToDefaults() throws {
         let show = try WilcoJSON.decoder().decode(ShowDocument.self, from: Data(#"{"name":"Tour"}"#.utf8))
         #expect(show.name == "Tour")

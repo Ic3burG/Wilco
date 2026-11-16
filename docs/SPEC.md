@@ -106,7 +106,9 @@ struct ChannelConfig {
   var engine: SpeechEngine
   var latencyProfile: SpeechLatencyProfile
   var isMuted: Bool              // still captured + metered, not transcribed
-  var vocabulary: [String]       // per-channel custom terms
+  // vocabulary: [String] — per-channel terms in the reference app. The rebuild
+  // has show vocabulary only; on open, a channel's terms join globalVocabulary
+  // (trimmed, case-insensitive duplicates skipped) and are no longer saved.
   var detectsVoiceChanges: Bool  // new in the rebuild: mark lines with a voice letter; decodes false for existing shows, new channels default true
 }
 struct ChannelGroup { var id: UUID; var name: String; var symbol: String }
@@ -212,8 +214,8 @@ fast **lead** pass shows italic volatile words, an accurate **anchor** pass
 replaces them (*"Roughly twice the CPU per channel"*). `single` = one `sole`
 lane. [meta: `TranscriberRole { lead, anchor, sole }`]
 
-Vocabulary biasing = global vocabulary + channel vocabulary + every rule /
-highlight phrase (*"Rule phrases are biased in automatically"*).
+Vocabulary biasing = global (show) vocabulary + every enabled rule /
+highlight phrase that listens to the channel (*"Rule phrases are biased in automatically"*).
 `SpeechAssetManager` installs per-locale assets with progress
 (`LocaleStatus: unknown | unsupported | needsDownload | downloading(Double) | ready`).
 
@@ -283,7 +285,7 @@ Single main window (`MainWindowView`) — `NavigationSplitView`:
   `ChannelTranscriptView`, `ActivityLogView`.
 - **Inspector** (`inspector.visible`): `ChannelInspector` (name, tint, symbol,
   hardware channel, group, engine, locale, latency profile, model status,
-  mute, meter, channel vocabulary, *Clear This Channel's Transcript*,
+  mute, meter, *Clear This Channel's Transcript*,
   *Delete Channel*) or `SessionInspector`.
 - **Status bar** (`CaptureStatusBar`): capture state, device, rate, reconnects,
   dropped frames; Start/Stop capture.

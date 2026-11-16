@@ -13,7 +13,7 @@ public enum ParakeetVocabulary {
     }
 
     /// Whether to tell the user a Parakeet channel's terms won't be boosted:
-    /// it gets terms (its own, the show's or rule and highlight phrases) but
+    /// it gets terms (the show's, or rule and highlight phrases) but
     /// isn't English.
     public static func noticeNeeded(language: Language?, terms: [String]) -> Bool {
         language != .english && !cleaned(terms).isEmpty
@@ -22,6 +22,14 @@ public enum ParakeetVocabulary {
     /// Conservative: a term must win on the audio alone and look like the
     /// heard words, so correctly heard words are rarely replaced.
     public static let thresholds = VocabularyBoostingSession.Thresholds(cbw: 0, minSimilarity: 0.7)
+
+    /// No acoustic-only rescue. For vocabularies of 10 terms or fewer the
+    /// rescorer otherwise runs a second pass that puts a term wherever the
+    /// vocabulary model half-hears it, with no check that the replaced words
+    /// look anything like the term. On a live mic with a few short names that
+    /// turned "a little bigger" into "a little Panel" and "Okay" into "Omar".
+    /// Terms still replace words that look like them ("kineses" → "Kinesys").
+    public static let rescorerConfig = VocabularyRescorer.Config(spotterRescueEnabled: false)
 
     /// Whether to use a rescored line in place of the original. It must
     /// differ, and carry exactly the same numbers, digits and spoken words
@@ -72,9 +80,12 @@ public enum ParakeetVocabulary {
 
     /// A session for these terms. The session tokenizes plain text with the
     /// CTC model's tokenizer; terms that give no tokens are dropped.
-    static func session(terms: [String], ctcModels: CtcModels) async throws -> VocabularyBoostingSession {
+    static func session(
+        terms: [String], ctcModels: CtcModels, config: VocabularyRescorer.Config = rescorerConfig
+    ) async throws -> VocabularyBoostingSession {
         let context = CustomVocabularyContext(terms: cleaned(terms).map { CustomVocabularyTerm(text: $0) })
-        return try await VocabularyBoostingSession(vocabulary: context, ctcModels: ctcModels, thresholds: thresholds)
+        return try await VocabularyBoostingSession(
+            vocabulary: context, ctcModels: ctcModels, config: config, thresholds: thresholds)
     }
 }
 
@@ -88,9 +99,12 @@ actor ParakeetBooster {
     /// Set once building has failed, so later utterances don't retry it.
     private var unavailable = false
 
-    init(store: ParakeetModelStore, terms: [String]) {
+    private let config: VocabularyRescorer.Config
+
+    init(store: ParakeetModelStore, terms: [String], config: VocabularyRescorer.Config) {
         self.store = store
         self.terms = terms
+        self.config = config
     }
 
     /// The session, or nil when boosting isn't available. A missing or
@@ -106,8 +120,9 @@ actor ParakeetBooster {
         } else {
             let store = store
             let terms = terms
+            let config = config
             task = Task {
-                try await ParakeetVocabulary.session(terms: terms, ctcModels: store.ctcModels())
+                try await ParakeetVocabulary.session(terms: terms, ctcModels: store.ctcModels(), config: config)
             }
             building = task
         }
