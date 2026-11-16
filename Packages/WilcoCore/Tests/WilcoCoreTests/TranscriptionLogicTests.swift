@@ -100,6 +100,19 @@ struct UtteranceSegmenterTests {
         #expect(segmenter.inProgress == nil)
     }
 
+    @Test func countsSpeechAndThePauseInProgress() {
+        var segmenter = UtteranceSegmenter(sampleRate: rate)
+        #expect(segmenter.speechInProgress == 0)
+        _ = segmenter.append(silence(1) + tone(0.6))
+        #expect(abs(segmenter.speechInProgress - 0.6) < 0.05)
+        #expect(segmenter.silenceInProgress == 0)
+        _ = segmenter.append(silence(0.4))
+        #expect(abs(segmenter.silenceInProgress - 0.4) < 0.05)
+        _ = segmenter.append(silence(1))
+        #expect(segmenter.speechInProgress == 0)
+        #expect(segmenter.silenceInProgress == 0)
+    }
+
     @Test func inProgressRestartsAfterAMaximumLengthCut() throws {
         var segmenter = UtteranceSegmenter(sampleRate: rate)
         segmenter.maximumLength = 2

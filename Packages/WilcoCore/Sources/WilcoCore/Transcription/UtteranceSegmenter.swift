@@ -69,6 +69,18 @@ public struct UtteranceSegmenter: Sendable {
         return Utterance(samples: current, startOffset: Double(currentStart) / sampleRate)
     }
 
+    /// Seconds of speech heard in the utterance in progress (0 between
+    /// utterances): pre-roll and pauses don't count.
+    public var speechInProgress: Double {
+        inSpeech ? Double(speechFrames) * frameSeconds : 0
+    }
+
+    /// How long the utterance in progress has been quiet: the pause that
+    /// may be about to end it. 0 while someone talks or between utterances.
+    public var silenceInProgress: Double {
+        inSpeech ? Double(silentFrames) * frameSeconds : 0
+    }
+
     /// Ends any utterance in progress, for when capture stops.
     public mutating func flush() -> Utterance? {
         guard inSpeech else { return nil }

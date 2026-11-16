@@ -44,7 +44,8 @@ extension UtteranceRecognizer {
 
 /// Transcribes a channel with an ``UtteranceRecognizer``: cuts the stream
 /// into utterances at pauses and transcribes each one whole. Lines arrive
-/// final, with no volatile preview.
+/// final; with a preview interval, the words of an utterance still being
+/// spoken go out as volatile text in the meantime.
 public actor UtteranceChannelTranscriber: ChannelTranscriber {
     private let channelID: UUID
     private let source: AudioSource
@@ -56,19 +57,33 @@ public actor UtteranceChannelTranscriber: ChannelTranscriber {
     private let annotator: VoiceAnnotator?
     private var voices: VoiceAnnotationQueue?
     private var pump: Task<Void, Never>?
+    /// How often to preview an utterance in progress; nil for no previews.
+    private let previewInterval: Duration?
+    private let maximumUtteranceLength: Double
+    /// Speech an utterance needs before its first preview, so a short call
+    /// ("Go.") goes straight to its final line.
+    static let previewMinimumSpeech = 0.5
+    /// A pause this long may be about to end the utterance: its final line
+    /// is close, so a preview would be wasted work.
+    static let previewPauseCutoff = 0.3
 
     /// With `voiceChanges` set, each line goes out `.recognized` and then
     /// `.annotated` with its voice letter; `voiceprints` is the app's shared
-    /// voice model (nil leaves lines without letters).
+    /// voice model (nil leaves lines without letters). `previewInterval`
+    /// turns on previews of the utterance in progress, if the recognizer
+    /// gives them. `maximumUtteranceLength` is in seconds; tests shorten it.
     public init(
         channelID: UUID, source: AudioSource, sessionOffset: Double, recognizer: any UtteranceRecognizer,
         voiceChanges: VoiceChangeSettings? = nil, voiceprints: (any VoiceprintExtractor)? = nil,
+        previewInterval: Duration? = nil, maximumUtteranceLength: Double = 20,
         onEvent: @escaping TranscriptionHandler, onStatus: @escaping StatusHandler
     ) {
         self.channelID = channelID
         self.source = source
         self.sessionOffset = sessionOffset
         self.recognizer = recognizer
+        self.previewInterval = previewInterval
+        self.maximumUtteranceLength = maximumUtteranceLength
         self.onEvent = onEvent
         self.onStatus = onStatus
         annotator = voiceChanges.map { VoiceAnnotator(settings: $0, extractor: voiceprints ?? UnavailableVoiceprints()) }
@@ -105,6 +120,8 @@ public actor UtteranceChannelTranscriber: ChannelTranscriber {
     private func run() async {
         let converter = SampleRateConverter.whisper()
         var segmenter = UtteranceSegmenter(sampleRate: 16_000)
+        segmenter.maximumLength = maximumUtteranceLength
+        var lastPreview: (start: Double, at: ContinuousClock.Instant)?
         while !Task.isCancelled {
             let samples = source.ring.read(maxCount: source.ring.availableToRead)
             if !samples.isEmpty, let resampled = try? converter.convertToSamples(samples, sampleRate: source.sampleRate()) {
@@ -112,11 +129,34 @@ public actor UtteranceChannelTranscriber: ChannelTranscriber {
                     await transcribe(utterance)
                 }
             }
+            if let previewInterval, let utterance = segmenter.inProgress,
+               segmenter.speechInProgress >= Self.previewMinimumSpeech,
+               segmenter.silenceInProgress < Self.previewPauseCutoff {
+                let now = ContinuousClock.now
+                // A new utterance (or a cut at the maximum) restarts the clock.
+                let due = lastPreview.map { $0.start != utterance.startOffset || now - $0.at >= previewInterval } ?? true
+                if due {
+                    lastPreview = (utterance.startOffset, now)
+                    await preview(utterance)
+                }
+            }
             try? await Task.sleep(for: pumpInterval)
         }
         if let last = segmenter.flush() {
             await transcribe(last)
         }
+    }
+
+    /// Sends the utterance so far as volatile text. Awaited in the pump, so
+    /// it can never land after the utterance's final line.
+    private func preview(_ utterance: UtteranceSegmenter.Utterance) async {
+        guard let recognition = await recognizer.preview(utterance.samples) else { return }
+        let text = recognition.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        onEvent(TranscriptionEvent(
+            channelID: channelID, text: text, isFinal: false,
+            sessionOffset: sessionOffset + utterance.startOffset, confidence: recognition.confidence
+        ))
     }
 
     private func transcribe(_ utterance: UtteranceSegmenter.Utterance) async {

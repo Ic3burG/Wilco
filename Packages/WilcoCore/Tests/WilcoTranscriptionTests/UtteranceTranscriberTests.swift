@@ -10,6 +10,7 @@ struct UtteranceTranscriberTests {
     final class FakeRecognizer: UtteranceRecognizer {
         let heard = Mutex<[Int]>([])
         let prepared = Mutex(0)
+        let previews = Mutex(0)
         let failPrepare: Bool
         init(failPrepare: Bool = false) { self.failPrepare = failPrepare }
 
@@ -21,6 +22,11 @@ struct UtteranceTranscriberTests {
         func recognize(_ samples: [Float]) async throws -> Recognition? {
             heard.withLock { $0.append(samples.count) }
             return Recognition(text: " standby go ", confidence: 0.9)
+        }
+
+        func preview(_ samples: [Float]) async -> Recognition? {
+            previews.withLock { $0 += 1 }
+            return Recognition(text: " standby ", confidence: nil)
         }
     }
 
@@ -86,5 +92,120 @@ struct UtteranceTranscriberTests {
             return
         }
         #expect(message.contains("no model"))
+    }
+
+    // MARK: Previews
+
+    /// Speech-like: 200 ms syllables with 80 ms dips, so the segmenter
+    /// doesn't learn it as background the way it learns a steady tone.
+    private func talk(seconds: Double, rate: Double) -> [Float] {
+        let on = Int(0.2 * rate), period = Int(0.28 * rate)
+        return (0..<Int(seconds * rate)).map { i in
+            i % period < on ? Float(sin(Double(i) * 2 * .pi * 440 / rate)) * 0.3 : 0.002
+        }
+    }
+
+    private func quiet(seconds: Double, rate: Double) -> [Float] {
+        [Float](repeating: 0, count: Int(seconds * rate))
+    }
+
+    /// Writes `samples` into `ring` in 100 ms pieces at the speed it would
+    /// be heard, so the transcriber sees speech while it's still going.
+    private func play(_ samples: [Float], into ring: AudioRingBuffer, rate: Double) async throws {
+        let piece = Int(rate * 0.1)
+        var start = 0
+        while start < samples.count {
+            let end = min(samples.count, start + piece)
+            _ = ring.write(Array(samples[start..<end]))
+            start = end
+            try await Task.sleep(for: .milliseconds(100))
+        }
+    }
+
+    /// Runs a transcriber over `audio` played in real time and returns what
+    /// it sent. With `stopEarly` the transcriber stops as soon as the audio
+    /// has played; otherwise it waits for `finals` final lines first.
+    private func run(
+        _ audio: [Float], rate: Double, previewInterval: Duration?, maximumLength: Double = 20,
+        finals: Int = 1, stopEarly: Bool = false, recognizer: FakeRecognizer = FakeRecognizer()
+    ) async throws -> [TranscriptionEvent] {
+        let ring = AudioRingBuffer(capacity: Int(rate) * 30)
+        let log = Log()
+        let transcriber = UtteranceChannelTranscriber(
+            channelID: UUID(), source: AudioSource(ring: ring, sampleRate: { rate }), sessionOffset: 0,
+            recognizer: recognizer, previewInterval: previewInterval, maximumUtteranceLength: maximumLength,
+            onEvent: { event in log.events.withLock { $0.append(event) } }, onStatus: { _ in }
+        )
+        await transcriber.start()
+        try await play(audio, into: ring, rate: rate)
+        if !stopEarly {
+            for _ in 0..<50 where log.events.withLock({ $0.filter(\.isFinal).count }) < finals {
+                try await Task.sleep(for: .milliseconds(100))
+            }
+        }
+        await transcriber.stop()
+        return log.events.withLock { $0 }
+    }
+
+    @Test(.timeLimit(.minutes(1))) func previewsWhileTalkingThenSendsTheFinalLine() async throws {
+        let rate = 48_000.0
+        let events = try await run(
+            quiet(seconds: 0.5, rate: rate) + talk(seconds: 2.5, rate: rate) + quiet(seconds: 1.5, rate: rate),
+            rate: rate, previewInterval: .milliseconds(500)
+        )
+        let finalIndex = try #require(events.firstIndex { $0.isFinal })
+        #expect(events[..<finalIndex].contains { !$0.isFinal && $0.text == "standby" })
+        #expect(!events[(finalIndex + 1)...].contains { !$0.isFinal })
+        #expect(events.filter { !$0.isFinal }.allSatisfy { abs($0.sessionOffset - events[finalIndex].sessionOffset) < 0.01 })
+    }
+
+    @Test(.timeLimit(.minutes(1))) func noPreviewsWhenOff() async throws {
+        let rate = 48_000.0
+        let recognizer = FakeRecognizer()
+        let events = try await run(
+            quiet(seconds: 0.5, rate: rate) + talk(seconds: 2.5, rate: rate) + quiet(seconds: 1.5, rate: rate),
+            rate: rate, previewInterval: nil, recognizer: recognizer
+        )
+        #expect(recognizer.previews.withLock { $0 } == 0)
+        #expect(!events.isEmpty)
+        #expect(events.allSatisfy { $0.isFinal })
+    }
+
+    @Test(.timeLimit(.minutes(1))) func aShortCallIsNotPreviewed() async throws {
+        let rate = 48_000.0
+        let recognizer = FakeRecognizer()
+        let events = try await run(
+            quiet(seconds: 0.5, rate: rate) + talk(seconds: 0.4, rate: rate) + quiet(seconds: 1.5, rate: rate),
+            rate: rate, previewInterval: .milliseconds(500), recognizer: recognizer
+        )
+        #expect(recognizer.previews.withLock { $0 } == 0)
+        #expect(events.count == 1)
+        #expect(events.first?.isFinal == true)
+    }
+
+    @Test(.timeLimit(.minutes(1))) func noPreviewAfterTheFinalWhenStoppedMidCall() async throws {
+        let rate = 48_000.0
+        let recognizer = FakeRecognizer()
+        let events = try await run(
+            quiet(seconds: 0.5, rate: rate) + talk(seconds: 2, rate: rate),
+            rate: rate, previewInterval: .milliseconds(500), stopEarly: true, recognizer: recognizer
+        )
+        #expect(recognizer.previews.withLock { $0 } > 0)
+        #expect(events.last?.isFinal == true)
+    }
+
+    @Test(.timeLimit(.minutes(1))) func previewsFollowAMaximumLengthCut() async throws {
+        let rate = 48_000.0
+        let events = try await run(
+            quiet(seconds: 0.5, rate: rate) + talk(seconds: 3.5, rate: rate) + quiet(seconds: 1.5, rate: rate),
+            rate: rate, previewInterval: .milliseconds(500), maximumLength: 2, finals: 2
+        )
+        let finals = events.indices.filter { events[$0].isFinal }
+        try #require(finals.count == 2)
+        let (first, second) = (finals[0], finals[1])
+        #expect(events[..<first].allSatisfy { $0.isFinal || $0.sessionOffset == events[first].sessionOffset })
+        #expect(events[(first + 1)..<second].allSatisfy { $0.isFinal || $0.sessionOffset == events[second].sessionOffset })
+        #expect(events[(first + 1)..<second].contains { !$0.isFinal })
+        #expect(!events[(second + 1)...].contains { !$0.isFinal })
     }
 }
