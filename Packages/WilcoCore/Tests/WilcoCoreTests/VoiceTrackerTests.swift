@@ -61,6 +61,19 @@ import Testing
         ])
     }
 
+    @Test func overlappingPrintsPlaceTheChangeBetweenTheirMiddles() {
+        // 1.5 s prints every 0.5 s, as the voice model takes them. The last
+        // old print is centred on 1.75 s and the first new one on 2.25 s; the
+        // new one's start (1.5 s) would put the cut most of a word early.
+        var t = VoiceTracker(settings: .standard)
+        let x = axis(0), y = axis(1)
+        let prints = [x, x, x, y, y, y, y].enumerated().map { vp($1, Double($0) * 0.5, Double($0) * 0.5 + 1.5) }
+        let pieces = t.assign(prints, lineStart: 0, lineEnd: 5)
+        #expect(pieces.map(\.start) == [0, 2.0])
+        #expect(pieces.map(\.end) == [2.0, 5])
+        #expect(letters(pieces) == ["A", "B"])
+    }
+
     @Test func briefBlipDoesNotSplit() {
         var t = VoiceTracker(settings: .standard)
         let x = axis(0), y = axis(1)

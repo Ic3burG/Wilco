@@ -518,3 +518,29 @@ channels (re-run after the scoring was tightened):
   the voice changes is next, and this run is the baseline for it.
 - `say` voices are far more distinct than real people. The threshold needs
   checking on real comms.
+
+## 2026-11-16 (in progress) — Splitting lines where the voice changes
+
+- A line whose voice changes partway (a call and a quick "standing by" with
+  no pause) now comes back as several lines, each with its own letter and
+  time. The cut goes in the gap between words nearest the change.
+  `LineSplitter` in WilcoCore does this from each engine's word timings:
+  Parakeet's token timings, Whisper's word timestamps (asked for only when
+  voice changes are on), and Apple's `audioTimeRange` per word. The text
+  sent to rules is unchanged. When a line has no timings, or they don't
+  match its text, it stays whole and takes its longest piece's letter.
+- Parakeet vocabulary fixes keep their word timings when the word count is
+  unchanged. When two words became one term, the line isn't split.
+- The tracker placed changes about 0.75 s early, at the start of the first
+  1.5 s voiceprint window that differed. It now puts them halfway between
+  the middles of the last old and first new windows.
+- Apple's 16 kHz voice history now advances by the audio it was fed even if
+  its resampler fails, so later lines still find their own audio.
+- Gated tests: a call and answer in two `say` voices with no pause come back
+  as A then B on Parakeet and Whisper (one line, split). Apple long-form
+  ends the line at the change by itself, so it gives A and B as two lines.
+- 32 channels (`docs/benchmarks/2026-11-16-m1-max-say-voices-split.md`):
+  missed changes 81 → 53 (Parakeet), 81 → 51 (Whisper), 30 → 30 (Apple),
+  with 2, 0 and 3 false changes. All three keep up. Whisper's final p95 rose
+  to about 2.4 s with word timestamps on, still under 3 s. Tested, not
+  verified.

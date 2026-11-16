@@ -37,6 +37,22 @@ struct AudioHistoryTests {
         #expect(history.samples(from: 41, to: 45).isEmpty)
         #expect(AudioHistory().samples(from: 0, to: 1).isEmpty)
     }
+
+    @Test func aChunkThatCouldNotBeConvertedStillMovesTheTimelineOn() {
+        // A second of audio, a second the resampler failed on, then another
+        // second: the third second is still found where it was heard.
+        var history = AudioHistory(sampleRate: 100, seconds: 30)
+        history.append(ramp(from: 0, seconds: 1, rate: 100), lasting: 1)
+        history.append(nil, lasting: 1)
+        history.append(ramp(from: 2, seconds: 1, rate: 100), lasting: 1)
+
+        let third = history.samples(from: 2, to: 3)
+        #expect(third.count == 100)
+        #expect(abs((third.first ?? 0) - 2) < 0.02)
+        // The lost second reads back as silence.
+        #expect(history.samples(from: 1, to: 2) == [Float](repeating: 0, count: 100))
+        #expect(abs((history.samples(from: 0, to: 1).last ?? 0) - 0.99) < 0.02)
+    }
 }
 
 @Suite("Audio ring buffer")

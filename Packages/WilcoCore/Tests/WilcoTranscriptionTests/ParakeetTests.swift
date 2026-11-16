@@ -1,6 +1,7 @@
 import FluidAudio
 import Foundation
 import Testing
+import WilcoCore
 @testable import WilcoTranscription
 
 @Suite struct ParakeetTests {
@@ -63,6 +64,36 @@ import Testing
                                            rescored: "Standby forty two on the Kinesys"))
         // Nothing changed: nothing to accept.
         #expect(!ParakeetVocabulary.accepts(original: "Deck is clear.", rescored: "Deck is clear."))
+    }
+
+    private func token(_ text: String, _ start: Double, _ end: Double) -> TokenTiming {
+        TokenTiming(token: text, tokenId: 0, startTime: start, endTime: end, confidence: 1)
+    }
+
+    @Test func tokensJoinIntoWordsAtWordStarts() {
+        // Pieces starting with "▁" (or a space, as FluidAudio hands them on)
+        // start a word; the rest continue it.
+        let words = ParakeetRecognizer.words(from: [
+            token("▁Stand", 0.0, 0.3), token("by", 0.3, 0.5), token(" L", 0.5, 0.6), token("X", 0.6, 0.8),
+            token(" 42", 0.8, 1.2), token(".", 1.2, 1.24),
+        ])
+        #expect(words == [
+            TimedWord(text: "Standby", start: 0.0, end: 0.5),
+            TimedWord(text: "LX", start: 0.5, end: 0.8),
+            TimedWord(text: "42.", start: 0.8, end: 1.24),
+        ])
+    }
+
+    @Test func rescoredTextKeepsTimingsOnlyWhenTheWordsLineUp() {
+        let words = [
+            TimedWord(text: "kineses", start: 0, end: 0.5), TimedWord(text: "rig", start: 0.5, end: 0.8),
+            TimedWord(text: "go", start: 0.8, end: 1.0),
+        ]
+        // One word replaced by one: same times, the new spelling.
+        #expect(ParakeetVocabulary.retimed(words, to: "Kinesys rig go").map(\.text) == ["Kinesys", "rig", "go"])
+        #expect(ParakeetVocabulary.retimed(words, to: "Kinesys rig go").map(\.start) == [0, 0.5, 0.8])
+        // Two words became one: the times no longer match, so none.
+        #expect(ParakeetVocabulary.retimed(words, to: "Kinesys go").isEmpty)
     }
 
     @Test func blankTermsAreDropped() {

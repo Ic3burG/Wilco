@@ -1,5 +1,6 @@
 import FluidAudio
 import Foundation
+import WilcoCore
 
 /// Boosting a channel's vocabulary on Parakeet. A separate CTC model listens
 /// for the terms in each utterance and replaces words in the transcript that
@@ -24,6 +25,17 @@ public enum ParakeetVocabulary {
     /// missed term.
     static func accepts(original: String, rescored: String) -> Bool {
         original != rescored && numbers(in: original) == numbers(in: rescored)
+    }
+
+    /// The original line's word timings carried over to its rescored text.
+    /// The rescorer swaps whole words, so when the word count is unchanged
+    /// each new word takes its old word's times. When it isn't (two words
+    /// became one term), which time goes with which word is unknown, so the
+    /// line gets no timings and stays whole rather than being split wrongly.
+    static func retimed(_ words: [TimedWord], to text: String) -> [TimedWord] {
+        let newWords = text.split(whereSeparator: \.isWhitespace)
+        guard newWords.count == words.count else { return [] }
+        return zip(words, newWords).map { TimedWord(text: String($1), start: $0.start, end: $0.end) }
     }
 
     /// Spoken number words, including the ones callers use for digits.

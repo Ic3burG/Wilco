@@ -109,7 +109,8 @@ actor AppleChannelTranscriber: ChannelTranscriber {
         try await SpeechAssets.module(
             engine: configuration.engine,
             localeIdentifier: configuration.localeIdentifier,
-            streaming: configuration.latencyProfile == .leadAndCorrect
+            streaming: configuration.latencyProfile == .leadAndCorrect,
+            wordTimings: annotator != nil
         )
     }
 
@@ -117,16 +118,20 @@ actor AppleChannelTranscriber: ChannelTranscriber {
         let converter = SampleRateConverter(output: format)
         // A second resampler, to 16 kHz for voiceprints, only with voice changes on.
         let voiceConverter = history == nil ? nil : SampleRateConverter.whisper()
-        var historyEnd = 0.0
         while !Task.isCancelled {
             let samples = source.ring.read(maxCount: source.ring.availableToRead)
             if !samples.isEmpty, let buffers = try? converter.convert(samples, sampleRate: source.sampleRate()) {
                 for buffer in buffers { continuation.yield(AnalyzerInput(buffer: buffer)) }
                 if !buffers.isEmpty { receivedAudio = true }
-                if let voiceConverter,
-                   let voice = try? voiceConverter.convertToSamples(samples, sampleRate: source.sampleRate()) {
-                    historyEnd += Double(voice.count) / 16_000
-                    history?.append(voice, endingAt: historyEnd)
+                if let voiceConverter {
+                    // The history's clock moves on by what the analyzer was
+                    // fed, even when this resampler fails (silence is kept
+                    // instead), so later lines still find their own audio.
+                    let rate = source.sampleRate()
+                    history?.append(
+                        try? voiceConverter.convertToSamples(samples, sampleRate: rate),
+                        lasting: Double(samples.count) / rate
+                    )
                 }
             }
             try? await Task.sleep(for: pumpInterval)
@@ -168,8 +173,34 @@ actor AppleChannelTranscriber: ChannelTranscriber {
         deliverFinalLine(
             event, voices: voices, onEvent: onEvent,
             lineStart: sessionOffset + start, lineEnd: sessionOffset + end,
+            words: annotator == nil ? [] : Self.words(in: text, sessionOffset: sessionOffset),
             audio: { history?.samples(from: start, to: end) ?? [] }
         )
+    }
+
+    /// Each word of a result with its audio time range (asked for with the
+    /// `.audioTimeRange` attribute option), in session offsets. Neighbouring
+    /// runs that share a range are one word; text without a range is left out.
+    static func words(in text: AttributedString, sessionOffset: Double) -> [TimedWord] {
+        var words: [TimedWord] = []
+        var lastRange: CMTimeRange?
+        for run in text.runs {
+            guard let range = run[AttributeScopes.SpeechAttributes.TimeRangeAttribute.self],
+                  range.start.isNumeric, range.duration.isNumeric
+            else {
+                lastRange = nil
+                continue
+            }
+            let piece = String(text.characters[run.range])
+            if range == lastRange, !words.isEmpty {
+                words[words.count - 1].text += piece
+            } else {
+                let start = sessionOffset + range.start.seconds
+                words.append(TimedWord(text: piece, start: start, end: start + range.duration.seconds))
+            }
+            lastRange = range
+        }
+        return words.filter { !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
 }
 

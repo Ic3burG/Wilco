@@ -49,8 +49,9 @@ voices, 0.1–0.8 s between turns, and 25–40 s of quiet between exchanges
 Neighbouring turns are always different voices, and voices come back within
 an exchange. `say` clips end with about 0.2 s of silence, so gaps under
 about 0.5 s fall below the segmenter's 0.7 s pause and two voices end up in
-one line. Such a line keeps one letter for now, so each merged pair counts
-as a missed change.
+one line. The engines' word timings let such a line be split where the
+voice changes; a merged pair counts as a missed change only when it
+wasn't split there (within ±0.5 s).
 
 ```sh
 swift run -c release wilco-bench --conversation \

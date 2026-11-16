@@ -1,5 +1,7 @@
 import FluidAudio
+import CoreMedia
 import Foundation
+import Speech
 import Synchronization
 import Testing
 import WilcoCore
@@ -57,6 +59,48 @@ struct VoiceAnnotatorTests {
         #expect(a.first?.sessionOffset == 10)
         #expect(a.first?.confidence == 0.8)
         #expect(a.first?.isFinal == true)
+    }
+
+    /// One print per half second, each for the voice its first sample names.
+    final class WindowedVoiceprints: VoiceprintExtractor {
+        func prepare() async throws {}
+        func voiceprints(of samples: [Float], startingAt offset: Double) async throws -> [Voiceprint] {
+            stride(from: 0, to: samples.count, by: 8_000).map { i in
+                var vector = [Float](repeating: 0, count: 4)
+                vector[min(max(Int(samples[i]), 0), 3)] = 1
+                let start = offset + Double(i) / 16_000
+                return Voiceprint(vector: vector, start: start, end: min(start + 0.5, offset + Double(samples.count) / 16_000))
+            }
+        }
+    }
+
+    @Test func lineWithTwoVoicesComesBackAsTwoPiecesOfOneLine() async {
+        let annotator = VoiceAnnotator(settings: .standard, extractor: WindowedVoiceprints())
+        let recognised = line("Standby LX 42 Standing by", at: 10)
+        // Voice 1 for 1.5 s, then voice 2 for 1.5 s.
+        let audio = [Float](repeating: 1, count: 24_000) + [Float](repeating: 2, count: 24_000)
+        let words = [
+            TimedWord(text: "Standby", start: 10.0, end: 10.5),
+            TimedWord(text: "LX", start: 10.5, end: 10.8),
+            TimedWord(text: "42", start: 10.8, end: 11.2),
+            TimedWord(text: "Standing", start: 11.6, end: 12.0),
+            TimedWord(text: "by", start: 12.0, end: 12.3),
+        ]
+        let events = await annotator.annotate(recognised, audio: audio, lineStart: 10, lineEnd: 13, words: words)
+
+        #expect(events.map(\.text) == ["Standby LX 42", "Standing by"])
+        #expect(events.map(\.stage) == [.annotated(voice: "A", exchange: 1), .annotated(voice: "B", exchange: 1)])
+        #expect(events.allSatisfy { $0.lineID == recognised.lineID && $0.isFinal })
+        #expect(events.map(\.sessionOffset) == [10, 11.6])
+    }
+
+    @Test func lineWithTwoVoicesButNoWordsStaysWhole() async {
+        let annotator = VoiceAnnotator(settings: .standard, extractor: WindowedVoiceprints())
+        let recognised = line("Standby LX 42 Standing by", at: 10)
+        let audio = [Float](repeating: 1, count: 16_000) + [Float](repeating: 2, count: 32_000)
+        let events = await annotator.annotate(recognised, audio: audio, lineStart: 10, lineEnd: 13)
+        #expect(events.map(\.text) == ["Standby LX 42 Standing by"])
+        #expect(events.map(\.stage) == [.annotated(voice: "B", exchange: 1)])
     }
 
     @Test func failingExtractorStillDeliversTheLine() async {
@@ -274,5 +318,114 @@ struct VoiceAnnotatorTests {
             return voice
         }
         #expect(annotated == ["A", "B", "A"])
+    }
+
+    // MARK: - Splitting with real engines
+
+    /// A call and its answer with no pause between them, in two voices,
+    /// through `engine` with voice changes on. Returns the annotated pieces.
+    private func twoVoicesWithoutAPause(_ engine: SpeechEngine) async throws -> [TranscriptionEvent] {
+        var parakeet = ParakeetModelStore()
+        if engine == .parakeet, !parakeet.isInstalled() {
+            parakeet = ParakeetModelStore(directory: AsrModels.defaultCacheDirectory(for: .v3).deletingLastPathComponent())
+            if !parakeet.isInstalled() { try await parakeet.install { _ in } }
+        }
+        let voices = WeSpeakerVoiceprints()
+        if !voices.isInstalled() { try await voices.install { _ in } }
+
+        var show = ShowDocument()
+        var channel = show.addChannel(engine: engine)
+        channel.detectsVoiceChanges = true
+        channel.localeIdentifier = "en_US"
+        let log = Log()
+        let ring = AudioRingBuffer(capacity: 16_000 * 60)
+        let transcriber = ChannelTranscribers.make(
+            configuration: TranscriberConfiguration(channel: channel, show: show),
+            source: AudioSource(ring: ring, sampleRate: { 16_000 }), sessionOffset: 0,
+            whisperModels: WhisperModelStore(), parakeetModels: parakeet, voiceprints: voices,
+            onEvent: { event in log.events.withLock { $0.append(event) } }, onStatus: { _ in }
+        )
+        await transcriber.start()
+        let audio = try sayClip("Standby lighting cue forty two and sound cue seventeen", voice: sayVoice("Samantha"))
+            + sayClip("Lighting is standing by for cue forty two", voice: sayVoice("Daniel"))
+            + [Float](repeating: 0, count: 16_000 * 2)
+        for chunk in stride(from: 0, to: audio.count, by: 1_600) {
+            ring.write(Array(audio[chunk..<min(chunk + 1_600, audio.count)]))
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        try await Task.sleep(for: .seconds(2))
+        await transcriber.stop()
+
+        let events = log.events.withLock { $0 }
+        for event in events where event.isFinal {
+            print("\(engine) \(event.stage) @\(String(format: "%.2f", event.sessionOffset)) line \(event.lineID.uuidString.prefix(4)): \(event.text)")
+        }
+        return events.filter { if case .annotated = $0.stage { true } else { false } }
+    }
+
+    private func letters(_ pieces: [TranscriptionEvent]) -> [String?] {
+        pieces.map { if case .annotated(let voice, _) = $0.stage { voice } else { nil } }
+    }
+
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["WILCO_ASR_TESTS"] != nil), .timeLimit(.minutes(5)))
+    func parakeetSplitsAnAnswerWithNoPause() async throws {
+        let pieces = try await twoVoicesWithoutAPause(.parakeet)
+        #expect(letters(pieces) == ["A", "B"])
+        // One utterance, cut in two by voice.
+        #expect(Set(pieces.map(\.lineID)).count == 1)
+        #expect(pieces.last?.text.trimmingCharacters(in: .whitespaces).lowercased().hasPrefix("lighting") == true)
+    }
+
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["WILCO_ASR_TESTS"] != nil), .timeLimit(.minutes(5)))
+    func whisperSplitsAnAnswerWithNoPause() async throws {
+        try #require(WhisperModelStore().isDownloaded(.base), "Whisper base model is not downloaded")
+        let pieces = try await twoVoicesWithoutAPause(.whisper)
+        #expect(letters(pieces) == ["A", "B"])
+        #expect(Set(pieces.map(\.lineID)).count == 1)
+        #expect(pieces.last?.text.trimmingCharacters(in: .whitespaces).lowercased().hasPrefix("lighting") == true)
+    }
+
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["WILCO_ASR_TESTS"] != nil), .timeLimit(.minutes(5)))
+    func appleLongFormGivesAnAnswerWithNoPauseItsOwnLetter() async throws {
+        guard #available(macOS 26, *) else { return }
+        // Apple may finalise the answer as a line of its own or as part of
+        // the call's line; either way it must get its own letter.
+        let pieces = try await twoVoicesWithoutAPause(.longForm)
+        #expect(letters(pieces) == ["A", "B"])
+        #expect(pieces.last?.text.trimmingCharacters(in: .whitespaces).lowercased().hasPrefix("lighting") == true)
+    }
+}
+
+@Suite("Apple word times")
+struct AppleWordTimesTests {
+    @available(macOS 26, *)
+    private func run(_ text: String, _ start: Double, _ duration: Double) -> AttributedString {
+        var run = AttributedString(text)
+        run[AttributeScopes.SpeechAttributes.TimeRangeAttribute.self] = CMTimeRange(
+            start: CMTime(seconds: start, preferredTimescale: 1_000),
+            duration: CMTime(seconds: duration, preferredTimescale: 1_000)
+        )
+        return run
+    }
+
+    @available(macOS 26, *)
+    @Test func runsWithTimeRangesBecomeWordsInSessionTime() {
+        var text = run("Standby", 1.0, 0.5)
+        text += AttributedString(" ")
+        text += run("LX", 1.5, 0.25)
+        // A word split over two runs (different confidences) keeps one range.
+        var by = run("4", 1.75, 0.5)
+        by[AttributeScopes.SpeechAttributes.ConfidenceAttribute.self] = 0.9
+        text += by
+        text += run("2", 1.75, 0.5)
+        let words = AppleChannelTranscriber.words(in: text, sessionOffset: 100)
+        #expect(words.map(\.text) == ["Standby", "LX", "42"])
+        #expect(words.map(\.start) == [101.0, 101.5, 101.75])
+        #expect(words.map(\.end) == [101.5, 101.75, 102.25])
+    }
+
+    @available(macOS 26, *)
+    @Test func textWithoutTimesGivesNoWords() {
+        #expect(AppleChannelTranscriber.words(in: AttributedString("Standby LX 42"), sessionOffset: 0).isEmpty)
     }
 }

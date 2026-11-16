@@ -1,5 +1,6 @@
 import FluidAudio
 import Foundation
+import WilcoCore
 
 public enum ParakeetLanguages {
     /// The Parakeet language for a channel's locale identifier. Empty means
@@ -41,6 +42,7 @@ public struct ParakeetRecognizer: UtteranceRecognizer {
         var state = TdtDecoderState.make(decoderLayers: await manager.decoderLayerCount)
         let result = try await manager.transcribe(audio, decoderState: &state, language: language)
         var text = result.text
+        var words = Self.words(from: result.tokenTimings ?? [])
         if let session = await booster?.current(),
            let timings = result.tokenTimings, !timings.isEmpty,
            // With 10 terms or fewer this is always true; larger
@@ -51,7 +53,16 @@ public struct ParakeetRecognizer: UtteranceRecognizer {
            let rescored = await session.rescore(text: text, tokenTimings: timings, audioSamples: audio),
            ParakeetVocabulary.accepts(original: text, rescored: rescored.text) {
             text = rescored.text
+            // The timings were for the text before the rescore.
+            words = ParakeetVocabulary.retimed(words, to: text)
         }
-        return Recognition(text: text, confidence: Double(result.confidence))
+        return Recognition(text: text, confidence: Double(result.confidence), words: words)
+    }
+
+    /// Words from Parakeet's sub-word tokens: a token starting with "▁" (or a
+    /// space) starts a word, the rest continue it. Times are seconds from the
+    /// start of the audio given to the model.
+    static func words(from tokens: [TokenTiming]) -> [TimedWord] {
+        buildWordTimings(from: tokens).map { TimedWord(text: $0.word, start: $0.startTime, end: $0.endTime) }
     }
 }

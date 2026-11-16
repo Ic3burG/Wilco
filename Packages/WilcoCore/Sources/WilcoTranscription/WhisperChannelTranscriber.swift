@@ -61,7 +61,8 @@ public actor WhisperModelStore {
     }
 
     func transcribe(
-        _ samples: [Float], model: WhisperModel, language: String?, vocabulary: [String], translate: Bool
+        _ samples: [Float], model: WhisperModel, language: String?, vocabulary: [String], translate: Bool,
+        wordTimestamps: Bool = false
     ) async throws -> [TranscriptionResult] {
         let kit = try await kit(for: model)
         var options = DecodingOptions(
@@ -70,7 +71,10 @@ public actor WhisperModelStore {
             language: language,
             detectLanguage: language == nil,
             skipSpecialTokens: true,
-            withoutTimestamps: true
+            // Word times (for splitting lines where the voice changes) need
+            // the timestamp tokens too.
+            withoutTimestamps: !wordTimestamps,
+            wordTimestamps: wordTimestamps
         )
         if let tokenizer = kit.tokenizer, !vocabulary.isEmpty {
             // A prompt of the expected terms nudges spelling of names and jargon.
@@ -198,7 +202,8 @@ actor WhisperChannelTranscriber: ChannelTranscriber {
         guard let results = try? await models.transcribe(
             utterance.samples, model: configuration.whisperModel,
             language: language, vocabulary: configuration.vocabulary,
-            translate: configuration.translateToEnglish
+            translate: configuration.translateToEnglish,
+            wordTimestamps: annotator != nil
         ) else { return }
         let segments = results.flatMap(\.segments)
         let text = segments.map(\.text).joined().trimmingCharacters(in: .whitespaces)
@@ -216,7 +221,16 @@ actor WhisperChannelTranscriber: ChannelTranscriber {
         deliverFinalLine(
             line, voices: voices, onEvent: onEvent,
             lineStart: start, lineEnd: start + Double(utterance.samples.count) / 16_000,
+            words: Self.words(in: segments, from: start),
             audio: { utterance.samples }
         )
+    }
+
+    /// The segments' words, moved from seconds into the utterance to session
+    /// offsets. Empty when Whisper gave no word times.
+    static func words(in segments: [TranscriptionSegment], from start: Double) -> [TimedWord] {
+        segments.flatMap { $0.words ?? [] }.map {
+            TimedWord(text: $0.word, start: start + Double($0.start), end: start + Double($0.end))
+        }
     }
 }

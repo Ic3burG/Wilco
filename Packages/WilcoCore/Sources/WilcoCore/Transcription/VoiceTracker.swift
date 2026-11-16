@@ -80,12 +80,14 @@ public struct VoiceTracker: Sendable {
         // Change points: neighbouring prints further apart than the threshold,
         // unless the change would leave a piece that's too short.
         var groups: [[Voiceprint]] = [[usable[0]]]
+        var boundaries: [Double] = []
         var pieceStart = lineStart
         for i in 1..<usable.count {
-            let boundary = usable[i].start
+            let boundary = Self.changeTime(from: usable[i - 1], to: usable[i])
             let changed = Self.distance(usable[i - 1].vector, usable[i].vector) > settings.threshold
             if changed, boundary - pieceStart >= Self.minimumPiece, lineEnd - boundary >= Self.minimumPiece {
                 groups.append([usable[i]])
+                boundaries.append(boundary)
                 pieceStart = boundary
             } else {
                 groups[groups.count - 1].append(usable[i])
@@ -94,8 +96,8 @@ public struct VoiceTracker: Sendable {
 
         var pieces: [VoicePiece] = []
         for (i, group) in groups.enumerated() {
-            let start = i == 0 ? lineStart : group[0].start
-            let end = i == groups.count - 1 ? lineEnd : groups[i + 1][0].start
+            let start = i == 0 ? lineStart : boundaries[i - 1]
+            let end = i == groups.count - 1 ? lineEnd : boundaries[i]
             let voice = resolve(group, duration: end - start)
             pieces.append(VoicePiece(start: start, end: end, voice: voice, exchange: exchange))
         }
@@ -133,6 +135,17 @@ public struct VoiceTracker: Sendable {
     }
 
     // MARK: - Maths
+
+    /// When the voice changed, given the last print of the old voice and the
+    /// first of the new: halfway between their middles, which is what each
+    /// print describes best. For prints that don't overlap that's where the
+    /// new one starts. For the voice model's overlapping 1.5 s windows the
+    /// new print's start is most of a word too early. Erring a little early
+    /// is safer than late: the pause before a new speaker lies just before
+    /// the change, and the splitter snaps to it.
+    static func changeTime(from old: Voiceprint, to new: Voiceprint) -> Double {
+        ((old.start + old.end) / 2 + (new.start + new.end) / 2) / 2
+    }
 
     /// Prints with finite, non-zero vectors of one consistent size (that of the
     /// known voices, or of the first usable print), each re-normalised.

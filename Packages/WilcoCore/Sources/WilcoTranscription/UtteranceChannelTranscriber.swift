@@ -6,10 +6,15 @@ public struct Recognition: Sendable, Equatable {
     public var text: String
     /// 0 to 1, when the model gives one.
     public var confidence: Double?
+    /// The words of `text` with their times, in seconds from the start of the
+    /// utterance's audio. Empty when the model doesn't give them; the line
+    /// then can't be split where the voice changes.
+    public var words: [TimedWord]
 
-    public init(text: String, confidence: Double?) {
+    public init(text: String, confidence: Double?, words: [TimedWord] = []) {
         self.text = text
         self.confidence = confidence
+        self.words = words
     }
 }
 
@@ -116,6 +121,7 @@ public actor UtteranceChannelTranscriber: ChannelTranscriber {
         deliverFinalLine(
             line, voices: voices, onEvent: onEvent,
             lineStart: start, lineEnd: start + Double(utterance.samples.count) / 16_000,
+            words: recognition.words.map { TimedWord(text: $0.text, start: start + $0.start, end: start + $0.end) },
             audio: { utterance.samples }
         )
     }

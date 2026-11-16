@@ -40,6 +40,19 @@ public struct AudioHistory: Sendable {
         count = min(count + kept.count, capacity)
     }
 
+    /// Adds the next `seconds` of audio, moving the timeline on by exactly
+    /// that much. Nil `samples` (audio that couldn't be converted) adds
+    /// silence of that length, so later audio is still found where it was
+    /// heard.
+    public mutating func append(_ samples: [Float]?, lasting seconds: Double) {
+        let end = endOffset + seconds
+        if let samples {
+            append(samples, endingAt: end)
+        } else {
+            append([Float](repeating: 0, count: Int((seconds * sampleRate).rounded())), endingAt: end)
+        }
+    }
+
     /// The audio between two session offsets. Any part older than the history,
     /// or newer than its last sample, is left out.
     public func samples(from start: Double, to end: Double) -> [Float] {

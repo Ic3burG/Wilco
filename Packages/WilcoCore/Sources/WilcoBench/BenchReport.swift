@@ -188,8 +188,8 @@ public struct BenchReport: Codable, Equatable, Sendable {
                 "",
                 "Changes missed: turn boundaries where the voice changes (within an exchange) with no change of letter "
                     + "within ±0.5 s. False: changes of letter with no change of voice within ±0.5 s. Two turns the "
-                    + "segmenter merged into one line count as a missed change, since a line keeps one letter for "
-                    + "now. Letters right: turns by a voice already heard in the exchange shown with its earlier "
+                    + "segmenter merged into one line count as a missed change unless the line was split there. "
+                    + "Letters right: turns by a voice already heard in the exchange shown with its earlier "
                     + "letter. No letter: annotated lines without a letter (short or quiet lines, no voice model, or "
                     + "the channel's voice queue was full; these can't be told apart from outside). Not annotated: "
                     + "recognised lines whose annotation never arrived; each counts in the display delay at the "

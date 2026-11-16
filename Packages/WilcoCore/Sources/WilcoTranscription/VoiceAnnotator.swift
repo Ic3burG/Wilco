@@ -33,26 +33,30 @@ public actor VoiceAnnotator {
     /// The `.annotated` form of a recognised line. `audio` is the line's 16 kHz
     /// mono audio, which runs from `lineStart` to `lineEnd` (session offsets).
     ///
-    /// For now a line stays whole and takes the letter of its longest piece.
-    /// When voice analysis fails, or there is no audio, the line still comes
-    /// back, with no letter; it counts towards the exchange like any line.
+    /// With `words` (the line's words, in session offsets), a line whose voice
+    /// changes partway comes back as several pieces, cut between words, each
+    /// with its own letter and offset, all sharing the line's `lineID`, in
+    /// order. Without them the line stays whole and takes the letter of its
+    /// longest piece. When voice analysis fails, or there is no audio, the
+    /// line still comes back, with no letter; it counts towards the exchange
+    /// like any line.
     public func annotate(
-        _ line: TranscriptionEvent, audio: [Float], lineStart: Double, lineEnd: Double
+        _ line: TranscriptionEvent, audio: [Float], lineStart: Double, lineEnd: Double, words: [TimedWord] = []
     ) async -> [TranscriptionEvent] {
         var prints: [Voiceprint] = []
         if available, !audio.isEmpty {
             prints = (try? await extractor.voiceprints(of: audio, startingAt: lineStart)) ?? []
         }
         let pieces = tracker.assign(prints, lineStart: lineStart, lineEnd: max(lineEnd, lineStart))
-        let longest = pieces.enumerated().max { a, b in
-            // Ties go to the earlier piece.
-            let (da, db) = (a.element.end - a.element.start, b.element.end - b.element.start)
-            return da != db ? da < db : a.offset > b.offset
-        }?.element
-        var annotated = line
-        annotated.isFinal = true
-        annotated.stage = .annotated(voice: longest?.voice, exchange: longest?.exchange)
-        return [annotated]
+        return LineSplitter.split(words: words, text: line.text, pieces: pieces).enumerated().map { i, part in
+            var annotated = line
+            annotated.isFinal = true
+            annotated.text = part.text
+            // The first piece keeps the line's own offset.
+            if i > 0 { annotated.sessionOffset = part.start }
+            annotated.stage = .annotated(voice: part.voice, exchange: part.exchange)
+            return annotated
+        }
     }
 }
 
@@ -76,6 +80,7 @@ final class VoiceAnnotationQueue: Sendable {
         var audio: [Float]
         var lineStart: Double
         var lineEnd: Double
+        var words: [TimedWord]
     }
 
     private let jobs: AsyncStream<Job>.Continuation
@@ -94,7 +99,7 @@ final class VoiceAnnotationQueue: Sendable {
             await annotator.prepare()
             for await job in stream {
                 let events = await annotator.annotate(
-                    job.line, audio: job.audio, lineStart: job.lineStart, lineEnd: job.lineEnd
+                    job.line, audio: job.audio, lineStart: job.lineStart, lineEnd: job.lineEnd, words: job.words
                 )
                 if !job.audio.isEmpty { pending.count.withLock { $0.now -= 1 } }
                 for event in events { onEvent(event) }
@@ -104,7 +109,9 @@ final class VoiceAnnotationQueue: Sendable {
 
     /// Queues a recognised line for annotation. `audio` is only fetched when
     /// there is room for it.
-    func submit(_ line: TranscriptionEvent, audio: () -> [Float], lineStart: Double, lineEnd: Double) {
+    func submit(
+        _ line: TranscriptionEvent, audio: () -> [Float], lineStart: Double, lineEnd: Double, words: [TimedWord] = []
+    ) {
         let admitted = pending.count.withLock { p in
             guard p.now < Self.maximumPending else { return false }
             p.now += 1
@@ -116,7 +123,7 @@ final class VoiceAnnotationQueue: Sendable {
             // Nothing to hold, so it doesn't take a place.
             pending.count.withLock { $0.now -= 1 }
         }
-        jobs.yield(Job(line: line, audio: samples, lineStart: lineStart, lineEnd: lineEnd))
+        jobs.yield(Job(line: line, audio: samples, lineStart: lineStart, lineEnd: lineEnd, words: words))
     }
 
     /// The most lines that have waited with their audio at once.
@@ -133,10 +140,11 @@ final class VoiceAnnotationQueue: Sendable {
 /// Sends a final line. With voice changes off it goes out whole, exactly as
 /// before. With them on, it goes to rules at once as `.recognized`, and its
 /// annotated form follows from the channel's voice queue; `audio` is only
-/// fetched in that case.
+/// fetched in that case. `words` (session offsets) let the annotation split
+/// the line where the voice changes.
 func deliverFinalLine(
     _ line: TranscriptionEvent, voices: VoiceAnnotationQueue?, onEvent: TranscriptionHandler,
-    lineStart: Double, lineEnd: Double, audio: () -> [Float]
+    lineStart: Double, lineEnd: Double, words: [TimedWord] = [], audio: () -> [Float]
 ) {
     guard let voices, !line.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
         onEvent(line)
@@ -145,7 +153,7 @@ func deliverFinalLine(
     var recognised = line
     recognised.stage = .recognized
     onEvent(recognised)
-    voices.submit(recognised, audio: audio, lineStart: lineStart, lineEnd: lineEnd)
+    voices.submit(recognised, audio: audio, lineStart: lineStart, lineEnd: lineEnd, words: words)
 }
 
 /// Stands in when voice changes are on but no voice model was given: every

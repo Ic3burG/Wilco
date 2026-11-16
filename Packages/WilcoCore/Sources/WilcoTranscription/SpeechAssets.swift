@@ -71,8 +71,12 @@ public enum SpeechAssets {
         try await request.downloadAndInstall()
     }
 
+    /// `wordTimings` asks for each word's audio time range, which lines need
+    /// to be split where the voice changes.
     @available(macOS 26, *)
-    static func module(engine: SpeechEngine, localeIdentifier: String, streaming: Bool) async throws -> any SpeechModule {
+    static func module(
+        engine: SpeechEngine, localeIdentifier: String, streaming: Bool, wordTimings: Bool = false
+    ) async throws -> any SpeechModule {
         let locale = locale(for: localeIdentifier)
         switch engine {
         case .dictation:
@@ -84,7 +88,7 @@ public enum SpeechAssets {
                 contentHints: [.shortForm],
                 transcriptionOptions: [.punctuation],
                 reportingOptions: streaming ? [.volatileResults, .frequentFinalization] : [.frequentFinalization],
-                attributeOptions: [.transcriptionConfidence]
+                attributeOptions: wordTimings ? [.transcriptionConfidence, .audioTimeRange] : [.transcriptionConfidence]
             )
         case .longForm, .whisper, .parakeet:
             guard let supported = await SpeechTranscriber.supportedLocale(equivalentTo: locale) else {
@@ -94,7 +98,7 @@ public enum SpeechAssets {
                 locale: supported,
                 transcriptionOptions: [],
                 reportingOptions: streaming ? [.volatileResults, .fastResults] : [],
-                attributeOptions: [.transcriptionConfidence]
+                attributeOptions: wordTimings ? [.transcriptionConfidence, .audioTimeRange] : [.transcriptionConfidence]
             )
         }
     }
