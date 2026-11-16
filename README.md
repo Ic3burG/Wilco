@@ -17,12 +17,13 @@ The core app works and is in testing; it is not yet released. See
 |---|---|
 | Show editor; import and export of `.wilco` shows | Peer sharing between Macs (`_wilco._tcp`) |
 | Multichannel, multi-device capture with meters and auto-recovery | MCP server |
-| On-device transcription (Apple speech on macOS 26+, Whisper) | MOS |
+| On-device transcription (Apple speech on macOS 26+, Whisper, Parakeet with vocabulary) | MOS |
 | Automation: OSC, MIDI, webhooks, notifications, cue markers | Automatic updates (Sparkle) |
 | Post-show report with HTML, SRT and VTT export | Vor preset |
 | Look & Feel, including Light / Dark / Match System | |
 | Configurations: saved show setups, load in one click, import/export (new) | |
-| Multichannel transcription benchmark, `wilco-bench` (new; see `docs/BENCHMARK.md`) | |
+| Multichannel transcription benchmark, `wilco-bench` (see `docs/BENCHMARK.md`) | |
+| Voice letters: who's speaking within an exchange, in the transcript and reports (new) | |
 
 ## Files
 

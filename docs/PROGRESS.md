@@ -544,3 +544,74 @@ channels (re-run after the scoring was tightened):
   with 2, 0 and 3 false changes. All three keep up. Whisper's final p95 rose
   to about 2.4 s with word timestamps on, still under 3 s. Tested, not
   verified.
+
+## 2026-11-16 — Parakeet in the app, vocabulary and voice letters
+
+Built on branch `feature/parakeet-voices` from the design in
+`docs/superpowers/specs/2026-11-13-parakeet-vocabulary-voice-changes-design.md`
+and the plan beside it. Every task was reviewed, then the whole branch.
+All of it is tested, none of it verified in a real show yet.
+
+### Features
+
+- **Parakeet TDT v3** is a fourth engine in the Inspector. One model on the
+  Neural Engine serves every Parakeet channel. It detects 25 European
+  languages, or takes the channel's language as a hint. New Parakeet
+  channels start in English. Its model (and the vocabulary model) install
+  and remove from Settings → Languages; a channel that failed because the
+  model was missing restarts by itself once it's installed.
+- **Vocabulary on Parakeet** (English channels only): the show's terms and
+  rule phrases are boosted with FluidAudio's separate vocabulary model. A
+  boosted line is thrown away if it would change, add or drop a number, so
+  vocabulary can never invent a cue number. Terms under 3 characters are
+  ignored. The Inspector says when vocabulary doesn't apply.
+- **Voice letters** on every engine: each line is marked A, B, C… for its
+  voice within the current exchange; letters start again after 20 s of
+  silence. A line whose voice changes partway is split between words.
+  Letters show in the transcript (a new voice starts a visible new turn),
+  the HTML report and SRT/VTT exports ("B: Standing by"). Lines from
+  sessions or channels without letters look as before.
+  - New channels have voice changes on; channels in existing shows open
+    with them off. Settings → Languages has the voice model, "Telling
+    voices apart" (Stricter ←→ Looser) and "New exchange after". Changing
+    them mid-show takes effect from the next line without restarting
+    anything.
+  - Rules still fire on the recognised line straight away; the letter
+    follows for the transcript, the session file and reports. `{voice}` is
+    empty at rule time.
+  - Voiceprints stay in memory only. Session files store just the letter
+    and an exchange number (optional fields; older files are unchanged).
+- Credits (About panel) for FluidAudio, WhisperKit and the NVIDIA and
+  pyannote models.
+
+### Fixes from review
+
+- Unknown engine names in a show (from a newer build) fall back to the
+  default engine instead of failing the whole show.
+- Moving the voice settings slider no longer restarts every channel.
+- Without the voice model, Whisper and Apple skip the extra work (word
+  timestamps, a second resampler) instead of paying for letters they can't
+  give.
+- Each channel's voice queue holds at most 8 lines; extras go out without a
+  letter rather than piling up audio.
+
+### Numbers (32 channels, `say` speech)
+
+- Parakeet with vocabulary: 2.6% WER, nothing missed, p95 0.76 s.
+- Voice letters: 80–87% of returning voices get their old letter; line
+  splitting cut missed voice changes from 81 to 53 (Parakeet) and 51
+  (Whisper). All three engines keep up. Whisper's cue p95 rises from about
+  1.0 s to 2.4 s with voice changes on (still under 3 s).
+- Apple long-form at 32 channels varies from run to run in busy
+  back-and-forth, with or without voice changes.
+
+### Next steps / where we left off
+
+- **Try it in a real show:** Parakeet channels, the Install buttons, voice
+  letters on a busy party line, the settings, and a report.
+- **Benchmark real comms** with `--corpus`, marking speakers with `A: `,
+  to tune the voice threshold and check vocabulary on rarer show words.
+- Decide whether new Whisper channels should start with voice changes off
+  (cue delay trade-off above).
+- Push the branch so CI builds it with Xcode 26.6 before merging.
+- Deferred minors are listed in the final review; none block use.
