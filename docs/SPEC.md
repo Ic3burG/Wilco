@@ -88,7 +88,7 @@ struct ShowDocument {            // formatVersion == 1
   var networkEnabled: Bool; var peerName: String
   var mosEnabled: Bool;  var mosHost: String; var mosPort: UInt16 // default 10540
   var mosID: String /* default "wilco" */;  var mosNCSID: String /* default "NCS" */
-  var voiceChanges: VoiceChangeSettings  // default .standard; tuning shared by channels with detectsVoiceChanges
+  var voiceChanges: VoiceChangeSettings  // default .standard; tuning shared by channels with detectsVoiceChanges; changes reach running channels from their next line, without a restart
 }
 struct VoiceChangeSettings {     // new in the rebuild
   var threshold: Double          // default 0.5; cosine distance above which two voices differ (placeholder until tuned)
@@ -107,7 +107,7 @@ struct ChannelConfig {
   var latencyProfile: SpeechLatencyProfile
   var isMuted: Bool              // still captured + metered, not transcribed
   var vocabulary: [String]       // per-channel custom terms
-  var detectsVoiceChanges: Bool  // default false; new in the rebuild: mark lines with a voice letter
+  var detectsVoiceChanges: Bool  // new in the rebuild: mark lines with a voice letter; decodes false for existing shows, new channels default true
 }
 struct ChannelGroup { var id: UUID; var name: String; var symbol: String }
 
@@ -233,7 +233,7 @@ highlight phrase (*"Rule phrases are biased in automatically"*).
 Highlights (`highlights(in:channelID:)`) only tint matching text.
 
 **Templates** — `TemplateContext.expand` replaces `{text}`, `{channel}`,
-`{keyword}`, `{time}`, `{offset}` [str/small-strings], and `{voice}` (new in the rebuild: the speaker letter, empty when unknown; expanded and escaped like the others). Defaults: webhook body
+`{keyword}`, `{time}`, `{offset}` [str/small-strings], and `{voice}` (new in the rebuild; reserved and always empty for now: rules fire on the recognised line before voice analysis, so no letter is known yet. Expanded and escaped like the others). Defaults: webhook body
 `{"channel":"{channel}","text":"{text}"}`, notification body `Heard on {channel}`.
 
 **Built-in integration: Vor** (`IntegrationDescriptor`, getvor.app). Adds an
