@@ -61,7 +61,8 @@ public actor WhisperModelStore {
     }
 
     func transcribe(
-        _ samples: [Float], model: WhisperModel, language: String?, vocabulary: [String], translate: Bool
+        _ samples: [Float], model: WhisperModel, language: String?, vocabulary: [String], translate: Bool,
+        wordTimestamps: Bool = false
     ) async throws -> [TranscriptionResult] {
         let kit = try await kit(for: model)
         var options = DecodingOptions(
@@ -70,7 +71,10 @@ public actor WhisperModelStore {
             language: language,
             detectLanguage: language == nil,
             skipSpecialTokens: true,
-            withoutTimestamps: true
+            // Word times (for splitting lines where the voice changes) need
+            // the timestamp tokens too.
+            withoutTimestamps: !wordTimestamps,
+            wordTimestamps: wordTimestamps
         )
         if let tokenizer = kit.tokenizer, !vocabulary.isEmpty {
             // A prompt of the expected terms nudges spelling of names and jargon.
@@ -127,11 +131,15 @@ actor WhisperChannelTranscriber: ChannelTranscriber {
     private let models: WhisperModelStore
     private let onEvent: TranscriptionHandler
     private let onStatus: StatusHandler
+    /// Nil when the channel doesn't detect voice changes.
+    private let annotator: VoiceAnnotator?
+    private var voices: VoiceAnnotationQueue?
     private var pump: Task<Void, Never>?
 
     init(
         configuration: TranscriberConfiguration, source: AudioSource, sessionOffset: Double,
-        models: WhisperModelStore, onEvent: @escaping TranscriptionHandler, onStatus: @escaping StatusHandler
+        models: WhisperModelStore, voiceprints: (any VoiceprintExtractor)?,
+        onEvent: @escaping TranscriptionHandler, onStatus: @escaping StatusHandler
     ) {
         self.configuration = configuration
         self.source = source
@@ -139,6 +147,9 @@ actor WhisperChannelTranscriber: ChannelTranscriber {
         self.models = models
         self.onEvent = onEvent
         self.onStatus = onStatus
+        annotator = configuration.voiceChanges.map {
+            VoiceAnnotator(settings: $0, extractor: voiceprints ?? UnavailableVoiceprints())
+        }
     }
 
     func start() async {
@@ -152,6 +163,7 @@ actor WhisperChannelTranscriber: ChannelTranscriber {
         // Discard audio that queued while the model loaded.
         _ = source.ring.read(maxCount: source.ring.availableToRead)
         onStatus(.listening)
+        voices = annotator.map { VoiceAnnotationQueue(annotator: $0, onEvent: onEvent) }
         pump = Task { await self.run() }
     }
 
@@ -159,6 +171,13 @@ actor WhisperChannelTranscriber: ChannelTranscriber {
         pump?.cancel()
         await pump?.value
         pump = nil
+        // Lines already sent to rules still get their voice.
+        await voices?.finish()
+        voices = nil
+    }
+
+    func updateVoiceSettings(_ settings: VoiceChangeSettings) async {
+        await annotator?.update(settings: settings)
     }
 
     private func run() async {
@@ -187,19 +206,36 @@ actor WhisperChannelTranscriber: ChannelTranscriber {
         guard let results = try? await models.transcribe(
             utterance.samples, model: configuration.whisperModel,
             language: language, vocabulary: configuration.vocabulary,
-            translate: configuration.translateToEnglish
+            translate: configuration.translateToEnglish,
+            // Word times cost Whisper time; only ask when voice analysis can use them.
+            wordTimestamps: annotator?.isUsable == true
         ) else { return }
         let segments = results.flatMap(\.segments)
         let text = segments.map(\.text).joined().trimmingCharacters(in: .whitespaces)
         guard !text.isEmpty else { return }
         let confidence = segments.isEmpty ? nil
             : Double(segments.map { exp($0.avgLogprob) }.reduce(0, +)) / Double(segments.count)
-        onEvent(TranscriptionEvent(
+        let start = sessionOffset + utterance.startOffset
+        let line = TranscriptionEvent(
             channelID: configuration.channelID,
             text: text,
             isFinal: true,
-            sessionOffset: sessionOffset + utterance.startOffset,
+            sessionOffset: start,
             confidence: confidence
-        ))
+        )
+        deliverFinalLine(
+            line, voices: voices, onEvent: onEvent,
+            lineStart: start, lineEnd: start + Double(utterance.samples.count) / 16_000,
+            words: Self.words(in: segments, from: start),
+            audio: { utterance.samples }
+        )
+    }
+
+    /// The segments' words, moved from seconds into the utterance to session
+    /// offsets. Empty when Whisper gave no word times.
+    static func words(in segments: [TranscriptionSegment], from start: Double) -> [TimedWord] {
+        segments.flatMap { $0.words ?? [] }.map {
+            TimedWord(text: $0.word, start: start + Double($0.start), end: start + Double($0.end))
+        }
     }
 }

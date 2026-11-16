@@ -13,6 +13,13 @@ public struct TranscriptSegment: Codable, Equatable, Identifiable, Sendable {
     public var confidence: Double?
     public var matchedKeywords: [String]
     public var highlights: [SegmentHighlight]
+    /// The speaker's letter within this channel ("A", "B", ...). `nil` when
+    /// voice changes are off or the voice is unknown. Optionals are encoded
+    /// only when present, so lines without a voice are written as before.
+    public var voice: String?
+    /// Per-channel exchange counter, so "A in exchange 3" differs from "A in
+    /// exchange 4".
+    public var exchange: Int?
 
     public init(
         id: UUID = UUID(),
@@ -23,7 +30,9 @@ public struct TranscriptSegment: Codable, Equatable, Identifiable, Sendable {
         isFinal: Bool,
         confidence: Double? = nil,
         matchedKeywords: [String] = [],
-        highlights: [SegmentHighlight] = []
+        highlights: [SegmentHighlight] = [],
+        voice: String? = nil,
+        exchange: Int? = nil
     ) {
         self.id = id
         self.channelID = channelID
@@ -34,6 +43,8 @@ public struct TranscriptSegment: Codable, Equatable, Identifiable, Sendable {
         self.confidence = confidence
         self.matchedKeywords = matchedKeywords
         self.highlights = highlights
+        self.voice = voice
+        self.exchange = exchange
     }
 }
 

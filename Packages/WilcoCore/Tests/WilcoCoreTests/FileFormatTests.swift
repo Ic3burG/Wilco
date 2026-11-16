@@ -12,6 +12,30 @@ struct FileFormatTests {
         return try Data(contentsOf: url)
     }
 
+    @Test func unknownEngineDecodesAsPlatformDefault() throws {
+        let json = #"{"id":"6F9619FF-8B86-D011-B42D-00CF4FC964FF","name":"SM","engine":"quantum"}"#
+        let channel = try JSONDecoder().decode(ChannelConfig.self, from: Data(json.utf8))
+        #expect(channel.engine == SpeechEngine.platformDefault)
+        #expect(channel.name == "SM")
+    }
+
+    @Test func missingEngineDecodesAsLongForm() throws {
+        let json = #"{"id":"6F9619FF-8B86-D011-B42D-00CF4FC964FF","name":"SM"}"#
+        let channel = try JSONDecoder().decode(ChannelConfig.self, from: Data(json.utf8))
+        #expect(channel.engine == .longForm)
+    }
+
+    @Test func parakeetEngineRoundTrips() throws {
+        let channel = ChannelConfig(name: "SM", engine: .parakeet)
+        let decoded = try JSONDecoder().decode(ChannelConfig.self, from: JSONEncoder().encode(channel))
+        #expect(decoded.engine == .parakeet)
+    }
+
+    @Test func parakeetIsSelectable() {
+        #expect(SpeechEngine.selectable.contains(.parakeet))
+        #expect(SpeechEngine.selectable.contains(.whisper))
+    }
+
     @Test func decodesShowFile() throws {
         let show = try WilcoJSON.decoder().decode(ShowDocument.self, from: fixture("show-v1.wilco"))
 
@@ -55,6 +79,44 @@ struct FileFormatTests {
         #expect(segments[0].text == "Standby lighting cue five.")
         #expect(segments[0].timestamp == Date(timeIntervalSince1970: 1_794_104_725))
         #expect(segments[1].confidence == 0.9087241379310345)
+    }
+
+    @Test func segmentWithoutVoiceEncodesExactlyAsBefore() throws {
+        let segment = TranscriptSegment(channelID: UUID(), text: "Go", timestamp: .now, sessionOffset: 1, isFinal: true)
+        let json = String(decoding: try WilcoJSON.encoder().encode(segment), as: UTF8.self)
+        #expect(!json.contains("voice") && !json.contains("exchange"))
+    }
+
+    @Test func segmentVoiceRoundTrips() throws {
+        let segment = TranscriptSegment(
+            channelID: UUID(), text: "Go", timestamp: Date(timeIntervalSince1970: 1_794_104_725),
+            sessionOffset: 1, isFinal: true, voice: "B", exchange: 3
+        )
+        let data = try WilcoJSON.encoder().encode(segment)
+        let decoded = try WilcoJSON.decoder().decode(TranscriptSegment.self, from: data)
+        #expect(decoded == segment)
+        #expect(String(decoding: data, as: UTF8.self).contains(#""voice":"B""#))
+    }
+
+    @Test func existingTranscriptFixturesStillDecode() throws {
+        let segments = TranscriptFile.segments(in: try fixture("session-v1.jsonl"))
+        #expect(!segments.isEmpty)
+        #expect(segments.allSatisfy { $0.voice == nil && $0.exchange == nil })
+    }
+
+    @Test func showWithoutVoiceSettingsDecodesDefaults() throws {
+        let show = try WilcoJSON.decoder().decode(ShowDocument.self, from: fixture("show-v1.wilco"))
+        #expect(show.voiceChanges == .standard)
+        #expect(!show.channels.isEmpty)
+        #expect(show.channels.allSatisfy { !$0.detectsVoiceChanges })
+    }
+
+    @Test func voiceSettingsRoundTrip() throws {
+        var show = ShowDocument(channels: [ChannelConfig(name: "SM")])
+        show.channels[0].detectsVoiceChanges = true
+        show.voiceChanges = VoiceChangeSettings(threshold: 0.4, exchangeGap: 30, shortLine: 2)
+        let decoded = try WilcoJSON.decoder().decode(ShowDocument.self, from: WilcoJSON.encoder().encode(show))
+        #expect(decoded == show)
     }
 
     @Test func transcriptLineIsSingleLineISO8601() throws {

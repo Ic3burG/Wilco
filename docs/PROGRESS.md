@@ -432,3 +432,186 @@ At 32 channels, 30% talk time:
 - Unchanged from earlier: Apple "one pass" profile naming, configurations
   checklist in the app, deferred minors, delete `old-history` when no
   longer needed.
+
+## 2026-11-13 (in progress) — Parakeet vocabulary benchmark
+
+Run on 2026-11-15, `say` speech, 60 s per run, on AC power with the Mac
+kept awake (`caffeinate`). Both engines build one recognizer per channel
+over one shared model store, as the app does. Full table in
+`docs/benchmarks/2026-11-13-m1-max-say-parakeet-vocab.md`.
+
+| Engine | 32 ch WER | Missed | p95 delay | CPU (us) | Keeps up |
+|---|---:|---:|---:|---:|:---:|
+| parakeet-v3 | 3.1% | 0/266 | 0.75 s | 40% | yes |
+| parakeet-v3-vocab | 2.6% | 0/266 | 0.76 s | 42% | yes |
+
+- **Decision: vocabulary boosting keeps up at 32 channels**, so the per-channel
+  "Use vocabulary" switch (Task 6) is skipped.
+- Boosting didn't make WER worse at any channel count: 38 word errors
+  against 46 at 32 channels, no deletions with or without it. Most of
+  what's left is numbers written as digits ("Q42" for "cue forty two").
+  The bench's terms are words Parakeet mostly hears right already, so this
+  says little about rarer show words.
+- Boosting adds about 0.3 s to start-up (loading the CTC model) and ~2% of
+  one core at 32 channels.
+
+### Found along the way
+
+- An earlier run (2026-11-13) looked broken: 50/60 calls missed at 8
+  channels with 1% CPU, millions of dropped frames at 32, a 31-minute
+  start for the vocabulary engine. Not a code defect. The power log shows
+  the Mac went into clamshell sleep on battery a minute after the run
+  started and stayed in sleep/dark-wake cycles for two hours. The CTC
+  model had finished downloading 17 minutes before the run. A repeat at 8
+  channels with the Mac awake was clean (0/29 missed for both engines).
+- Long benchmarks need the lid open or the Mac on power with
+  `caffeinate -dims`.
+
+## 2026-11-15 (in progress) — Voice change benchmark
+
+`wilco-bench --conversation` gives each channel exchanges between voices:
+2–5 turns among 2–4 `say` voices, 0.1–0.8 s between turns (the shorter gaps
+merge into one line), 25–40 s between exchanges. The `-voices` engines
+(`parakeet-v3-voices`, `apple-longform-voices`, `whisper-base-voices`) run
+with voice changes on and get a second table: missed and false voice
+changes, letters right for returning voices, lines without a letter,
+annotations that never came, merged calls, and display delay and backlog.
+`--voice-threshold` sets the threshold. Corpus transcripts can mark the
+speaker with `A: ` at the start of a line. Tested, not verified.
+
+Fixed in the bench: backlog and "keeps up" counted the voice annotations as
+final lines. Cue backlog now counts rule lines only, and `-voices` engines
+must also keep the display within 3 s (p95 and backlog). Annotations that
+never arrive are counted, and they count in the display delay at the time
+the run stopped. A conversation turn with no line of its own counts as
+"merged", not missed, when it's in the same exchange as the turn before
+and that turn's line was final only after it ended. The line's delay then
+runs from the end of the last turn in it. Lone calls are never merged.
+
+Full table: `docs/benchmarks/2026-11-15-m1-max-say-voices.md`. At 32
+channels (re-run after the scoring was tightened):
+
+| Engine | Changes missed | False | Letters right | Final p95 | Display p95 | Keeps up |
+|---|---:|---:|---:|---:|---:|:---:|
+| parakeet-v3-voices | 81/134 | 0 | 80% | 0.73 s | 0.89 s | yes |
+| apple-longform-voices | 30/134 | 3 | 87% | 1.92 s | 2.03 s | yes |
+| whisper-base-voices | 81/134 | 0 | 79% | 2.01 s | 2.27 s | yes |
+
+- **New channels detect voice changes by default.** Channels in existing
+  shows open with it off. Every `-voices` engine kept up at 32 channels in
+  the re-run. Tested, not verified.
+- **Apple long-form at 32 channels varies from run to run**, with voice
+  changes on or off. Over four 32-channel runs `apple-longform-voices`
+  kept up three times, and plain `apple-longform` once (final p95 1.7–9.7 s).
+  Voice changes don't make it worse; the engine is the limit there.
+- Voice changes cost 7–11% of one core at 32 channels, and the display
+  trails the final line by 0.1–0.3 s. With Whisper the final p95 rose from
+  about 1.0 s to 2.0 s, probably because the voice model and Whisper share
+  the GPU.
+- The app has no voice model install button yet. Without the model, lines
+  get no letter but carry on as normal.
+- Threshold stays 0.5. At 8 channels, 0.4 / 0.5 / 0.6 gave 48 / 53 / 56
+  missed changes of 85 and 77% / 94% / 97% letters right, with no false
+  changes at any of them.
+- Most missed changes are merged turns (63 of Parakeet's 81 at 32
+  channels), since a line keeps one letter for now. Splitting lines where
+  the voice changes is next, and this run is the baseline for it.
+- `say` voices are far more distinct than real people. The threshold needs
+  checking on real comms.
+
+## 2026-11-16 (in progress) — Splitting lines where the voice changes
+
+- A line whose voice changes partway (a call and a quick "standing by" with
+  no pause) now comes back as several lines, each with its own letter and
+  time. The cut goes in the gap between words nearest the change.
+  `LineSplitter` in WilcoCore does this from each engine's word timings:
+  Parakeet's token timings, Whisper's word timestamps (asked for only when
+  voice changes are on), and Apple's `audioTimeRange` per word. The text
+  sent to rules is unchanged. When a line has no timings, or they don't
+  match its text, it stays whole and takes its longest piece's letter.
+- Parakeet vocabulary fixes keep their word timings when the word count is
+  unchanged. When two words became one term, the line isn't split.
+- The tracker placed changes about 0.75 s early, at the start of the first
+  1.5 s voiceprint window that differed. It now puts them halfway between
+  the middles of the last old and first new windows.
+- Apple's 16 kHz voice history now advances by the audio it was fed even if
+  its resampler fails, so later lines still find their own audio.
+- Gated tests: a call and answer in two `say` voices with no pause come back
+  as A then B on Parakeet and Whisper (one line, split). Apple long-form
+  ends the line at the change by itself, so it gives A and B as two lines.
+- 32 channels (`docs/benchmarks/2026-11-16-m1-max-say-voices-split.md`):
+  missed changes 81 → 53 (Parakeet), 81 → 51 (Whisper), 30 → 30 (Apple),
+  with 2, 0 and 3 false changes. All three keep up. Whisper's final p95 rose
+  to about 2.4 s with word timestamps on, still under 3 s. Tested, not
+  verified.
+
+## 2026-11-16 — Parakeet in the app, vocabulary and voice letters
+
+Built on branch `feature/parakeet-voices` from the design in
+`docs/superpowers/specs/2026-11-13-parakeet-vocabulary-voice-changes-design.md`
+and the plan beside it. Every task was reviewed, then the whole branch.
+All of it is tested, none of it verified in a real show yet.
+
+### Features
+
+- **Parakeet TDT v3** is a fourth engine in the Inspector. One model on the
+  Neural Engine serves every Parakeet channel. It detects 25 European
+  languages, or takes the channel's language as a hint. New Parakeet
+  channels start in English. Its model (and the vocabulary model) install
+  and remove from Settings → Languages; a channel that failed because the
+  model was missing restarts by itself once it's installed.
+- **Vocabulary on Parakeet** (English channels only): the show's terms and
+  rule phrases are boosted with FluidAudio's separate vocabulary model. A
+  boosted line is thrown away if it would change, add or drop a number, so
+  vocabulary can never invent a cue number. Terms under 3 characters are
+  ignored. The Inspector says when vocabulary doesn't apply.
+- **Voice letters** on every engine: each line is marked A, B, C… for its
+  voice within the current exchange; letters start again after 20 s of
+  silence. A line whose voice changes partway is split between words.
+  Letters show in the transcript (a new voice starts a visible new turn),
+  the HTML report and SRT/VTT exports ("B: Standing by"). Lines from
+  sessions or channels without letters look as before.
+  - New channels have voice changes on; channels in existing shows open
+    with them off. Settings → Languages has the voice model, "Telling
+    voices apart" (Stricter ←→ Looser) and "New exchange after". Changing
+    them mid-show takes effect from the next line without restarting
+    anything.
+  - Rules still fire on the recognised line straight away; the letter
+    follows for the transcript, the session file and reports. `{voice}` is
+    empty at rule time.
+  - Voiceprints stay in memory only. Session files store just the letter
+    and an exchange number (optional fields; older files are unchanged).
+- Credits (About panel) for FluidAudio, WhisperKit and the NVIDIA and
+  pyannote models.
+
+### Fixes from review
+
+- Unknown engine names in a show (from a newer build) fall back to the
+  default engine instead of failing the whole show.
+- Moving the voice settings slider no longer restarts every channel.
+- Without the voice model, Whisper and Apple skip the extra work (word
+  timestamps, a second resampler) instead of paying for letters they can't
+  give.
+- Each channel's voice queue holds at most 8 lines; extras go out without a
+  letter rather than piling up audio.
+
+### Numbers (32 channels, `say` speech)
+
+- Parakeet with vocabulary: 2.6% WER, nothing missed, p95 0.76 s.
+- Voice letters: 80–87% of returning voices get their old letter; line
+  splitting cut missed voice changes from 81 to 53 (Parakeet) and 51
+  (Whisper). All three engines keep up. Whisper's cue p95 rises from about
+  1.0 s to 2.4 s with voice changes on (still under 3 s).
+- Apple long-form at 32 channels varies from run to run in busy
+  back-and-forth, with or without voice changes.
+
+### Next steps / where we left off
+
+- **Try it in a real show:** Parakeet channels, the Install buttons, voice
+  letters on a busy party line, the settings, and a report.
+- **Benchmark real comms** with `--corpus`, marking speakers with `A: `,
+  to tune the voice threshold and check vocabulary on rarer show words.
+- Decide whether new Whisper channels should start with voice changes off
+  (cue delay trade-off above).
+- Push the branch so CI builds it with Xcode 26.6 before merging.
+- Deferred minors are listed in the final review; none block use.

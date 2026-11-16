@@ -15,9 +15,15 @@ public struct AutomationEvaluator: Sendable {
     /// Rules fired by `segment`, in rule order. A rule within its cooldown
     /// is skipped: comms repeat, and one spoken standby should fire one cue.
     public mutating func evaluate(_ segment: TranscriptSegment, in show: ShowDocument, at now: Date) -> [Firing] {
+        evaluate(text: segment.text, channelID: segment.channelID, in: show, at: now)
+    }
+
+    /// Rules fired by a line's text on a channel. Used for a recognised line,
+    /// which fires rules before it becomes a segment.
+    public mutating func evaluate(text: String, channelID: UUID, in show: ShowDocument, at now: Date) -> [Firing] {
         var firings: [Firing] = []
-        for rule in show.rules where rule.isEnabled && Self.listens(rule.channelIDs, to: segment.channelID) {
-            let matched = KeywordMatcher.matches(rule.phrases, in: segment.text, mode: rule.matchMode)
+        for rule in show.rules where rule.isEnabled && Self.listens(rule.channelIDs, to: channelID) {
+            let matched = KeywordMatcher.matches(rule.phrases, in: text, mode: rule.matchMode)
             guard !matched.isEmpty else { continue }
             if let last = lastFired[rule.id], now.timeIntervalSince(last) < rule.cooldown { continue }
             lastFired[rule.id] = now
@@ -28,6 +34,19 @@ public struct AutomationEvaluator: Sendable {
 
     public mutating func reset() {
         lastFired = [:]
+    }
+
+    /// Every phrase the firings heard, once each (ignoring case), in order.
+    public static func matchedKeywords(_ firings: [Firing]) -> [String] {
+        var seen = Set<String>()
+        return firings.flatMap(\.matched).filter { seen.insert($0.lowercased()).inserted }
+    }
+
+    /// The matched phrases that occur in `text`, matched as whole words and
+    /// ignoring case, as rules match. Used to give each voice-annotated
+    /// piece of a line the keywords it said.
+    public static func keywords(_ matched: [String], in text: String) -> [String] {
+        KeywordMatcher.matches(matched, in: text, mode: .containsAny)
     }
 
     /// Phrases to tint in a line, from enabled highlight rules for its channel.

@@ -21,6 +21,8 @@ public struct ChannelConfig: Codable, Equatable, Identifiable, Sendable {
     public var vocabulary: [String]
     /// Whisper only: write the transcript in English, whatever was spoken.
     public var translateToEnglish: Bool
+    /// Mark each line with a voice letter (A, B, ...) per exchange.
+    public var detectsVoiceChanges: Bool
 
     public init(
         id: UUID = UUID(),
@@ -35,7 +37,8 @@ public struct ChannelConfig: Codable, Equatable, Identifiable, Sendable {
         latencyProfile: SpeechLatencyProfile = .leadAndCorrect,
         isMuted: Bool = false,
         vocabulary: [String] = [],
-        translateToEnglish: Bool = false
+        translateToEnglish: Bool = false,
+        detectsVoiceChanges: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -50,6 +53,7 @@ public struct ChannelConfig: Codable, Equatable, Identifiable, Sendable {
         self.isMuted = isMuted
         self.vocabulary = vocabulary
         self.translateToEnglish = translateToEnglish
+        self.detectsVoiceChanges = detectsVoiceChanges
     }
 
     /// `localeIdentifier` for "Detect Automatically" (Whisper only).
@@ -65,7 +69,7 @@ public struct ChannelConfig: Codable, Equatable, Identifiable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case id, name, symbol, tint, deviceUID, deviceChannel, groupID, localeIdentifier,
-             engine, latencyProfile, isMuted, vocabulary, translateToEnglish
+             engine, latencyProfile, isMuted, vocabulary, translateToEnglish, detectsVoiceChanges
     }
 
     public init(from decoder: Decoder) throws {
@@ -79,11 +83,15 @@ public struct ChannelConfig: Codable, Equatable, Identifiable, Sendable {
         deviceChannel = try c.decodeIfPresent(Int.self, forKey: .deviceChannel).flatMap { $0 >= 0 ? $0 : nil }
         groupID = try c.decodeIfPresent(UUID.self, forKey: .groupID)
         localeIdentifier = try c.decodeIfPresent(String.self, forKey: .localeIdentifier) ?? "en_US"
-        engine = try c.decodeIfPresent(SpeechEngine.self, forKey: .engine) ?? .longForm
+        // An engine this build does not know (a newer file, a hand edit) falls
+        // back to the default rather than failing the whole show.
+        engine = try c.decodeIfPresent(String.self, forKey: .engine)
+            .map { SpeechEngine(rawValue: $0) ?? .platformDefault } ?? .longForm
         latencyProfile = try c.decodeIfPresent(SpeechLatencyProfile.self, forKey: .latencyProfile) ?? .leadAndCorrect
         isMuted = try c.decodeIfPresent(Bool.self, forKey: .isMuted) ?? false
         vocabulary = try c.decodeIfPresent([String].self, forKey: .vocabulary) ?? []
         translateToEnglish = try c.decodeIfPresent(Bool.self, forKey: .translateToEnglish) ?? false
+        detectsVoiceChanges = try c.decodeIfPresent(Bool.self, forKey: .detectsVoiceChanges) ?? false
     }
 }
 
@@ -110,6 +118,20 @@ public enum SpeechEngine: String, Codable, CaseIterable, Sendable {
     case dictation
     /// WhisperKit: one shared multilingual model; the only engine before macOS 26.
     case whisper
+    /// NVIDIA Parakeet through FluidAudio: one shared multilingual model.
+    case parakeet
+
+    /// The engines the Inspector offers.
+    public static var selectable: [SpeechEngine] { [.longForm, .dictation, .whisper, .parakeet] }
+
+    /// What a new channel uses: long-form speech on macOS 26 and later,
+    /// Whisper before that.
+    public static var platformDefault: SpeechEngine {
+        if #available(macOS 26, *) { .longForm } else { .whisper }
+    }
+
+    /// Whether Apple's speech framework runs this engine.
+    public var isApple: Bool { self == .longForm || self == .dictation }
 }
 
 public enum SpeechLatencyProfile: String, Codable, CaseIterable, Sendable {

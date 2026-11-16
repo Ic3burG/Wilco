@@ -22,7 +22,7 @@ public enum SpeechAssets {
     }
 
     public static func status(engine: SpeechEngine, localeIdentifier: String) async -> SpeechAssetStatus {
-        guard engine != .whisper, #available(macOS 26, *) else { return .unavailable }
+        guard engine.isApple, #available(macOS 26, *) else { return .unavailable }
         guard let module = try? await module(engine: engine, localeIdentifier: localeIdentifier, streaming: false) else {
             return .unavailable
         }
@@ -38,7 +38,7 @@ public enum SpeechAssets {
     public static func install(
         engine: SpeechEngine, localeIdentifier: String, progress: @escaping @Sendable (Double) -> Void
     ) async throws {
-        guard engine != .whisper, #available(macOS 26, *) else { return }
+        guard engine.isApple, #available(macOS 26, *) else { return }
         let module = try await module(engine: engine, localeIdentifier: localeIdentifier, streaming: false)
         try await install([module], progress: progress)
     }
@@ -71,8 +71,12 @@ public enum SpeechAssets {
         try await request.downloadAndInstall()
     }
 
+    /// `wordTimings` asks for each word's audio time range, which lines need
+    /// to be split where the voice changes.
     @available(macOS 26, *)
-    static func module(engine: SpeechEngine, localeIdentifier: String, streaming: Bool) async throws -> any SpeechModule {
+    static func module(
+        engine: SpeechEngine, localeIdentifier: String, streaming: Bool, wordTimings: Bool = false
+    ) async throws -> any SpeechModule {
         let locale = locale(for: localeIdentifier)
         switch engine {
         case .dictation:
@@ -84,9 +88,9 @@ public enum SpeechAssets {
                 contentHints: [.shortForm],
                 transcriptionOptions: [.punctuation],
                 reportingOptions: streaming ? [.volatileResults, .frequentFinalization] : [.frequentFinalization],
-                attributeOptions: [.transcriptionConfidence]
+                attributeOptions: wordTimings ? [.transcriptionConfidence, .audioTimeRange] : [.transcriptionConfidence]
             )
-        case .longForm, .whisper:
+        case .longForm, .whisper, .parakeet:
             guard let supported = await SpeechTranscriber.supportedLocale(equivalentTo: locale) else {
                 throw TranscriberError("Long-form speech does not support \(locale.identifier)")
             }
@@ -94,7 +98,7 @@ public enum SpeechAssets {
                 locale: supported,
                 transcriptionOptions: [],
                 reportingOptions: streaming ? [.volatileResults, .fastResults] : [],
-                attributeOptions: [.transcriptionConfidence]
+                attributeOptions: wordTimings ? [.transcriptionConfidence, .audioTimeRange] : [.transcriptionConfidence]
             )
         }
     }

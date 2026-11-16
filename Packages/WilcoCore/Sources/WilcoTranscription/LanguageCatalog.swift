@@ -1,4 +1,5 @@
 import Foundation
+import FluidAudio
 import Speech
 import WhisperKit
 import WilcoCore
@@ -17,11 +18,18 @@ public struct LanguageOption: Hashable, Identifiable, Sendable {
 /// the menu ("English (United States)" rather than "en_US").
 public enum LanguageCatalog {
     public static func options(for engine: SpeechEngine) async -> [LanguageOption] {
-        if engine != .whisper, #available(macOS 26, *) {
+        if engine.isApple, #available(macOS 26, *) {
             let locales = engine == .dictation
                 ? await DictationTranscriber.supportedLocales
                 : await SpeechTranscriber.supportedLocales
             return sorted(locales.map { LanguageOption(id: $0.identifier, name: displayName(for: $0.identifier)) })
+        }
+        if engine == .parakeet {
+            // The language the model was told to expect; Detect leaves it open.
+            let languages = Language.allCases.map {
+                LanguageOption(id: $0.rawValue, name: displayName(for: $0.rawValue))
+            }
+            return [.autoDetect] + sorted(languages)
         }
         // Whisper is one multilingual model: it wants a bare language code.
         let whisper = Set(Constants.languages.values).map {
@@ -34,7 +42,7 @@ public enum LanguageCatalog {
     /// language alone, so a channel set to "en_US" shows as English there.
     public static func selection(for stored: String, engine: SpeechEngine, in options: [LanguageOption]) -> String {
         guard !stored.isEmpty else { return stored }
-        if engine == .whisper {
+        if !engine.isApple {
             return Locale(identifier: stored).language.languageCode?.identifier ?? stored
         }
         let wanted = Locale(identifier: stored).identifier(.bcp47)

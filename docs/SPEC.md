@@ -59,6 +59,7 @@ All under `~/Library/Application Support/Wilco/` [file]:
 | `Configurations/‹UUID›.wilco` | **New in the rebuild, not in the reference app.** Saved show setups, one plain `ShowDocument` each (same format as `Current.wilco`). `Current.wilco` stays the autosaved working copy; a configuration changes only on Save. The loaded one's UUID is in `UserDefaults` `configurations.loaded`. See `docs/superpowers/specs/2026-11-12-configurations-design.md`. |
 | `Transcripts/Session yyyy-MM-dd HHmm-ss.jsonl` | One `TranscriptSegment` JSON object per line, appended as each line is finalised (`TranscriptWriter`). *"Every finalised line is written to disk as it happens, so clearing the on-screen log does not discard the record."* |
 | `WhisperModels/models/argmaxinc/whisperkit-coreml/openai_whisper-<variant>/` | WhisperKit's standard download layout. **Reuse this path** so existing downloads (3 GB here) carry over. |
+| `ParakeetModels/‹model repository›/` | Parakeet speech and vocabulary models, one folder per repository (~600 MB). New in the rebuild. |
 
 `.wilco` is also a document type (`ShowFile: FileDocument`) for
 import/export of shows, and `SubtitleFile: FileDocument` exports **SRT / VTT**.
@@ -87,6 +88,12 @@ struct ShowDocument {            // formatVersion == 1
   var networkEnabled: Bool; var peerName: String
   var mosEnabled: Bool;  var mosHost: String; var mosPort: UInt16 // default 10540
   var mosID: String /* default "wilco" */;  var mosNCSID: String /* default "NCS" */
+  var voiceChanges: VoiceChangeSettings  // default .standard; tuning shared by channels with detectsVoiceChanges; changes reach running channels from their next line, without a restart
+}
+struct VoiceChangeSettings {     // new in the rebuild
+  var threshold: Double          // default 0.5; cosine distance above which two voices differ (placeholder until tuned)
+  var exchangeGap: Double        // default 20; seconds of silence that start a new exchange
+  var shortLine: Double          // default 1.0; lines shorter than this (s) are too short to judge a voice by
 }
 
 struct ChannelConfig {
@@ -100,11 +107,12 @@ struct ChannelConfig {
   var latencyProfile: SpeechLatencyProfile
   var isMuted: Bool              // still captured + metered, not transcribed
   var vocabulary: [String]       // per-channel custom terms
+  var detectsVoiceChanges: Bool  // new in the rebuild: mark lines with a voice letter; decodes false for existing shows, new channels default true
 }
 struct ChannelGroup { var id: UUID; var name: String; var symbol: String }
 
 enum ChannelTint: String { red, orange, yellow, green, teal, cyan, blue, indigo, purple, pink, gray }
-enum SpeechEngine: String { longForm, dictation, whisper }
+enum SpeechEngine: String { longForm, dictation, whisper, parakeet }  // parakeet is new in the rebuild
 enum SpeechLatencyProfile: String { leadAndCorrect, single }
 enum WhisperModel: String { tiny, base, small, large }
   // → openai_whisper-tiny / -base / -small / -large-v3  (~75 MB / ~145 MB / ~470 MB / ~1.5 GB)
@@ -150,6 +158,8 @@ struct TranscriptSegment {       // one line of Transcripts/*.jsonl
   var sessionOffset: Double      // seconds since session start
   var isFinal: Bool; var confidence: Double?
   var matchedKeywords: [String]; var highlights: [SegmentHighlight]
+  var voice: String?             // new in the rebuild: speaker letter ("A", "B"...); omitted when nil
+  var exchange: Int?             // new in the rebuild: per-channel exchange counter; omitted when nil
 }
 struct SegmentHighlight { var phrase: String; var tint: ChannelTint }
 ```
@@ -195,6 +205,7 @@ Per channel, one `ChannelTranscribing` implementation:
 | `longForm` | `SpeechTranscriber` (macOS 26) | *"Continuous speech model. Best for an open ring where people talk over each other. Downloads a model per language."* |
 | `dictation` | `DictationTranscriber` (macOS 26) | *"Uses the dictation model macOS already has — no download, more languages. Tuned for short calls like 'standby' and 'go'."* |
 | `whisper` | WhisperKit | One multilingual model shared by every Whisper channel (`WhisperModelManager` caches one `WhisperKit` per model). The only engine below macOS 26. |
+| `parakeet` | FluidAudio (NVIDIA Parakeet TDT 0.6B v3) | **New in the rebuild, not in the reference app.** One multilingual model on the Neural Engine, shared by every Parakeet channel; detects 25 European languages. Vocabulary boosting (a CTC model) applies to English channels only. No translate to English. |
 
 `leadAndCorrect` latency profile (Apple engines): two analyzer "lanes" — a
 fast **lead** pass shows italic volatile words, an accurate **anchor** pass
@@ -222,7 +233,7 @@ highlight phrase (*"Rule phrases are biased in automatically"*).
 Highlights (`highlights(in:channelID:)`) only tint matching text.
 
 **Templates** — `TemplateContext.expand` replaces `{text}`, `{channel}`,
-`{keyword}`, `{time}`, `{offset}` [str/small-strings]. Defaults: webhook body
+`{keyword}`, `{time}`, `{offset}` [str/small-strings], and `{voice}` (new in the rebuild; reserved and always empty for now: rules fire on the recognised line before voice analysis, so no letter is known yet. Expanded and escaped like the others). Defaults: webhook body
 `{"channel":"{channel}","text":"{text}"}`, notification body `Heard on {channel}`.
 
 **Built-in integration: Vor** (`IntegrationDescriptor`, getvor.app). Adds an
@@ -248,6 +259,16 @@ search (`ShowReportSearch`) with channel and category filters, timeline bars
 (`ShowReport.Bucket`), per-channel message/word stats, and **export to a
 self-contained HTML page** (template with light/dark CSS, `<nav class="tabs">`)
 and SRT/VTT subtitles.
+
+**Voice letters in exports.** A line recorded with a voice letter (`voice` in
+the `.jsonl`; channels with voice changes on) shows it in the HTML chat log
+as `<span class="voice">B</span>` after the channel name (the letter is
+HTML-escaped like any text, and is not part of the searched line text). In SRT and VTT the
+cue text is `Channel: B: text`. Lines with no letter, whether the voice was
+unknown or the line was never analysed, render exactly as before: the app's
+"·" for an unknown voice is not used in reports or subtitles. The voice CSS
+is added to the page only when some line has a letter, so reports of older
+sessions are byte-identical to before.
 
 ## 9. User interface
 

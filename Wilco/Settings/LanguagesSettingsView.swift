@@ -9,6 +9,10 @@ struct LanguagesSettingsView: View {
     @Environment(AppModel.self) private var model
 
     @State private var whisperSizes: [WhisperModel: Int64] = [:]
+    @State private var parakeetSize: Int64?
+    @State private var voiceSize: Int64?
+    @State private var parakeetSpeechInstalled: Bool?
+    @State private var parakeetVocabularyInstalled = false
     @State private var appleStatus: [ModelInstaller.Item: SpeechAssetStatus] = [:]
     @State private var reserved: [String] = []
 
@@ -24,6 +28,8 @@ struct LanguagesSettingsView: View {
             }
 
             whisperSection
+            parakeetSection
+            voiceSection
             speechModelsSection
         }
         .formStyle(.grouped)
@@ -72,6 +78,86 @@ struct LanguagesSettingsView: View {
         }
     }
 
+    // MARK: Parakeet
+
+    private var parakeetSection: some View {
+        Section {
+            LabeledContent("Download") { parakeetStatus }
+            if let parakeetSize {
+                LabeledContent {
+                    Button("Remove") { installer.remove(.parakeet) }
+                        .disabled(installer.isBusy(.parakeet))
+                } label: {
+                    Text("On disk")
+                    Text(parakeetSize.formatted(.byteCount(style: .file)))
+                }
+            }
+        } header: {
+            Text("Parakeet Model")
+        } footer: {
+            Text("Parakeet TDT v3 runs on the Neural Engine. One model serves every Parakeet channel and detects 25 European languages. Vocabulary applies to English channels, and terms shorter than 3 characters are ignored. ~600 MB with the vocabulary model.")
+        }
+    }
+
+    /// Installed only when both the speech model and the vocabulary model are
+    /// there; a Mac with only the speech model offers the missing download.
+    @ViewBuilder
+    private var parakeetStatus: some View {
+        if parakeetSpeechInstalled == true, !parakeetVocabularyInstalled, installer.progress[.parakeet] == nil {
+            HStack {
+                if let error = installer.errors[.parakeet] {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange).help(error)
+                }
+                Button("Install Vocabulary Model") { installer.install(.parakeet) }
+                    .help("The speech model is installed. This fetches the small model that boosts show vocabulary.")
+            }
+        } else {
+            status(
+                for: .parakeet,
+                apple: parakeetSpeechInstalled.map { $0 && parakeetVocabularyInstalled ? .installed : .notInstalled }
+            )
+        }
+    }
+
+    // MARK: Voice changes
+
+    private var voiceSection: some View {
+        @Bindable var model = model
+        return Section {
+            LabeledContent("Telling voices apart") {
+                HStack {
+                    Text("Stricter").foregroundStyle(.secondary)
+                    Slider(value: $model.document.voiceChanges.threshold, in: 0.3...0.7)
+                        .frame(width: 160)
+                    Text("Looser").foregroundStyle(.secondary)
+                    Text(model.document.voiceChanges.threshold.formatted(.number.precision(.fractionLength(2))))
+                        .monospacedDigit()
+                        .frame(width: 36, alignment: .trailing)
+                }
+            }
+            Stepper(
+                "New exchange after \(Int(model.document.voiceChanges.exchangeGap)) s",
+                value: $model.document.voiceChanges.exchangeGap, in: 5...60, step: 1
+            )
+            LabeledContent("Voice model") { status(for: .voiceModel, installed: installer.voiceModelInstalled) }
+            if installer.voiceModelInstalled {
+                LabeledContent {
+                    Button("Remove") { installer.remove(.voiceModel) }
+                        .disabled(installer.isBusy(.voiceModel))
+                } label: {
+                    Text("On disk")
+                    if let voiceSize { Text(voiceSize.formatted(.byteCount(style: .file))) }
+                }
+            }
+            Button("Restore Defaults") { model.document.voiceChanges = .standard }
+                .disabled(model.document.voiceChanges == .standard)
+        } header: {
+            Text("Voice Changes")
+        } footer: {
+            Text("Letters mark who is speaking within one exchange, not who they are. Voiceprints are kept in memory only and never saved.")
+        }
+    }
+
     // MARK: Apple and per-channel models
 
     /// One row per language and engine the show's channels use, plus any
@@ -104,7 +190,9 @@ struct LanguagesSettingsView: View {
                     if row.unused {
                         Button("Remove") { installer.remove(.apple(.longForm, localeIdentifier: row.localeIdentifier)) }
                             .help("Tell macOS Wilco no longer needs this language. It is deleted once no other app uses it.")
-                    } else if row.engine == .whisper {
+                    } else if row.engine == .parakeet {
+                        parakeetStatus
+                    } else if !row.engine.isApple {
                         status(for: .whisper(selectedWhisper), installed: whisperSizes[selectedWhisper] != nil)
                     } else {
                         let item = ModelInstaller.Item.apple(row.engine, localeIdentifier: row.localeIdentifier)
@@ -174,17 +262,37 @@ struct LanguagesSettingsView: View {
             for whisper in WhisperModel.allCases { sizes[whisper] = store.sizeOnDisk(of: whisper) }
             return sizes
         }.value
+        let parakeet = installer.parakeetStore
+        let parakeetState = await Task.detached {
+            (parakeet.isInstalled(), parakeet.isVocabularyInstalled(), parakeet.sizeOnDisk())
+        }.value
+        parakeetSpeechInstalled = parakeetState.0
+        parakeetVocabularyInstalled = parakeetState.1
+        parakeetSize = parakeetState.2
+        let voice = installer.voiceprints
+        let voiceState = await Task.detached { (voice.isInstalled(), Self.folderSize(DataLocations.voiceModels)) }.value
+        installer.setVoiceModelInstalled(voiceState.0)
+        voiceSize = voiceState.0 ? voiceState.1 : nil
         reserved = await SpeechAssets.reservedLocaleIdentifiers()
         var statuses: [ModelInstaller.Item: SpeechAssetStatus] = [:]
-        for row in requirements where row.engine != .whisper && !row.unused {
+        for row in requirements where row.engine.isApple && !row.unused {
             statuses[.apple(row.engine, localeIdentifier: row.localeIdentifier)] =
                 await SpeechAssets.status(engine: row.engine, localeIdentifier: row.localeIdentifier)
         }
         appleStatus = statuses
     }
 
+    private nonisolated static func folderSize(_ url: URL) -> Int64? {
+        guard let files = FileManager.default.enumerator(at: url, includingPropertiesForKeys: [.totalFileAllocatedSizeKey]) else { return nil }
+        var total: Int64 = 0
+        for case let file as URL in files {
+            total += Int64((try? file.resourceValues(forKeys: [.totalFileAllocatedSizeKey]).totalFileAllocatedSize) ?? 0)
+        }
+        return total
+    }
+
     private func languageName(_ row: Requirement) -> String {
-        if row.localeIdentifier.isEmpty, row.engine != .whisper {
+        if row.localeIdentifier.isEmpty, row.engine.isApple {
             return LanguageCatalog.displayName(for: Locale.current.identifier)
         }
         return LanguageCatalog.displayName(for: row.localeIdentifier)
@@ -221,6 +329,7 @@ private extension SpeechEngine {
         case .longForm: "Long-form"
         case .dictation: "Dictation"
         case .whisper: "Whisper (open)"
+        case .parakeet: "Parakeet (open)"
         }
     }
 }

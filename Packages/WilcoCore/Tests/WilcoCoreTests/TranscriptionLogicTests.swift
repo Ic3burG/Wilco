@@ -145,6 +145,87 @@ struct TranscriptTimelineTests {
         #expect(timeline.segments.map(\.text) == ["two", "three"])
         #expect(timeline.segments(for: a).map(\.text) == ["three"])
     }
+
+    @Test func recognizedLineShowsAsInProgressUntilAnnotated() {
+        var timeline = TranscriptTimeline()
+        let id = UUID(), channel = UUID()
+        #expect(timeline.apply(.init(channelID: channel, text: "Standby LX 42", isFinal: true, sessionOffset: 5, confidence: nil, lineID: id, stage: .recognized), at: .now) == nil)
+        #expect(timeline.volatile[channel] == "Standby LX 42")
+        let first = timeline.apply(.init(channelID: channel, text: "Standby LX 42", isFinal: true, sessionOffset: 5, confidence: nil, lineID: id, stage: .annotated(voice: "A", exchange: 1)), at: .now)
+        #expect(first?.voice == "A" && timeline.volatile[channel] == nil)
+    }
+
+    @Test func annotatedPiecesBecomeSeparateLinesWithTheirVoice() {
+        var timeline = TranscriptTimeline()
+        let id = UUID()
+        timeline.apply(.init(channelID: a, text: "Standby LX 42", isFinal: true, sessionOffset: 5, confidence: nil, lineID: id, stage: .recognized), at: .now)
+        timeline.apply(.init(channelID: a, text: "Standby", isFinal: true, sessionOffset: 5, confidence: nil, lineID: id, stage: .annotated(voice: "A", exchange: 2)), at: .now)
+        timeline.apply(.init(channelID: a, text: "LX 42", isFinal: true, sessionOffset: 6, confidence: nil, lineID: id, stage: .annotated(voice: "B", exchange: 2)), at: .now)
+        #expect(timeline.segments.map(\.text) == ["Standby", "LX 42"])
+        #expect(timeline.segments.map(\.voice) == ["A", "B"])
+        #expect(timeline.segments.map(\.exchange) == [2, 2])
+    }
+
+    @Test func annotationKeepsNewerWordsInProgress() {
+        // The next call's words may arrive before voice analysis finishes the
+        // previous line; the annotation must not wipe them.
+        var timeline = TranscriptTimeline()
+        let id = UUID()
+        timeline.apply(.init(channelID: a, text: "Standby LX 42", isFinal: true, sessionOffset: 5, confidence: nil, lineID: id, stage: .recognized), at: .now)
+        timeline.apply(event(a, "LX 42", final: false, at: 8), at: .now)
+        timeline.apply(.init(channelID: a, text: "Standby LX 42", isFinal: true, sessionOffset: 5, confidence: nil, lineID: id, stage: .annotated(voice: nil, exchange: nil)), at: .now)
+        #expect(timeline.volatile[a] == "LX 42")
+        #expect(timeline.segments.map(\.text) == ["Standby LX 42"])
+    }
+
+    @Test func aRecognizedLineWithNoAnnotationIsReplacedByTheNextLine() {
+        var timeline = TranscriptTimeline()
+        timeline.apply(.init(channelID: a, text: "Standby LX 42", isFinal: true, sessionOffset: 5, confidence: nil, stage: .recognized), at: .now)
+        timeline.apply(event(a, "Go", final: true, at: 9), at: .now)
+        #expect(timeline.volatile[a] == nil)
+        #expect(timeline.segments.map(\.text) == ["Go"])
+    }
+
+    private func staged(_ channel: UUID, _ text: String, _ id: UUID, _ stage: LineStage) -> TranscriptionEvent {
+        .init(channelID: channel, text: text, isFinal: true, sessionOffset: 5, confidence: nil, lineID: id, stage: stage)
+    }
+
+    @Test func clearingAChannelDropsLateAnnotationsOfItsEarlierLines() {
+        var timeline = TranscriptTimeline()
+        let early = UUID(), other = UUID(), later = UUID()
+        timeline.apply(staged(a, "Standby LX 42", early, .recognized), at: .now)
+        timeline.apply(staged(b, "LX standing by", other, .recognized), at: .now)
+        timeline.clear(channelID: a)
+
+        // Voice analysis for the cleared line finishes after the clear: it
+        // still goes to the session file, but doesn't come back on screen.
+        let late = timeline.apply(staged(a, "Standby LX 42", early, .annotated(voice: "A", exchange: 1)), at: .now)
+        #expect(late?.text == "Standby LX 42")
+        #expect(timeline.segments(for: a).isEmpty)
+
+        // Another channel's line, and a line heard after the clear, still show.
+        timeline.apply(staged(b, "LX standing by", other, .annotated(voice: "A", exchange: 1)), at: .now)
+        timeline.apply(staged(a, "Go", later, .recognized), at: .now)
+        timeline.apply(staged(a, "Go", later, .annotated(voice: "B", exchange: 1)), at: .now)
+        #expect(timeline.segments.map(\.text) == ["LX standing by", "Go"])
+    }
+
+    @Test func clearingEverythingDropsLateAnnotationsOfEveryChannel() {
+        var timeline = TranscriptTimeline()
+        let first = UUID(), second = UUID()
+        timeline.apply(staged(a, "one", first, .recognized), at: .now)
+        timeline.apply(staged(b, "two", second, .recognized), at: .now)
+        timeline.clear()
+        timeline.apply(staged(a, "one", first, .annotated(voice: "A", exchange: 1)), at: .now)
+        timeline.apply(staged(b, "two", second, .annotated(voice: "A", exchange: 1)), at: .now)
+        #expect(timeline.segments.isEmpty)
+    }
+
+    @Test func completeLinesHaveNoVoice() {
+        var timeline = TranscriptTimeline()
+        let segment = timeline.apply(event(a, "Standby", final: true), at: .now)
+        #expect(segment?.voice == nil && segment?.exchange == nil)
+    }
 }
 
 @Suite("Transcript writer")

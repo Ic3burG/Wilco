@@ -11,4 +11,8 @@ public enum DataLocations {
     public static var configurations: URL { root.appending(path: "Configurations", directoryHint: .isDirectory) }
     /// WhisperKit download base; models live under `models/argmaxinc/whisperkit-coreml/<variant>`.
     public static var whisperModels: URL { root.appending(path: "WhisperModels", directoryHint: .isDirectory) }
+    /// Parakeet models, one folder per model repository.
+    public static var parakeetModels: URL { root.appending(path: "ParakeetModels", directoryHint: .isDirectory) }
+    /// The speaker-embedding model used to tell voices apart.
+    public static var voiceModels: URL { root.appending(path: "VoiceModels", directoryHint: .isDirectory) }
 }

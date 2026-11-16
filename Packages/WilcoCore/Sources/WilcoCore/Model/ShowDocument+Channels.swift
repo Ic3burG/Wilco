@@ -5,6 +5,8 @@ import Foundation
 /// array shrinks under it.
 extension ShowDocument {
     /// Appends a channel named "Channel N", patched to the lowest unused input.
+    /// New channels detect voice changes (channels in older shows decode with
+    /// it off).
     @discardableResult
     public mutating func addChannel(engine: SpeechEngine = .longForm) -> ChannelConfig {
         let usedInputs = Set(channels.compactMap(\.deviceChannel))
@@ -13,7 +15,8 @@ extension ShowDocument {
             name: "Channel \(channels.count + 1)",
             tint: ChannelTint.allCases[channels.count % ChannelTint.allCases.count],
             deviceChannel: freeInput,
-            engine: engine
+            engine: engine,
+            detectsVoiceChanges: true
         )
         channels.append(channel)
         return channel

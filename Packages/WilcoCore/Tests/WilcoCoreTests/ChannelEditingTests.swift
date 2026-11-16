@@ -18,6 +18,15 @@ struct ChannelEditingTests {
         #expect(show.channels.last == added)
     }
 
+    @Test func newChannelDetectsVoiceChanges() throws {
+        // On for channels added now (it keeps up at 32 channels in
+        // wilco-bench); channels in existing shows decode with it off.
+        var show = ShowDocument()
+        #expect(show.addChannel().detectsVoiceChanges)
+        let old = Data(#"{"id":"\#(UUID().uuidString)","name":"SM"}"#.utf8)
+        #expect(try !JSONDecoder().decode(ChannelConfig.self, from: old).detectsVoiceChanges)
+    }
+
     @Test func newChannelTintsCycleSoNeighboursDiffer() {
         var show = ShowDocument()
         let first = show.addChannel()

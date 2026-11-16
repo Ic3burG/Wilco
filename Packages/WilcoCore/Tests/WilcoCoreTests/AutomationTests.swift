@@ -66,6 +66,93 @@ struct AutomationEvaluatorTests {
         let found = AutomationEvaluator.highlights(for: "Thanks Omar", channelID: channel.id, in: show)
         #expect(found == [SegmentHighlight(phrase: "Omar", tint: .purple)])
     }
+
+    @Test func keywordsFollowThePieceThatSaidThem() {
+        #expect(AutomationEvaluator.keywords(["go", "standby"], in: "LX 42 go") == ["go"])
+    }
+
+    @Test func keywordsInAPieceIgnoreCaseAndPartWords() {
+        #expect(AutomationEvaluator.keywords(["GO", "Q5"], in: "q5 go") == ["GO", "Q5"])
+        #expect(AutomationEvaluator.keywords(["go"], in: "going") == [])
+    }
+
+    @Test func evaluatesRecognisedTextWithoutASegment() {
+        var show = ShowDocument()
+        let channel = show.addChannel()
+        show.rules = [AutomationRule(name: "GO", phrases: ["go"], cooldown: 5)]
+        var evaluator = AutomationEvaluator()
+        let now = Date()
+        #expect(evaluator.evaluate(text: "LX go", channelID: channel.id, in: show, at: now).map(\.rule.name) == ["GO"])
+        // Shares the cooldown with segment evaluation.
+        #expect(evaluator.evaluate(segment("go", on: channel.id), in: show, at: now.addingTimeInterval(1)).isEmpty)
+    }
+
+    @Test func matchedKeywordsAreUniqueAcrossFirings() {
+        let rule = AutomationRule(name: "x", phrases: ["go"])
+        let firings = [
+            AutomationEvaluator.Firing(rule: rule, matched: ["Go", "standby"]),
+            AutomationEvaluator.Firing(rule: rule, matched: ["go", "LX"]),
+        ]
+        #expect(AutomationEvaluator.matchedKeywords(firings) == ["Go", "standby", "LX"])
+    }
+}
+
+@Suite("Pending lines")
+struct PendingLinesTests {
+    private let start = Date(timeIntervalSince1970: 1_000)
+
+    @Test func keywordsFollowThePieceThatSaidThem() {
+        var pending = PendingLines()
+        let id = UUID()
+        pending.recognized(id, text: "Standby LX 42 go", keywords: ["standby", "go"], at: start)
+        #expect(pending.keywords(forPiece: "Standby LX 42", of: id, at: start) == ["standby"])
+        #expect(pending.keywords(forPiece: "go", of: id, at: start) == ["go"])
+        #expect(pending.count == 0, "the last piece finishes the line")
+    }
+
+    @Test func aPhraseFoundInNoPieceGoesToTheFirstPiece() {
+        var pending = PendingLines()
+        let id = UUID()
+        // "stand by" is split across the voice change, so neither piece holds it.
+        pending.recognized(id, text: "Stand by go", keywords: ["stand by", "go"], at: start)
+        #expect(pending.keywords(forPiece: "Stand", of: id, at: start) == ["stand by"])
+        #expect(pending.keywords(forPiece: "by go", of: id, at: start) == ["go"])
+    }
+
+    @Test func aPhraseSaidTwiceFollowsBothPieces() {
+        var pending = PendingLines()
+        let id = UUID()
+        pending.recognized(id, text: "Go. LX go", keywords: ["go"], at: start)
+        #expect(pending.keywords(forPiece: "Go.", of: id, at: start) == ["go"])
+        #expect(pending.keywords(forPiece: "LX go", of: id, at: start) == ["go"])
+    }
+
+    @Test func aWholeLineKeepsAllItsKeywords() {
+        var pending = PendingLines()
+        let id = UUID()
+        pending.recognized(id, text: "Standby go", keywords: ["standby", "go"], at: start)
+        #expect(pending.keywords(forPiece: "Standby go", of: id, at: start) == ["standby", "go"])
+        #expect(pending.count == 0)
+    }
+
+    @Test func anUnknownLineHasNoKeywords() {
+        var pending = PendingLines()
+        #expect(pending.keywords(forPiece: "go", of: UUID(), at: start) == [])
+    }
+
+    @Test func boundedByCountAndAge() {
+        var pending = PendingLines(maximumLines: 3, maximumAge: 60)
+        let ids = (0..<5).map { _ in UUID() }
+        for (index, id) in ids.enumerated() {
+            pending.recognized(id, text: "go", keywords: ["go"], at: start.addingTimeInterval(Double(index)))
+        }
+        #expect(pending.count == 3)
+        #expect(pending.keywords(forPiece: "go", of: ids[0], at: start.addingTimeInterval(5)) == [])
+        #expect(pending.keywords(forPiece: "go", of: ids[4], at: start.addingTimeInterval(5)) == ["go"])
+        // Lines whose annotation never came are dropped after a minute.
+        pending.recognized(UUID(), text: "go", keywords: ["go"], at: start.addingTimeInterval(120))
+        #expect(pending.count == 1)
+    }
 }
 
 @Suite("Templates")
@@ -74,6 +161,12 @@ struct TemplateTests {
         text: #"Say "hold" now"#, channel: "Stage Manager", keyword: "hold",
         date: Date(timeIntervalSince1970: 1_794_104_725), offset: 3_725.4
     )
+
+    @Test func voicePlaceholderExpands() {
+        let context = TemplateContext(text: "Go", channel: "SM", keyword: "", date: .now, offset: 0, voice: "B")
+        #expect(context.expand("{channel}/{voice}") == "SM/B")
+        #expect(TemplateContext(text: "Go", channel: "SM", keyword: "", date: .now, offset: 0).expand("[{voice}]") == "[]")
+    }
 
     @Test func expandsEveryPlaceholder() {
         let tz = TimeZone(identifier: "America/Chicago")!

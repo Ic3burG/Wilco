@@ -50,6 +50,13 @@ public enum ClipLibrary {
         "Standing by.",
     ]
 
+    /// The cue words `phrases` use, as a show would list them for boosting.
+    public static let vocabulary = [
+        "Standby", "Lighting", "Sound", "Video", "Automation", "Pyro", "Places",
+        "Deck", "Rail", "Spot", "Front of house", "Follow spots", "Wardrobe",
+        "Props", "Curtain", "Overture", "Interval", "Blackout",
+    ]
+
     /// A voice as `say -v ?` lists it.
     public struct SystemVoice: Equatable, Sendable {
         /// The name `say -v` takes, e.g. "Rishi (English (India))".
@@ -93,7 +100,7 @@ public enum ClipLibrary {
         try FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
 
         var clips: [BenchClip] = []
-        for voice in voices {
+        for (number, voice) in voices.enumerated() {
             for phrase in phrases {
                 let key = SHA256.hash(data: Data("\(voice.label)|\(phrase)|\(Int(sampleRate))".utf8))
                     .prefix(8).map { String(format: "%02x", $0) }.joined()
@@ -101,7 +108,7 @@ public enum ClipLibrary {
                 if !FileManager.default.fileExists(atPath: file.path) {
                     try say(phrase, voice: voice.name, to: file, sampleRate: sampleRate)
                 }
-                clips.append(BenchClip(text: phrase, samples: try readMono(file, sampleRate: sampleRate)))
+                clips.append(BenchClip(text: phrase, samples: try readMono(file, sampleRate: sampleRate), voice: number))
             }
         }
         return (clips, voices.map(\.label))
@@ -109,23 +116,56 @@ public enum ClipLibrary {
 
     /// Recordings in `folder`, each `name.wav` (or .aif, .caf, .m4a, .mp3,
     /// .flac) with a `name.txt` holding what was said. One call per file.
+    /// Lines of `name.txt` may start with a speaker mark ("A: "); the same
+    /// letter in different files is the same person.
     public static func load(folder: URL, sampleRate: Double) throws -> [BenchClip] {
         let audio = Set(["wav", "aif", "aiff", "caf", "m4a", "mp3", "flac"])
         let files = try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)
             .filter { audio.contains($0.pathExtension.lowercased()) }
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
-        let clips = try files.map { file -> BenchClip in
+        let read = try files.map { file -> (text: String, speaker: String?, samples: [Float]) in
             let transcript = file.deletingPathExtension().appendingPathExtension("txt")
             guard let text = try? String(contentsOf: transcript, encoding: .utf8) else {
                 throw BenchError("\(file.lastPathComponent) has no \(transcript.lastPathComponent) beside it")
             }
-            return BenchClip(
-                text: text.trimmingCharacters(in: .whitespacesAndNewlines),
-                samples: try readMono(file, sampleRate: sampleRate)
-            )
+            do {
+                let parsed = try Self.transcript(text)
+                return (parsed.text, parsed.speaker, try readMono(file, sampleRate: sampleRate))
+            } catch let error as BenchError {
+                throw BenchError("\(transcript.lastPathComponent): \(error.localizedDescription)")
+            }
         }
-        guard !clips.isEmpty else { throw BenchError("No recordings in \(folder.path)") }
-        return clips
+        guard !read.isEmpty else { throw BenchError("No recordings in \(folder.path)") }
+        let voices = voiceNumbers(for: read.map(\.speaker))
+        return zip(read, voices).map { BenchClip(text: $0.text, samples: $0.samples, voice: $1) }
+    }
+
+    /// What a corpus transcript says, and who says it. Each line may start
+    /// with a one-letter speaker mark ("A: "). A recording is one turn, so
+    /// its marked lines must all name the same speaker.
+    static func transcript(_ contents: String) throws -> (text: String, speaker: String?) {
+        var speaker: String?
+        var parts: [String] = []
+        for raw in contents.split(whereSeparator: \.isNewline) {
+            var line = raw.trimmingCharacters(in: .whitespaces)
+            if let mark = line.range(of: #"^[A-Z]:\s+"#, options: .regularExpression) {
+                let letter = String(line[line.startIndex])
+                if let speaker, speaker != letter {
+                    throw BenchError("speakers \(speaker) and \(letter) in one recording; split it into one file per turn")
+                }
+                speaker = letter
+                line = String(line[mark.upperBound...])
+            }
+            if !line.isEmpty { parts.append(line) }
+        }
+        return (parts.joined(separator: " "), speaker)
+    }
+
+    /// Speaker marks as voice numbers, in letter order. Unmarked recordings
+    /// count as one more speaker of their own, numbered first.
+    static func voiceNumbers(for speakers: [String?]) -> [Int] {
+        let keys = Set(speakers.map { $0 ?? "" }).sorted()
+        return speakers.map { keys.firstIndex(of: $0 ?? "")! }
     }
 
     /// Lines look like "Samantha (English (US)) en_US    # Hello! …". The

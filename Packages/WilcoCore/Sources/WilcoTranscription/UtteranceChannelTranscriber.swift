@@ -6,10 +6,15 @@ public struct Recognition: Sendable, Equatable {
     public var text: String
     /// 0 to 1, when the model gives one.
     public var confidence: Double?
+    /// The words of `text` with their times, in seconds from the start of the
+    /// utterance's audio. Empty when the model doesn't give them; the line
+    /// then can't be split where the voice changes.
+    public var words: [TimedWord]
 
-    public init(text: String, confidence: Double?) {
+    public init(text: String, confidence: Double?, words: [TimedWord] = []) {
         self.text = text
         self.confidence = confidence
+        self.words = words
     }
 }
 
@@ -38,10 +43,17 @@ public actor UtteranceChannelTranscriber: ChannelTranscriber {
     private let recognizer: any UtteranceRecognizer
     private let onEvent: TranscriptionHandler
     private let onStatus: StatusHandler
+    /// Nil when the channel doesn't detect voice changes.
+    private let annotator: VoiceAnnotator?
+    private var voices: VoiceAnnotationQueue?
     private var pump: Task<Void, Never>?
 
+    /// With `voiceChanges` set, each line goes out `.recognized` and then
+    /// `.annotated` with its voice letter; `voiceprints` is the app's shared
+    /// voice model (nil leaves lines without letters).
     public init(
         channelID: UUID, source: AudioSource, sessionOffset: Double, recognizer: any UtteranceRecognizer,
+        voiceChanges: VoiceChangeSettings? = nil, voiceprints: (any VoiceprintExtractor)? = nil,
         onEvent: @escaping TranscriptionHandler, onStatus: @escaping StatusHandler
     ) {
         self.channelID = channelID
@@ -50,6 +62,7 @@ public actor UtteranceChannelTranscriber: ChannelTranscriber {
         self.recognizer = recognizer
         self.onEvent = onEvent
         self.onStatus = onStatus
+        annotator = voiceChanges.map { VoiceAnnotator(settings: $0, extractor: voiceprints ?? UnavailableVoiceprints()) }
     }
 
     public func start() async {
@@ -63,6 +76,7 @@ public actor UtteranceChannelTranscriber: ChannelTranscriber {
         // Discard audio that queued while the model loaded.
         _ = source.ring.read(maxCount: source.ring.availableToRead)
         onStatus(.listening)
+        voices = annotator.map { VoiceAnnotationQueue(annotator: $0, onEvent: onEvent) }
         pump = Task { await self.run() }
     }
 
@@ -70,6 +84,13 @@ public actor UtteranceChannelTranscriber: ChannelTranscriber {
         pump?.cancel()
         await pump?.value
         pump = nil
+        // Lines already sent to rules still get their voice.
+        await voices?.finish()
+        voices = nil
+    }
+
+    public func updateVoiceSettings(_ settings: VoiceChangeSettings) async {
+        await annotator?.update(settings: settings)
     }
 
     private func run() async {
@@ -93,12 +114,19 @@ public actor UtteranceChannelTranscriber: ChannelTranscriber {
         guard let recognition = try? await recognizer.recognize(utterance.samples) else { return }
         let text = recognition.text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
-        onEvent(TranscriptionEvent(
+        let start = sessionOffset + utterance.startOffset
+        let line = TranscriptionEvent(
             channelID: channelID,
             text: text,
             isFinal: true,
-            sessionOffset: sessionOffset + utterance.startOffset,
+            sessionOffset: start,
             confidence: recognition.confidence
-        ))
+        )
+        deliverFinalLine(
+            line, voices: voices, onEvent: onEvent,
+            lineStart: start, lineEnd: start + Double(utterance.samples.count) / 16_000,
+            words: recognition.words.map { TimedWord(text: $0.text, start: start + $0.start, end: start + $0.end) },
+            audio: { utterance.samples }
+        )
     }
 }

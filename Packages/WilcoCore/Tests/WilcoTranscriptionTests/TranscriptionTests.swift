@@ -33,6 +33,34 @@ struct SampleRateConverterTests {
 /// End-to-end recognition of speech rendered by macOS `say`. Needs speech
 /// models on this Mac and takes several seconds, so it runs only with
 /// `WILCO_ASR_TESTS=1`.
+@Suite("Transcriber configuration")
+struct TranscriberConfigurationTests {
+    @Test func voiceSettingValuesDoNotRestartAChannel() {
+        var show = ShowDocument()
+        var channel = show.addChannel(engine: .whisper)
+        channel.detectsVoiceChanges = true
+        let before = TranscriberConfiguration(channel: channel, show: show)
+        show.voiceChanges.threshold = 0.62
+        show.voiceChanges.exchangeGap = 45
+        show.voiceChanges.shortLine = 2
+        let after = TranscriberConfiguration(channel: channel, show: show)
+        #expect(before == after, "running channels take new values without a restart")
+        #expect(after.voiceSettings == show.voiceChanges, "a channel started now takes the new values")
+    }
+
+    @Test func turningVoiceChangesOnOrOffRestartsTheChannel() {
+        var show = ShowDocument()
+        var channel = show.addChannel(engine: .whisper)
+        channel.detectsVoiceChanges = false
+        let off = TranscriberConfiguration(channel: channel, show: show)
+        channel.detectsVoiceChanges = true
+        let on = TranscriberConfiguration(channel: channel, show: show)
+        #expect(off != on)
+        #expect(off.voiceChanges == nil)
+        #expect(on.voiceChanges == show.voiceChanges)
+    }
+}
+
 @Suite("Speech recognition", .enabled(if: ProcessInfo.processInfo.environment["WILCO_ASR_TESTS"] == "1"))
 struct RecognitionTests {
     private final class Events: Sendable {
@@ -65,6 +93,7 @@ struct RecognitionTests {
     ) async throws -> [TranscriptionEvent] {
         var show = ShowDocument()
         var channel = show.addChannel(engine: engine)
+        channel.detectsVoiceChanges = false
         channel.localeIdentifier = language
         channel.translateToEnglish = translate
         channel.latencyProfile = .leadAndCorrect
@@ -76,7 +105,7 @@ struct RecognitionTests {
             configuration: configuration,
             source: AudioSource(ring: ring, sampleRate: { 48_000 }),
             sessionOffset: 0,
-            whisperModels: WhisperModelStore(),
+            whisperModels: WhisperModelStore(), parakeetModels: ParakeetModelStore(), voiceprints: nil,
             onEvent: { event in events.events.withLock { $0.append(event) } },
             onStatus: { status in events.statuses.withLock { $0.append(status) } }
         )
@@ -124,12 +153,13 @@ struct RecognitionTests {
         guard #available(macOS 26, *) else { return }
         var show = ShowDocument()
         var channel = show.addChannel(engine: .longForm)
+        channel.detectsVoiceChanges = false
         channel.localeIdentifier = "en_US"
         let ring = AudioRingBuffer(capacity: 48_000 * 20)
         let transcriber = ChannelTranscribers.make(
             configuration: TranscriberConfiguration(channel: channel, show: show),
             source: AudioSource(ring: ring, sampleRate: { 48_000 }),
-            sessionOffset: 0, whisperModels: WhisperModelStore(),
+            sessionOffset: 0, whisperModels: WhisperModelStore(), parakeetModels: ParakeetModelStore(), voiceprints: nil,
             onEvent: { _ in }, onStatus: { _ in }
         )
         await transcriber.start()

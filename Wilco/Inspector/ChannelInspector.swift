@@ -1,3 +1,4 @@
+import FluidAudio
 import SwiftUI
 import WilcoCore
 import WilcoTranscription
@@ -36,6 +37,7 @@ struct ChannelInspector: View {
 }
 
 private struct ChannelForm: View {
+    @Environment(AppModel.self) private var model
     @Binding var channel: ChannelConfig
     let groups: [ChannelGroup]
     let devices: [AudioDeviceInfo]
@@ -62,6 +64,32 @@ private struct ChannelForm: View {
             get: { groups.contains { $0.id == channel.groupID } ? channel.groupID : nil },
             set: { $0 == Self.newGroupTag ? onNewGroup() : onAssignGroup($0) }
         )
+    }
+
+    private var voiceSection: some View {
+        let installer = model.installer
+        let installed = installer.voiceModelInstalled
+        return Section {
+            Toggle("Mark voice changes", isOn: $channel.detectsVoiceChanges)
+                .help("Letters each line by voice: A, B, C… Starts again after a silence.")
+            if channel.detectsVoiceChanges, !installed {
+                LabeledContent {
+                    if let fraction = installer.progress[.voiceModel] {
+                        HStack {
+                            ProgressView(value: fraction).frame(width: 80)
+                            Text(fraction.formatted(.percent.precision(.fractionLength(0)))).monospacedDigit()
+                        }
+                    } else {
+                        Button("Install Voice Model") { installer.install(.voiceModel) }
+                    }
+                } label: {
+                    Text("Voice model needed")
+                    Text(installer.errors[.voiceModel] ?? "Letters appear once it is installed (about 21 MB).")
+                }
+            }
+        } footer: {
+            Text("Letters mark who is speaking within one exchange, not who they are.")
+        }
     }
 
     private let symbols = ["person.wave.2", "headphones", "lightbulb", "speaker.wave.2", "video", "theatermasks", "music.mic"]
@@ -124,7 +152,7 @@ private struct ChannelForm: View {
                     LabeledContent("Status", value: status.title)
                 }
                 Picker("Engine", selection: $channel.engine) {
-                    ForEach(SpeechEngine.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                    ForEach(SpeechEngine.selectable, id: \.self) { Text($0.displayName).tag($0) }
                 }
                 Picker("Language", selection: languageSelection) {
                     ForEach(languageOptions) { Text($0.name).tag($0.id) }
@@ -134,9 +162,9 @@ private struct ChannelForm: View {
                             .tag(languageSelection.wrappedValue)
                     }
                 }
-                .help(channel.engine == .whisper
-                      ? "Whisper can detect the spoken language itself, or be told which to expect"
-                      : "Apple's engines need to be told which language to expect")
+                .help(channel.engine.isApple
+                      ? "Apple's engines need to be told which language to expect"
+                      : "\(channel.engine.displayName) can detect the spoken language itself, or be told which to expect")
                 if channel.engine == .whisper {
                     Toggle("Translate to English", isOn: Binding(
                         get: { channel.translateToEnglish },
@@ -148,16 +176,29 @@ private struct ChannelForm: View {
                     Text("Fast, then corrected").tag(SpeechLatencyProfile.leadAndCorrect)
                     Text("Single pass").tag(SpeechLatencyProfile.single)
                 }
-                .disabled(channel.engine == .whisper)
+                .disabled(!channel.engine.isApple)
                 .help("A quick model shows words as they are spoken; an accurate one replaces them a moment later. Roughly twice the CPU per channel.")
             }
+
+            voiceSection
 
             Section {
                 TokenListEditor(tokens: $channel.vocabulary, prompt: "Add a name, cue label or piece of jargon")
             } header: {
                 Text("Channel Vocabulary")
             } footer: {
-                Text("Terms listed here are biased into this channel's recogniser. Crew names, venue names and cue labels are the ones worth adding.")
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Terms listed here are biased into this channel's recogniser. Crew names, venue names and cue labels are the ones worth adding.")
+                    if channel.engine == .parakeet {
+                        Text("Parakeet ignores terms shorter than 3 characters.")
+                        if ParakeetVocabulary.noticeNeeded(
+                            language: ParakeetLanguages.language(for: channel.localeIdentifier),
+                            terms: model.document.vocabulary(for: channel.id)
+                        ) {
+                            Text("Vocabulary applies to English channels only.")
+                        }
+                    }
+                }
             }
 
             Section {
@@ -171,9 +212,13 @@ private struct ChannelForm: View {
             languageOptions = await LanguageCatalog.options(for: channel.engine)
         }
         .onChange(of: channel.engine) { _, engine in
-            // Only Whisper can detect the language, so pick one for Apple's engines.
-            if engine != .whisper, channel.localeIdentifier.isEmpty {
+            // Apple's engines can't detect the language, so pick one. Parakeet
+            // can, but vocabulary only applies to English, so start there.
+            guard channel.localeIdentifier.isEmpty else { return }
+            if engine.isApple {
                 channel.localeIdentifier = Locale.current.identifier
+            } else if engine == .parakeet {
+                channel.localeIdentifier = "en"
             }
         }
     }
@@ -205,6 +250,7 @@ private extension SpeechEngine {
         case .longForm: "Long-form (macOS 26)"
         case .dictation: "Dictation (macOS 26)"
         case .whisper: "Whisper"
+        case .parakeet: "Parakeet"
         }
     }
 }

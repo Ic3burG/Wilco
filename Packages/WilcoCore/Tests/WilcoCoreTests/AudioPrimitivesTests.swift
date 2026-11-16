@@ -2,6 +2,73 @@ import Foundation
 import Testing
 @testable import WilcoCore
 
+@Suite("Audio history")
+struct AudioHistoryTests {
+    /// Each sample holds the time it was heard, at 100 samples a second.
+    private func ramp(from start: Double, seconds: Double, rate: Double) -> [Float] {
+        (0..<Int(seconds * rate)).map { Float(start + Double($0) / rate) }
+    }
+
+    @Test func keepsTheLastThirtySeconds() {
+        var history = AudioHistory(sampleRate: 100, seconds: 30)
+        // 40 s in four chunks, ending 40 s into the session.
+        for chunk in 0..<4 {
+            history.append(ramp(from: Double(chunk) * 10, seconds: 10, rate: 100), endingAt: Double(chunk + 1) * 10)
+        }
+        let all = history.samples(from: 0, to: 40)
+        #expect(all.count == 3_000)
+        #expect(abs((all.first ?? 0) - 10) < 0.02)
+        #expect(abs((all.last ?? 0) - 39.99) < 0.02)
+
+        let span = history.samples(from: 32, to: 33.5)
+        #expect(span.count == 150)
+        #expect(abs((span.first ?? 0) - 32) < 0.02)
+    }
+
+    @Test func spanBeforeHistoryReturnsWhatRemains() {
+        var history = AudioHistory(sampleRate: 100, seconds: 30)
+        history.append(ramp(from: 0, seconds: 40, rate: 100), endingAt: 40)
+        // 5 to 15 s: only 10 to 15 s is still held.
+        let span = history.samples(from: 5, to: 15)
+        #expect(span.count == 500)
+        #expect(abs((span.first ?? 0) - 10) < 0.02)
+        // Wholly before the history, or after it: nothing.
+        #expect(history.samples(from: 0, to: 9).isEmpty)
+        #expect(history.samples(from: 41, to: 45).isEmpty)
+        #expect(AudioHistory().samples(from: 0, to: 1).isEmpty)
+    }
+
+    @Test func aChunkThatCouldNotBeConvertedStillMovesTheTimelineOn() {
+        // A second of audio, a second the resampler failed on, then another
+        // second: the third second is still found where it was heard.
+        var history = AudioHistory(sampleRate: 100, seconds: 30)
+        history.append(ramp(from: 0, seconds: 1, rate: 100), lasting: 1)
+        history.append(nil, lasting: 1)
+        history.append(ramp(from: 2, seconds: 1, rate: 100), lasting: 1)
+
+        let third = history.samples(from: 2, to: 3)
+        #expect(third.count == 100)
+        #expect(abs((third.first ?? 0) - 2) < 0.02)
+        // The lost second reads back as silence.
+        #expect(history.samples(from: 1, to: 2) == [Float](repeating: 0, count: 100))
+        #expect(abs((history.samples(from: 0, to: 1).last ?? 0) - 0.99) < 0.02)
+    }
+
+    @Test func skippingMovesTheTimelineOnWithoutKeepingAudio() {
+        // Voice analysis isn't usable for a while: the history's clock keeps
+        // up with the analyzer's but nothing is stored, and audio after it is
+        // still found where it was heard.
+        var history = AudioHistory(sampleRate: 100, seconds: 30)
+        history.append(ramp(from: 0, seconds: 2, rate: 100), lasting: 2)
+        history.skip(3)
+        #expect(history.samples(from: 0, to: 5).isEmpty, "audio from before the gap is let go")
+        history.append(ramp(from: 5, seconds: 1, rate: 100), lasting: 1)
+        let after = history.samples(from: 5, to: 6)
+        #expect(after.count == 100)
+        #expect(abs((after.first ?? 0) - 5) < 0.02)
+    }
+}
+
 @Suite("Audio ring buffer")
 struct AudioRingBufferTests {
     @Test func readsBackWhatWasWrittenAcrossTheWrapPoint() {

@@ -219,8 +219,9 @@ recognition-to-rules (must match today's) and recognition-to-display.
 
 **Settings (per show, with defaults so older shows decode):**
 
-- Voice changes on/off per channel (`ChannelConfig.detectsVoiceChanges`,
-  default off until the benchmark says it's cheap enough to default on).
+- Voice changes on/off per channel (`ChannelConfig.detectsVoiceChanges`).
+  Existing shows decode it as false; new channels default to true (the
+  32-channel benchmark passed with it on).
 - Show-level tuning: **voice difference threshold** and **exchange gap**,
   in Settings with a "Restore defaults" button. Shown as plain words with
   the number ("Stricter ←→ Looser") rather than raw cosine values alone.
@@ -243,8 +244,9 @@ recognition-to-rules (must match today's) and recognition-to-display.
   views; SRT/VTT cues prefix the text with the letter ("B: Lighting
   standing by"). A report of a session without letters looks as it does
   today.
-- Automation: `{voice}` becomes available in templates (the letter, or
-  empty). Rules don't match on it in this project.
+- Automation: `{voice}` is reserved in templates and always empty for now:
+  rules fire on the recognised line before voice analysis, so no letter is
+  known when they run. Rules don't match on it in this project.
 
 **Stored data.**
 

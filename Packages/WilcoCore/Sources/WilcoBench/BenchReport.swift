@@ -12,8 +12,11 @@ public struct RunResult: Codable, Equatable, Sendable {
     /// Calls no final line was attributed to.
     public var missed: Int
     public var wordErrors: WordErrors
-    /// Seconds from the end of a call to its final line.
+    /// Seconds from the end of a call to its final line (when rules can act on it).
     public var finalLatency: LatencySummary?
+    /// Seconds from the end of a call to its line on screen, after voice
+    /// analysis. Matches `finalLatency` when lines aren't annotated.
+    public var displayLatency: LatencySummary?
     /// Seconds from the start of a call to the first words on screen.
     public var firstWordLatency: LatencySummary?
     /// Time for every channel to be listening (includes loading the model).
@@ -30,6 +33,16 @@ public struct RunResult: Codable, Equatable, Sendable {
     public var failures: [String]
     /// The first channels' full reference and transcript, for a look by eye.
     public var samples: [Sample] = []
+    /// How long after the audio stopped the last line reached the screen
+    /// (after voice analysis). Nil in reports from before voice changes.
+    public var displayBacklog: Double?
+    /// Voice-change scores, for engines that detect voice changes.
+    public var voices: VoiceScore?
+    /// The voice-change threshold the run used, for those engines.
+    public var voiceThreshold: Double?
+    /// Conversation turns answered by the previous turn's line in the same
+    /// exchange (final only after they ended). Not counted as missed.
+    public var merged: Int?
 
     public struct Sample: Codable, Equatable, Sendable {
         public var reference: String
@@ -38,15 +51,28 @@ public struct RunResult: Codable, Equatable, Sendable {
 
     public var wordErrorRate: Double { wordErrors.rate }
 
-    /// The engine kept pace: nothing failed or was dropped, almost every call
-    /// got a line, and lines came within a few seconds even at the slow end.
-    public var keepsUp: Bool {
+    /// Cues kept pace: nothing failed or was dropped, almost every call got a
+    /// final line, and final lines (when rules fire) came within a few
+    /// seconds even at the slow end.
+    public var cuesKeepUp: Bool {
         failures.isEmpty
             && droppedFrames == 0
             && Double(missed) <= Double(utterances) * 0.05
             && (finalLatency?.p95 ?? .infinity) <= Self.acceptableDelay
             && drainSeconds <= Self.acceptableDelay
     }
+
+    /// For engines that detect voice changes: lines reached the screen, with
+    /// their letters, within a few seconds, and the display's backlog stayed
+    /// as short. Nil for other engines.
+    public var displayKeepsUp: Bool? {
+        guard voices != nil else { return nil }
+        return (displayLatency?.p95 ?? .infinity) <= Self.acceptableDelay
+            && (displayBacklog ?? .infinity) <= Self.acceptableDelay
+    }
+
+    /// Cues keep up and, with voice changes on, so does the display.
+    public var keepsUp: Bool { cuesKeepUp && displayKeepsUp != false }
 
     /// A call's line should be on screen within this many seconds of it ending.
     public static let acceptableDelay = 3.0
@@ -75,8 +101,8 @@ public struct BenchReport: Codable, Equatable, Sendable {
     }
 
     public static let tableHeader = """
-        | Engine | Ch | WER | Missed | Final delay p50 / p95 / max | First words p50 | Backlog | Start | CPU (us) | CPU (Mac) | Memory | Dropped | Keeps up |
-        |---|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|:---:|
+        | Engine | Ch | WER | Missed | Final delay p50 / p95 / max | Display p95 | First words p50 | Backlog | Start | CPU (us) | CPU (Mac) | Memory | Dropped | Keeps up |
+        |---|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|:---:|
         """
 
     public static func tableRow(_ r: RunResult) -> String {
@@ -86,8 +112,9 @@ public struct BenchReport: Codable, Equatable, Sendable {
             r.engine,
             "\(r.channels)",
             String(format: "%.1f%%", r.wordErrorRate * 100),
-            "\(r.missed)/\(r.utterances)",
+            "\(r.missed)/\(r.utterances)" + ((r.merged ?? 0) > 0 ? " (\(r.merged!) merged)" : ""),
             delay,
+            s(r.displayLatency?.p95),
             s(r.firstWordLatency?.p50),
             s(r.drainSeconds),
             s(r.startSeconds),
@@ -96,6 +123,30 @@ public struct BenchReport: Codable, Equatable, Sendable {
             String(format: "%.0f MB", r.peakMemoryMB),
             "\(r.droppedFrames)",
             r.keepsUp ? "yes" : "**no**",
+        ]
+        return "| " + cells.joined(separator: " | ") + " |"
+    }
+
+    public static let voiceTableHeader = """
+        | Engine | Ch | Changes missed | False changes | Letters right | No letter | Not annotated | Merged calls | Final p95 | Display p50 / p95 | Display backlog | CPU added | Threshold | Keeps up (cues / display) |
+        |---|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|:---:|
+        """
+
+    /// One run's voice scores; `without` is the same engine at the same
+    /// channel count with voice changes off, when the report has it.
+    public static func voiceRow(_ r: RunResult, without base: RunResult? = nil) -> String {
+        func s(_ value: Double?) -> String { value.map { String(format: "%.2f s", $0) } ?? "–" }
+        func yes(_ value: Bool?) -> String { value.map { $0 ? "yes" : "**no**" } ?? "–" }
+        let v = r.voices ?? VoiceScore()
+        let letters: String = v.letterAccuracy.map { String(format: "%.0f%%", $0 * 100) } ?? "–"
+        let display: String = r.displayLatency.map { String(format: "%.2f / %.2f s", $0.p50, $0.p95) } ?? "–"
+        let added: String = base.map { String(format: "%+.0f%%", (r.processCPU - $0.processCPU) * 100) } ?? "–"
+        let threshold: String = r.voiceThreshold.map { String(format: "%.2f", $0) } ?? "–"
+        let keeps: String = yes(r.cuesKeepUp) + " / " + yes(r.displayKeepsUp)
+        let cells: [String] = [
+            r.engine, "\(r.channels)", "\(v.missedChanges)/\(v.changes)", "\(v.falseChanges)", letters,
+            "\(v.unlettered)/\(v.lines)", "\(v.missingAnnotations)", "\(r.merged ?? 0)", s(r.finalLatency?.p95), display,
+            s(r.displayBacklog), added, threshold, keeps,
         ]
         return "| " + cells.joined(separator: " | ") + " |"
     }
@@ -111,13 +162,43 @@ public struct BenchReport: Codable, Equatable, Sendable {
             Self.tableHeader,
         ]
         lines += results.map(Self.tableRow)
+        let limit = Int(RunResult.acceptableDelay)
         lines += [
             "",
-            "WER: word error rate over each channel's whole transcript. Final delay: end of a call to its final line. "
-                + "Backlog: how long after the audio stopped the last line arrived. CPU (us): cores this process used "
-                + "(100% = one core). CPU (Mac): share of all cores busy. Keeps up: no failures or dropped audio, "
-                + "≤ 5% of calls missed, p95 delay and backlog ≤ \(Int(RunResult.acceptableDelay)) s.",
+            "WER: word error rate over each channel's whole transcript. Missed: calls with no final line; "
+                + "\"merged\" turns (conversations only) have no line of their own but are answered by the previous "
+                + "turn's line in the same exchange, final only after they ended; that line's delay runs from the end "
+                + "of the last turn in it. Final delay: end of a call to its final "
+                + "line, when rules can act on it. Display: end of a call to its line on screen, after voice analysis. "
+                + "Backlog: how long after the audio stopped the last final line arrived. CPU (us): cores this "
+                + "process used (100% = one core). CPU (Mac): share of all cores busy. Keeps up: no failures or "
+                + "dropped audio, ≤ 5% of calls missed, p95 final delay and backlog ≤ \(limit) s; with voice changes "
+                + "on, also display p95 and display backlog ≤ \(limit) s.",
         ]
+        let voiced = results.filter { $0.voices != nil }
+        if !voiced.isEmpty {
+            lines += ["", "## Voice changes", "", Self.voiceTableHeader]
+            lines += voiced.map { r in
+                let base = r.engine.hasSuffix("-voices")
+                    ? results.first { $0.engine == String(r.engine.dropLast(7)) && $0.channels == r.channels }
+                    : nil
+                return Self.voiceRow(r, without: base)
+            }
+            lines += [
+                "",
+                "Changes missed: turn boundaries where the voice changes (within an exchange) with no change of letter "
+                    + "within ±0.5 s. False: changes of letter with no change of voice within ±0.5 s. Two turns the "
+                    + "segmenter merged into one line count as a missed change unless the line was split there. "
+                    + "Letters right: turns by a voice already heard in the exchange shown with its earlier "
+                    + "letter. No letter: annotated lines without a letter (short or quiet lines, no voice model, or "
+                    + "the channel's voice queue was full; these can't be told apart from outside). Not annotated: "
+                    + "recognised lines whose annotation never arrived; each counts in the display delay at the "
+                    + "moment the run stopped watching, a lower bound. Merged calls: turns that share an earlier "
+                    + "turn's line. Display backlog: how long after the audio "
+                    + "stopped the last line reached the screen. CPU added: this process's cores over the same "
+                    + "engine without voice changes at the same channel count. Keeps up: cues / display, as above.",
+            ]
+        }
         let failed = results.filter { !$0.failures.isEmpty }
         if !failed.isEmpty {
             lines += ["", "## Failures", ""]
