@@ -1,0 +1,139 @@
+{
+  "corpus" : "say (Samantha en_US, Daniel en_GB, Karen en_AU, Moira en_IE; 160 clips",
+  "date" : "2026-11-16T22:25:31Z",
+  "idleSystemCPU" : 0.09282224727546036,
+  "machine" : "Apple M1 Max, 10 cores, 64 GB",
+  "osVersion" : "Version 27.2.1 (Build 26B131)",
+  "results" : [
+    {
+      "channels" : 32,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.9947619712377866,
+        "mean" : 0.7154669495951375,
+        "p50" : 0.715011922238066,
+        "p95" : 0.9067753049402718
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.20755555555555574,
+      "engine" : "parakeet-v3-preview-voices",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.7476520189453737,
+        "mean" : 0.6238173094478512,
+        "p50" : 0.6293497247857402,
+        "p95" : 0.7204527030070693
+      },
+      "firstWordLatency" : {
+        "max" : 9.205944526713566,
+        "mean" : 2.329287035580154,
+        "p50" : 2.231385577673727,
+        "p95" : 5.290439982774977
+      },
+      "merged" : 63,
+      "missed" : 0,
+      "peakMemoryMB" : 669.9853363037109,
+      "processCPU" : 0.5397748265475085,
+      "samples" : [
+        {
+          "hypothesis" : "Standby lighting Q42 Can someone check the radio mic on track 4? Can I get a work light on stage right? Thank you, 5 minutes. Places please for the top of Act 2.",
+          "reference" : "Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Thank you, five minutes. Places please for the top of act two."
+        },
+        {
+          "hypothesis" : "Fog Machine on, please. Fog Machine on, please. Stand by sound Q7 and fly Q3. Curtain out. Standing by. Deck is clear. Second half beginners to the stage, please.",
+          "reference" : "Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Curtain out. Standing by. Deck is clear. Second half beginners to the stage, please."
+        }
+      ],
+      "speechSeconds" : 398.506666666667,
+      "startSeconds" : 0.31072958399999995,
+      "systemCPU" : 0.19643303192286557,
+      "utterances" : 192,
+      "voiceThreshold" : 0.5,
+      "voices" : {
+        "changes" : 134,
+        "correctLetters" : 40,
+        "falseChanges" : 2,
+        "lines" : 157,
+        "missedChanges" : 53,
+        "missingAnnotations" : 0,
+        "returningTurns" : 49,
+        "unlettered" : 0
+      },
+      "wordErrors" : {
+        "deletions" : 5,
+        "insertions" : 0,
+        "referenceWords" : 1057,
+        "substitutions" : 28
+      }
+    },
+    {
+      "channels" : 32,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 1.0587658042377877,
+        "mean" : 0.7350778711687812,
+        "p50" : 0.7330414155423401,
+        "p95" : 0.9077117665396912
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.20755555555555574,
+      "engine" : "parakeet-v3-voices",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.8115685804623851,
+        "mean" : 0.6424941760214938,
+        "p50" : 0.653849407356681,
+        "p95" : 0.7445418122539706
+      },
+      "firstWordLatency" : {
+        "max" : 11.32898674284932,
+        "mean" : 3.863256452650214,
+        "p50" : 3.0740622080261435,
+        "p95" : 7.7302025519433215
+      },
+      "merged" : 63,
+      "missed" : 0,
+      "peakMemoryMB" : 689.5947570800781,
+      "processCPU" : 0.2936130379423307,
+      "samples" : [
+        {
+          "hypothesis" : "Standby lighting Q42 Can someone check the radio mic on track 4? Can I get a work light on stage right? Thank you, 5 minutes. Places please for the top of Act 2.",
+          "reference" : "Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Thank you, five minutes. Places please for the top of act two."
+        },
+        {
+          "hypothesis" : "Fog Machine on, please. Fog Machine on, please. Stand by sound Q7 and fly Q3. Curtain out. Standing by. Deck is clear. Second half beginners to the stage, please.",
+          "reference" : "Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Curtain out. Standing by. Deck is clear. Second half beginners to the stage, please."
+        }
+      ],
+      "speechSeconds" : 398.506666666667,
+      "startSeconds" : 0.246163042,
+      "systemCPU" : 0.8674028561939555,
+      "utterances" : 192,
+      "voiceThreshold" : 0.5,
+      "voices" : {
+        "changes" : 134,
+        "correctLetters" : 40,
+        "falseChanges" : 2,
+        "lines" : 157,
+        "missedChanges" : 53,
+        "missingAnnotations" : 0,
+        "returningTurns" : 49,
+        "unlettered" : 0
+      },
+      "wordErrors" : {
+        "deletions" : 5,
+        "insertions" : 0,
+        "referenceWords" : 1057,
+        "substitutions" : 28
+      }
+    }
+  ]
+}

@@ -34,6 +34,15 @@ share the speech hardware, and keep the Mac otherwise quiet.
 | `--conversation` | off | Channels hold exchanges between voices instead of lone calls (see below). `--duty` doesn't apply. |
 | `--voice-threshold D` | the app's default | Voice-change threshold (cosine distance) for the `-voices` engines. |
 
+### Live preview
+
+`parakeet-v3-preview` and `parakeet-v3-preview-voices` run Parakeet the way
+a channel set to "Fast, then corrected" does: the words of a call still
+being spoken go out as volatile text about every 0.5 s, and the final line
+follows at the pause. "First words" shows the gain. Compare their final
+delay with `parakeet-v3` and `parakeet-v3-voices`, which send final lines
+only.
+
 ### Voice changes
 
 The `-voices` engines (`parakeet-v3-voices`, `apple-longform-voices`,
