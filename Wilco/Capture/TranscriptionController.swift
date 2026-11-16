@@ -23,6 +23,9 @@ final class TranscriptionController {
         var transcriber: any ChannelTranscriber
         /// Start, and any stop of a predecessor, in order. A ring has one reader.
         var lifecycle: Task<Void, Never>
+        /// Parakeet's models on disk as the transcriber was made, so an
+        /// install can tell which channels started without one.
+        var startedWith: ParakeetAvailability
         /// The voice settings sent to the running transcriber, in order, so a
         /// quick run of slider moves can't land out of order.
         var voiceUpdate: Task<Void, Never>?
@@ -78,28 +81,54 @@ final class TranscriptionController {
         }
 
         for (id, configuration) in desired where running[id]?.configuration != configuration {
-            guard let ring = capture.ring(for: id) else { continue }
-            let updates = continuation
-            let transcriber = ChannelTranscribers.make(
-                configuration: configuration,
-                source: AudioSource(ring: ring, sampleRate: { capture.sampleRate(for: id) }),
-                sessionOffset: Date().timeIntervalSince(sessionStart),
-                whisperModels: whisperModels,
-                parakeetModels: parakeetModels,
-                voiceprints: voiceprints,
-                onEvent: { updates.yield(.event($0)) },
-                onStatus: { updates.yield(.status(id, $0)) }
-            )
-            let previous = running[id]
-            let lifecycle = Task {
-                if let previous {
-                    await previous.lifecycle.value
-                    await previous.transcriber.stop()
-                }
-                await transcriber.start()
-            }
-            running[id] = Running(configuration: configuration, transcriber: transcriber, lifecycle: lifecycle)
+            start(id, configuration, capture: capture, sessionStart: sessionStart)
         }
+    }
+
+    /// After a model was installed, restarts only the Parakeet channels it
+    /// helps: ones that failed for want of the speech model, and ones running
+    /// unboosted because the vocabulary model was missing when they started.
+    /// Healthy channels keep running.
+    func modelsInstalled(
+        statuses: [ChannelConfig.ID: TranscriberStatus], capture: MultiDeviceCapture, sessionStart: Date
+    ) {
+        let now = ParakeetAvailability(store: parakeetModels)
+        for (id, entry) in running where ModelArrival.restarts(
+            entry.configuration, status: statuses[id], startedWith: entry.startedWith, now: now
+        ) {
+            start(id, entry.configuration, capture: capture, sessionStart: sessionStart)
+        }
+    }
+
+    /// Starts a channel's transcriber, after stopping the one it replaces.
+    private func start(
+        _ id: ChannelConfig.ID, _ configuration: TranscriberConfiguration,
+        capture: MultiDeviceCapture, sessionStart: Date
+    ) {
+        guard let ring = capture.ring(for: id) else { return }
+        let updates = continuation
+        let startedWith = ParakeetAvailability(store: parakeetModels)
+        let transcriber = ChannelTranscribers.make(
+            configuration: configuration,
+            source: AudioSource(ring: ring, sampleRate: { capture.sampleRate(for: id) }),
+            sessionOffset: Date().timeIntervalSince(sessionStart),
+            whisperModels: whisperModels,
+            parakeetModels: parakeetModels,
+            voiceprints: voiceprints,
+            onEvent: { updates.yield(.event($0)) },
+            onStatus: { updates.yield(.status(id, $0)) }
+        )
+        let previous = running[id]
+        let lifecycle = Task {
+            if let previous {
+                await previous.lifecycle.value
+                await previous.transcriber.stop()
+            }
+            await transcriber.start()
+        }
+        running[id] = Running(
+            configuration: configuration, transcriber: transcriber, lifecycle: lifecycle, startedWith: startedWith
+        )
     }
 
     /// Stops every transcriber, letting each finish the line it was hearing.

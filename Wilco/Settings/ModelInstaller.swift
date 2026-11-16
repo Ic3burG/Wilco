@@ -23,6 +23,9 @@ final class ModelInstaller {
     private(set) var errors: [Item: String] = [:]
     /// Changes whenever something was installed or removed, so views re-check.
     private(set) var generation = 0
+    /// Called after a download finishes, so running channels that were
+    /// waiting on a model can pick it up.
+    @ObservationIgnored var onInstalled: (@MainActor () -> Void)?
 
     let whisperStore = WhisperModelStore()
     let parakeetStore: ParakeetModelStore
@@ -72,6 +75,7 @@ final class ModelInstaller {
             progress[item] = nil
             voiceModelInstalled = voiceprints.isInstalled()
             generation += 1
+            if errors[item] == nil { onInstalled?() }
         }
     }
 

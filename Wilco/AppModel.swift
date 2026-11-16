@@ -134,6 +134,7 @@ final class AppModel {
 
         restoreLoadedConfiguration()
 
+        installer.onInstalled = { [weak self] in self?.modelsInstalled() }
         performer.log = { [weak self] entry in self?.log(entry) }
         performer.mark = { [weak self] marker in self?.markers.append(marker) }
 
@@ -237,6 +238,13 @@ final class AppModel {
             await transcription.stopAll()
             if sessionStart == nil { writer = nil }
         }
+    }
+
+    /// A model finished installing: channels that failed or run without
+    /// vocabulary boosting for want of it start again; the rest carry on.
+    private func modelsInstalled() {
+        guard let sessionStart else { return }
+        transcription.modelsInstalled(statuses: transcriberStatus, capture: capture, sessionStart: sessionStart)
     }
 
     func clearTranscript(channelID: ChannelConfig.ID? = nil) {

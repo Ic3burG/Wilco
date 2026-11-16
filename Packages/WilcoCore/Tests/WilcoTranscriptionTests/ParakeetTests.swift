@@ -53,6 +53,46 @@ import WilcoCore
         #expect(!ParakeetVocabulary.noticeNeeded(language: .french, terms: [" "]))
     }
 
+    // MARK: - Models installed mid-session
+
+    private func parakeet(_ terms: [String] = [], locale: String = "en_US") -> TranscriberConfiguration {
+        var show = ShowDocument()
+        var channel = show.addChannel(engine: .parakeet)
+        channel.localeIdentifier = locale
+        show.globalVocabulary = terms
+        return TranscriberConfiguration(channel: channel, show: show)
+    }
+
+    private let none = ParakeetAvailability(model: false, vocabulary: false)
+    private let modelOnly = ParakeetAvailability(model: true, vocabulary: false)
+    private let both = ParakeetAvailability(model: true, vocabulary: true)
+
+    @Test func failedParakeetChannelRestartsOnceItsModelIsInstalled() {
+        let failed = TranscriberStatus.failed("Could not load the speech model")
+        #expect(ModelArrival.restarts(parakeet(), status: failed, startedWith: none, now: modelOnly))
+        #expect(!ModelArrival.restarts(parakeet(), status: failed, startedWith: none, now: none),
+                "still nothing to load")
+    }
+
+    @Test func channelRunningWithoutItsVocabularyModelRestartsWhenItArrives() {
+        let boosted = parakeet(["Kinesys"])
+        #expect(ModelArrival.restarts(boosted, status: .listening, startedWith: modelOnly, now: both))
+        #expect(!ModelArrival.restarts(boosted, status: .listening, startedWith: both, now: both), "already boosting")
+        #expect(!ModelArrival.restarts(boosted, status: .listening, startedWith: modelOnly, now: modelOnly))
+    }
+
+    @Test func healthyChannelsKeepRunning() {
+        // Nothing to boost: no terms, or a language the booster can't do.
+        #expect(!ModelArrival.restarts(parakeet(), status: .listening, startedWith: modelOnly, now: both))
+        #expect(!ModelArrival.restarts(
+            parakeet(["Kinesys"], locale: "fr_FR"), status: .listening, startedWith: modelOnly, now: both
+        ))
+        // Other engines never wait on Parakeet's models.
+        var show = ShowDocument()
+        let whisper = TranscriberConfiguration(channel: show.addChannel(engine: .whisper), show: show)
+        #expect(!ModelArrival.restarts(whisper, status: .failed("x"), startedWith: none, now: both))
+    }
+
     @Test func conservativeThresholds() {
         #expect(ParakeetVocabulary.thresholds == VocabularyBoostingSession.Thresholds(cbw: 0, minSimilarity: 0.7))
     }
