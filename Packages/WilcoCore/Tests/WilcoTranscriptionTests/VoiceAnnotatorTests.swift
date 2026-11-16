@@ -100,7 +100,29 @@ struct VoiceAnnotatorTests {
         let audio = [Float](repeating: 1, count: 16_000) + [Float](repeating: 2, count: 32_000)
         let events = await annotator.annotate(recognised, audio: audio, lineStart: 10, lineEnd: 13)
         #expect(events.map(\.text) == ["Standby LX 42 Standing by"])
-        #expect(events.map(\.stage) == [.annotated(voice: "B", exchange: 1)])
+        // The whole line is one voice: the first letter, and only one voice
+        // made, so the next new speaker is B.
+        #expect(events.map(\.stage) == [.annotated(voice: "A", exchange: 1)])
+        let next = await annotator.annotate(
+            line("Go", at: 15), audio: [Float](repeating: 3, count: 32_000), lineStart: 15, lineEnd: 17
+        )
+        #expect(next.map(\.stage) == [.annotated(voice: "B", exchange: 1)])
+    }
+
+    @Test func wordsTheTextDoesNotHoldKeepTheLineOneVoice() async {
+        // Timings for different text (a rescore that changed it): the line
+        // can't be cut, so its two voices' prints make one voice.
+        let annotator = VoiceAnnotator(settings: .standard, extractor: WindowedVoiceprints())
+        let audio = [Float](repeating: 1, count: 24_000) + [Float](repeating: 2, count: 24_000)
+        let stale = [TimedWord(text: "kineses", start: 10, end: 11), TimedWord(text: "rig", start: 11.6, end: 12.3)]
+        let events = await annotator.annotate(
+            line("Kinesys standing by", at: 10), audio: audio, lineStart: 10, lineEnd: 13, words: stale
+        )
+        #expect(events.map(\.stage) == [.annotated(voice: "A", exchange: 1)])
+        let next = await annotator.annotate(
+            line("Go", at: 15), audio: [Float](repeating: 3, count: 32_000), lineStart: 15, lineEnd: 17
+        )
+        #expect(next.map(\.stage) == [.annotated(voice: "B", exchange: 1)])
     }
 
     @Test func failingExtractorStillDeliversTheLine() async {

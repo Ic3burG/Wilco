@@ -36,8 +36,9 @@ public actor VoiceAnnotator {
     /// With `words` (the line's words, in session offsets), a line whose voice
     /// changes partway comes back as several pieces, cut between words, each
     /// with its own letter and offset, all sharing the line's `lineID`, in
-    /// order. Without them the line stays whole and takes the letter of its
-    /// longest piece. When voice analysis fails, or there is no audio, the
+    /// order. Only pieces that are shown get letters or become voices.
+    /// Without words (or with words its text doesn't hold) the line stays
+    /// whole and all its audio counts as one voice. When voice analysis fails, or there is no audio, the
     /// line still comes back, with no letter; it counts towards the exchange
     /// like any line.
     public func annotate(
@@ -47,8 +48,11 @@ public actor VoiceAnnotator {
         if available, !audio.isEmpty {
             prints = (try? await extractor.voiceprints(of: audio, startingAt: lineStart)) ?? []
         }
-        let pieces = tracker.assign(prints, lineStart: lineStart, lineEnd: max(lineEnd, lineStart))
-        return LineSplitter.split(words: words, text: line.text, pieces: pieces).enumerated().map { i, part in
+        // The tracker sees the same words the splitter cuts at, so it only
+        // gives letters to pieces that will be shown.
+        let placeable = LineSplitter.placeableWords(words, in: line.text)
+        let pieces = tracker.assign(prints, lineStart: lineStart, lineEnd: max(lineEnd, lineStart), words: placeable)
+        return LineSplitter.split(words: placeable, text: line.text, pieces: pieces).enumerated().map { i, part in
             var annotated = line
             annotated.isFinal = true
             annotated.text = part.text

@@ -37,17 +37,11 @@ public enum LineSplitter {
             voice: longest?.voice, exchange: longest?.exchange ?? 1
         )]
 
-        let timed = words.filter { !core($0.text).isEmpty }.sorted { $0.start < $1.start }
+        let timed = placeableWords(words, in: text)
         guard pieces.count > 1, !timed.isEmpty, let positions = locate(timed, in: text) else { return whole }
 
         // cuts[i] is the index of piece i's first word.
-        let n = timed.count
-        var cuts = [0]
-        for piece in pieces.dropFirst() {
-            let nearest = (0...n).min { gapDistance(piece.start, $0, timed) < gapDistance(piece.start, $1, timed) }!
-            cuts.append(max(nearest, cuts.last!))
-        }
-        cuts.append(n)
+        let cuts = [0] + Self.cuts(at: pieces.dropFirst().map(\.start), words: timed) + [timed.count]
 
         // Pieces with words; neighbours with the same voice join up.
         var kept: [(first: Int, voice: String?, exchange: Int)] = []
@@ -69,6 +63,26 @@ public enum LineSplitter {
                 text: text[from..<to].trimmingCharacters(in: .whitespacesAndNewlines),
                 start: start, voice: part.voice, exchange: part.exchange
             ))
+        }
+        return out
+    }
+
+    /// The words a line can be cut at: those with letters or digits, in time
+    /// order, when every one of them can be found in `text` in order. Empty
+    /// otherwise, which keeps the line whole.
+    public static func placeableWords(_ words: [TimedWord], in text: String) -> [TimedWord] {
+        let timed = words.filter { !core($0.text).isEmpty }.sorted { $0.start < $1.start }
+        return locate(timed, in: text) == nil ? [] : timed
+    }
+
+    /// Where each change time cuts `words` (from ``placeableWords(_:in:)``):
+    /// the index of the first word after the cut, at the gap nearest the
+    /// change. Never decreasing; `words.count` means after the last word.
+    public static func cuts(at changes: [Double], words: [TimedWord]) -> [Int] {
+        var out: [Int] = []
+        for time in changes {
+            let nearest = (0...words.count).min { gapDistance(time, $0, words) < gapDistance(time, $1, words) }!
+            out.append(max(nearest, out.last ?? 0))
         }
         return out
     }

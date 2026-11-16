@@ -65,7 +65,9 @@ public struct VoiceTracker: Sendable {
         return out
     }
 
-    public mutating func assign(_ prints: [Voiceprint], lineStart: Double, lineEnd: Double) -> [VoicePiece] {
+    public mutating func assign(
+        _ prints: [Voiceprint], lineStart: Double, lineEnd: Double, words: [TimedWord]? = nil
+    ) -> [VoicePiece] {
         if let last = lastLineEnd, lineStart - last > settings.exchangeGap {
             exchange += 1
             voices = []
@@ -94,6 +96,10 @@ public struct VoiceTracker: Sendable {
             }
         }
 
+        if let words {
+            (groups, boundaries) = Self.shown(groups, boundaries, words: words)
+        }
+
         var pieces: [VoicePiece] = []
         for (i, group) in groups.enumerated() {
             let start = i == 0 ? lineStart : boundaries[i - 1]
@@ -102,6 +108,28 @@ public struct VoiceTracker: Sendable {
             pieces.append(VoicePiece(start: start, end: end, voice: voice, exchange: exchange))
         }
         return pieces
+    }
+
+    /// The groups that will be shown as lines, so only they get letters and
+    /// become voices. With no words the line stays whole: one group of every
+    /// print. Otherwise a group the splitter would leave without words is
+    /// dropped with its prints (they cover no speech that's shown), and the
+    /// cuts are worked out again until every group has words, exactly as
+    /// ``LineSplitter`` will cut the survivors.
+    private static func shown(
+        _ groups: [[Voiceprint]], _ boundaries: [Double], words: [TimedWord]
+    ) -> ([[Voiceprint]], [Double]) {
+        guard !words.isEmpty else { return ([groups.flatMap { $0 }], []) }
+        var groups = groups, boundaries = boundaries
+        while groups.count > 1 {
+            let cuts = [0] + LineSplitter.cuts(at: boundaries, words: words) + [words.count]
+            guard let empty = groups.indices.first(where: { cuts[$0] == cuts[$0 + 1] }) else { break }
+            groups.remove(at: empty)
+            // The first group's start is the line's; otherwise the dropped
+            // group's stretch goes to the group before it.
+            boundaries.remove(at: empty == 0 ? 0 : empty - 1)
+        }
+        return (groups, boundaries)
     }
 
     // MARK: - Voices

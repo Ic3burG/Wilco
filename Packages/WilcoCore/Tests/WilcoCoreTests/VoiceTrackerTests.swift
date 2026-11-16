@@ -153,4 +153,68 @@ import Testing
         #expect(VoiceTracker.letter(26) == "AA")
         #expect(VoiceTracker.letter(27) == "AB")
     }
+
+    // MARK: - Only voices that are shown
+
+    /// Words at 0–1.4 s and 3.1–4.4 s: nothing is said from 1.4 to 3.1 s.
+    private let wordsAroundAGap = [
+        TimedWord(text: "Standby", start: 0, end: 0.7), TimedWord(text: "LX", start: 0.7, end: 1.4),
+        TimedWord(text: "LX", start: 3.1, end: 3.6), TimedWord(text: "go", start: 3.6, end: 4.4),
+    ]
+
+    /// Voice x, then voice y over the wordless middle only, then x again.
+    private func lineWithAWordlessMiddleVoice(_ t: inout VoiceTracker) -> [VoicePiece] {
+        let x = axis(0), y = axis(1)
+        return t.assign(
+            line([x, x, x, y, y, y, x, x, x], from: 0), lineStart: 0, lineEnd: 4.5, words: wordsAroundAGap
+        )
+    }
+
+    @Test func wordlessPieceDoesNotTakeALetter() {
+        var t = VoiceTracker(settings: .standard)
+        let first = lineWithAWordlessMiddleVoice(&t)
+        #expect(letters(first) == ["A", "A"])
+        // The next new voice is the second one shown: B, not C.
+        let next = t.assign(line([axis(2), axis(2), axis(2)], from: 6), lineStart: 6, lineEnd: 7.5, words: [
+            TimedWord(text: "Standing", start: 6, end: 6.8), TimedWord(text: "by", start: 6.8, end: 7.2),
+        ])
+        #expect(letters(next) == ["B"])
+    }
+
+    @Test func wordlessPieceLeavesNoVoiceToMatch() {
+        var t = VoiceTracker(settings: .standard)
+        _ = lineWithAWordlessMiddleVoice(&t)
+        // A short line in the dropped piece's voice: nobody shown sounds like
+        // it, so it gets no letter rather than a letter never introduced.
+        let y = axis(1)
+        let short = t.assign([vp(y, 6, 6.5), vp(y, 6.3, 6.8)], lineStart: 6, lineEnd: 6.8, words: [
+            TimedWord(text: "Copy", start: 6, end: 6.6),
+        ])
+        #expect(letters(short) == [nil])
+    }
+
+    @Test func lineWithoutWordsMakesOneVoiceAtMost() {
+        var t = VoiceTracker(settings: .standard)
+        let x = axis(0), y = axis(1)
+        let whole = t.assign(line([x, x, x, y, y, y], from: 0), lineStart: 0, lineEnd: 3, words: [])
+        #expect(whole.count == 1)
+        #expect(letters(whole) == ["A"])
+        // Only one voice was made, so a third speaker is B.
+        let next = t.assign(line([axis(2), axis(2), axis(2)], from: 5), lineStart: 5, lineEnd: 6.5, words: [])
+        #expect(letters(next) == ["B"])
+    }
+
+    @Test func piecesWithWordsAllGetLetters() {
+        // Words on both sides of the change: two pieces, two letters, cut
+        // where the splitter will cut.
+        var t = VoiceTracker(settings: .standard)
+        let x = axis(0), y = axis(1)
+        let words = [
+            TimedWord(text: "Standby", start: 0, end: 0.7), TimedWord(text: "LX", start: 0.7, end: 1.3),
+            TimedWord(text: "Standing", start: 1.6, end: 2.2), TimedWord(text: "by", start: 2.2, end: 2.8),
+        ]
+        let pieces = t.assign(line([x, x, x, y, y, y], from: 0), lineStart: 0, lineEnd: 3, words: words)
+        #expect(letters(pieces) == ["A", "B"])
+        #expect(pieces.map(\.start) == [0, 1.5])
+    }
 }
