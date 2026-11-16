@@ -4,7 +4,8 @@ import WilcoCore
 import WilcoTranscription
 
 /// Keeps one transcriber running per patched, unmuted channel while capture
-/// runs, restarting a channel's transcriber when its settings change.
+/// runs, restarting a channel's transcriber when its settings change. Voice
+/// settings are the exception: running channels take new ones in place.
 @MainActor
 final class TranscriptionController {
     enum Update: Sendable {
@@ -22,6 +23,9 @@ final class TranscriptionController {
         var transcriber: any ChannelTranscriber
         /// Start, and any stop of a predecessor, in order. A ring has one reader.
         var lifecycle: Task<Void, Never>
+        /// The voice settings sent to the running transcriber, in order, so a
+        /// quick run of slider moves can't land out of order.
+        var voiceUpdate: Task<Void, Never>?
     }
 
     private var running: [ChannelConfig.ID: Running] = [:]
@@ -52,6 +56,25 @@ final class TranscriptionController {
                 await previous.transcriber.stop()
             }
             continuation.yield(.status(id, nil))
+        }
+
+        // Voice settings reach running channels without a restart, which
+        // would cut the line in progress and start the exchange again at A.
+        for (id, configuration) in desired {
+            guard var entry = running[id], entry.configuration == configuration,
+                  entry.configuration.voiceSettings != configuration.voiceSettings
+            else { continue }
+            entry.configuration = configuration
+            if configuration.detectsVoiceChanges {
+                let transcriber = entry.transcriber
+                let settings = configuration.voiceSettings
+                let previous = entry.voiceUpdate
+                entry.voiceUpdate = Task {
+                    await previous?.value
+                    await transcriber.updateVoiceSettings(settings)
+                }
+            }
+            running[id] = entry
         }
 
         for (id, configuration) in desired where running[id]?.configuration != configuration {

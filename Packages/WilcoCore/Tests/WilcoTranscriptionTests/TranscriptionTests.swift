@@ -33,6 +33,34 @@ struct SampleRateConverterTests {
 /// End-to-end recognition of speech rendered by macOS `say`. Needs speech
 /// models on this Mac and takes several seconds, so it runs only with
 /// `WILCO_ASR_TESTS=1`.
+@Suite("Transcriber configuration")
+struct TranscriberConfigurationTests {
+    @Test func voiceSettingValuesDoNotRestartAChannel() {
+        var show = ShowDocument()
+        var channel = show.addChannel(engine: .whisper)
+        channel.detectsVoiceChanges = true
+        let before = TranscriberConfiguration(channel: channel, show: show)
+        show.voiceChanges.threshold = 0.62
+        show.voiceChanges.exchangeGap = 45
+        show.voiceChanges.shortLine = 2
+        let after = TranscriberConfiguration(channel: channel, show: show)
+        #expect(before == after, "running channels take new values without a restart")
+        #expect(after.voiceSettings == show.voiceChanges, "a channel started now takes the new values")
+    }
+
+    @Test func turningVoiceChangesOnOrOffRestartsTheChannel() {
+        var show = ShowDocument()
+        var channel = show.addChannel(engine: .whisper)
+        channel.detectsVoiceChanges = false
+        let off = TranscriberConfiguration(channel: channel, show: show)
+        channel.detectsVoiceChanges = true
+        let on = TranscriberConfiguration(channel: channel, show: show)
+        #expect(off != on)
+        #expect(off.voiceChanges == nil)
+        #expect(on.voiceChanges == show.voiceChanges)
+    }
+}
+
 @Suite("Speech recognition", .enabled(if: ProcessInfo.processInfo.environment["WILCO_ASR_TESTS"] == "1"))
 struct RecognitionTests {
     private final class Events: Sendable {

@@ -178,6 +178,10 @@ actor VoiceModelFirst: ChannelTranscriber {
     }
 
     func stop() async { await transcriber.stop() }
+
+    func updateVoiceSettings(_ settings: VoiceChangeSettings) async {
+        await transcriber.updateVoiceSettings(settings)
+    }
 }
 
 /// The benchmark's speech is English.

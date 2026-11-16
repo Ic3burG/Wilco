@@ -31,6 +31,12 @@ public actor VoiceAnnotator {
         tracker = VoiceTracker(settings: settings)
     }
 
+    /// New settings, used from the next line on. The exchange so far and its
+    /// letters are kept.
+    public func update(settings: VoiceChangeSettings) {
+        tracker.update(settings: settings)
+    }
+
     /// Loads the voice model ahead of the first line. A model that won't load
     /// leaves lines without letters; it never stops the channel.
     public func prepare() async {

@@ -176,6 +176,10 @@ actor WhisperChannelTranscriber: ChannelTranscriber {
         voices = nil
     }
 
+    func updateVoiceSettings(_ settings: VoiceChangeSettings) async {
+        await annotator?.update(settings: settings)
+    }
+
     private func run() async {
         let converter = SampleRateConverter.whisper()
         var segmenter = UtteranceSegmenter(sampleRate: 16_000)

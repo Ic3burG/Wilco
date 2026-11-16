@@ -78,6 +78,10 @@ actor AppleChannelTranscriber: ChannelTranscriber {
         input = nil
     }
 
+    func updateVoiceSettings(_ settings: VoiceChangeSettings) async {
+        await annotator?.update(settings: settings)
+    }
+
     private func begin() async throws {
         let module = try await makeModule()
         try await SpeechAssets.install([module]) { [onStatus] in onStatus(.downloading(progress: $0)) }

@@ -14,7 +14,9 @@ public struct AudioSource: Sendable {
 }
 
 /// Everything that decides how a channel is transcribed. A change to any of
-/// it restarts that channel's transcriber.
+/// it restarts that channel's transcriber, except the voice settings' values:
+/// running channels take those through
+/// ``ChannelTranscriber/updateVoiceSettings(_:)``.
 public struct TranscriberConfiguration: Equatable, Sendable {
     public var channelID: UUID
     public var engine: SpeechEngine
@@ -24,8 +26,20 @@ public struct TranscriberConfiguration: Equatable, Sendable {
     public var vocabulary: [String]
     /// Whisper only; Apple's engines ignore it.
     public var translateToEnglish: Bool
-    /// `nil` when the channel does not detect voice changes.
-    public var voiceChanges: VoiceChangeSettings?
+    /// Whether the channel detects voice changes. Turning it on or off
+    /// restarts the channel.
+    public var detectsVoiceChanges: Bool
+    /// The show's voice settings as the channel starts. Not part of equality,
+    /// so moving a voice setting doesn't restart every channel (cutting the
+    /// line in progress and starting the exchange again at A).
+    public var voiceSettings: VoiceChangeSettings {
+        get { startingVoiceSettings.value }
+        set { startingVoiceSettings.value = newValue }
+    }
+    private var startingVoiceSettings: Uncompared<VoiceChangeSettings>
+
+    /// The voice settings, or `nil` when the channel does not detect voice changes.
+    public var voiceChanges: VoiceChangeSettings? { detectsVoiceChanges ? voiceSettings : nil }
 
     public init(channel: ChannelConfig, show: ShowDocument) {
         channelID = channel.id
@@ -35,8 +49,16 @@ public struct TranscriberConfiguration: Equatable, Sendable {
         whisperModel = WhisperModel(rawValue: show.whisperModel) ?? .base
         vocabulary = show.vocabulary(for: channel.id)
         translateToEnglish = channel.translateToEnglish
-        voiceChanges = channel.detectsVoiceChanges ? show.voiceChanges : nil
+        detectsVoiceChanges = channel.detectsVoiceChanges
+        startingVoiceSettings = Uncompared(value: show.voiceChanges)
     }
+}
+
+/// A value carried in an `Equatable` type without counting towards its
+/// equality: any two compare equal.
+struct Uncompared<Value: Sendable>: Equatable, Sendable {
+    var value: Value
+    static func == (_: Self, _: Self) -> Bool { true }
 }
 
 public enum TranscriberStatus: Equatable, Sendable {
@@ -53,6 +75,10 @@ public typealias StatusHandler = @Sendable (TranscriberStatus) -> Void
 public protocol ChannelTranscriber: Actor {
     func start() async
     func stop() async
+    /// New voice settings for a running channel, used from its next line on.
+    /// The exchange so far and its letters are kept. Ignored by a channel
+    /// that doesn't detect voice changes.
+    func updateVoiceSettings(_ settings: VoiceChangeSettings) async
 }
 
 /// Builds the transcriber a configuration asks for. Apple's engines need

@@ -45,12 +45,18 @@ public struct VoiceTracker: Sendable {
         var count: Int
     }
 
-    private let settings: VoiceChangeSettings
+    private var settings: VoiceChangeSettings
     private var voices: [Voice] = []
     private var exchange = 1
     private var lastLineEnd: Double?
 
     public init(settings: VoiceChangeSettings) {
+        self.settings = settings
+    }
+
+    /// New settings, used from the next line on. The voices and exchange
+    /// heard so far are kept.
+    public mutating func update(settings: VoiceChangeSettings) {
         self.settings = settings
     }
 

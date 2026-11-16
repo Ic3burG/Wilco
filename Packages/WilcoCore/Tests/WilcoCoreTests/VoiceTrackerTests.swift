@@ -31,6 +31,17 @@ import Testing
         #expect(letters(c) == ["A"])
     }
 
+    @Test func newSettingsKeepTheVoicesHeardSoFar() {
+        var t = VoiceTracker(settings: .standard)
+        _ = t.assign(line([axis(0), axis(0), axis(0)], from: 0), lineStart: 0, lineEnd: 1.5)
+        _ = t.assign(line([axis(1), axis(1), axis(1)], from: 2), lineStart: 2, lineEnd: 3.5)
+        t.update(settings: VoiceChangeSettings(threshold: 0.4, exchangeGap: 30))
+        // Same exchange (a 25 s pause is inside the new gap), same letters.
+        let a = t.assign(line([axis(0), axis(0), axis(0)], from: 28.5), lineStart: 28.5, lineEnd: 30)
+        #expect(a.map(\.voice) == ["A"])
+        #expect(a.map(\.exchange) == [1])
+    }
+
     @Test func thirdVoiceGetsC() {
         var t = VoiceTracker(settings: .standard)
         var out: [String?] = []

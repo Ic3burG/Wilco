@@ -387,6 +387,8 @@ struct BenchRunnerTests {
             await pump?.value
         }
 
+        func updateVoiceSettings(_ settings: VoiceChangeSettings) async {}
+
         private func run() async {
             var heard = 0.0
             var next = 0
@@ -450,6 +452,7 @@ struct BenchRunnerTests {
         init(channel: BenchChannel) { self.channel = channel }
         func start() async { channel.onStatus(.failed("no model")) }
         func stop() async {}
+        func updateVoiceSettings(_ settings: VoiceChangeSettings) async {}
     }
 }
 

@@ -245,6 +245,20 @@ struct VoiceAnnotatorTests {
         #expect(extractor.prepares.withLock { $0 } == 2)
     }
 
+    @Test func newSettingsApplyFromTheNextLineAndKeepTheExchange() async {
+        let annotator = VoiceAnnotator(settings: .standard, extractor: FakeVoiceprints())
+        _ = await annotator.annotate(line("one", at: 0), audio: audio(1), lineStart: 0, lineEnd: 2)
+        _ = await annotator.annotate(line("two", at: 3), audio: audio(2), lineStart: 3, lineEnd: 5)
+
+        // A shorter exchange gap: the exchange so far and its letters are kept…
+        await annotator.update(settings: VoiceChangeSettings(exchangeGap: 5))
+        let kept = await annotator.annotate(line("three", at: 9), audio: audio(2), lineStart: 9, lineEnd: 11)
+        #expect(kept.first?.stage == .annotated(voice: "B", exchange: 1))
+        // …and a 6 s pause, inside the old 20 s gap, now starts a new one.
+        let next = await annotator.annotate(line("four", at: 17), audio: audio(2), lineStart: 17, lineEnd: 19)
+        #expect(next.first?.stage == .annotated(voice: "A", exchange: 2))
+    }
+
     @Test func pendingLinesCoverEveryChannelsFullVoiceQueue() {
         // 32 channels, each with a full queue plus the line being recognised.
         #expect(PendingLines().maximumLines >= 32 * (VoiceAnnotationQueue.maximumPending + 1))
