@@ -135,6 +135,75 @@ struct VoiceAnnotatorTests {
         #expect(events.first?.lineID == recognised.lineID)
     }
 
+    /// A model that can be installed and removed while the annotator runs.
+    final class FlakyVoiceprints: VoiceprintExtractor {
+        let installed = Mutex(false)
+        let prepares = Mutex(0)
+        func prepare() async throws {
+            prepares.withLock { $0 += 1 }
+            if !installed.withLock({ $0 }) { throw VoiceprintError.notInstalled }
+        }
+        func voiceprints(of samples: [Float], startingAt offset: Double) async throws -> [Voiceprint] {
+            if !installed.withLock({ $0 }) { throw VoiceprintError.notInstalled }
+            var vector = [Float](repeating: 0, count: 4)
+            vector[min(max(Int(samples.first ?? 0), 0), 3)] = 1
+            return [Voiceprint(vector: vector, start: offset, end: offset + Double(samples.count) / 16_000)]
+        }
+    }
+
+    private func stage(_ annotator: VoiceAnnotator, _ at: Double) async -> LineStage? {
+        await annotator.annotate(line("x", at: at), audio: audio(1), lineStart: at, lineEnd: at + 2).first?.stage
+    }
+
+    @Test func modelInstalledMidRunGivesLettersAfterTheRetryInterval() async {
+        let extractor = FlakyVoiceprints()
+        let clock = Mutex(100.0)
+        let annotator = VoiceAnnotator(settings: .standard, extractor: extractor, now: { clock.withLock { $0 } })
+        await annotator.prepare()
+        #expect(await stage(annotator, 0) == .annotated(voice: nil, exchange: 1))
+
+        extractor.installed.withLock { $0 = true }
+        clock.withLock { $0 += 1 }
+        #expect(await stage(annotator, 3) == .annotated(voice: nil, exchange: 1))
+        clock.withLock { $0 += VoiceAnnotator.retryInterval }
+        #expect(await stage(annotator, 6) == .annotated(voice: "A", exchange: 1))
+    }
+
+    @Test func missingModelIsRetriedOncePerIntervalWhateverTheLineRate() async {
+        let extractor = FlakyVoiceprints()
+        let clock = Mutex(0.0)
+        let annotator = VoiceAnnotator(settings: .standard, extractor: extractor, now: { clock.withLock { $0 } })
+        await annotator.prepare()
+        for i in 0..<20 {
+            clock.withLock { $0 += 0.2 }
+            _ = await stage(annotator, Double(i))
+        }
+        #expect(extractor.prepares.withLock { $0 } == 1)
+        clock.withLock { $0 += VoiceAnnotator.retryInterval }
+        _ = await stage(annotator, 30)
+        _ = await stage(annotator, 31)
+        #expect(extractor.prepares.withLock { $0 } == 2)
+    }
+
+    @Test func modelRemovedMidRunFallsBackThenRecoversAfterReinstall() async {
+        let extractor = FlakyVoiceprints()
+        extractor.installed.withLock { $0 = true }
+        let clock = Mutex(0.0)
+        let annotator = VoiceAnnotator(settings: .standard, extractor: extractor, now: { clock.withLock { $0 } })
+        await annotator.prepare()
+        #expect(await stage(annotator, 0) == .annotated(voice: "A", exchange: 1))
+
+        extractor.installed.withLock { $0 = false }
+        #expect(await stage(annotator, 3) == .annotated(voice: nil, exchange: 1))
+        let before = extractor.prepares.withLock { $0 }
+        #expect(await stage(annotator, 6) == .annotated(voice: nil, exchange: 1))
+        #expect(extractor.prepares.withLock { $0 } == before)
+
+        extractor.installed.withLock { $0 = true }
+        clock.withLock { $0 += VoiceAnnotator.retryInterval }
+        #expect(await stage(annotator, 9) == .annotated(voice: "A", exchange: 1))
+    }
+
     @Test func restartedChannelStartsAFreshExchange() async {
         let before = VoiceAnnotator(settings: .standard, extractor: FakeVoiceprints())
         _ = await before.annotate(line("one", at: 0), audio: audio(1), lineStart: 0, lineEnd: 2)

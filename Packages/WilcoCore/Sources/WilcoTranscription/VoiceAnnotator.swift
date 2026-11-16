@@ -11,20 +11,33 @@ import WilcoCore
 public actor VoiceAnnotator {
     private let extractor: any VoiceprintExtractor
     private var tracker: VoiceTracker
-    /// False once the voice model failed to load: lines then go out without
-    /// letters rather than retrying the load on every line.
+    /// False while the voice model isn't usable: lines then go out without
+    /// letters, and loading is retried at most once per `retryInterval`
+    /// (a model installed mid-run is picked up; one removed mid-run is let go).
     private var available = true
+    private var lastAttempt: Double?
+    private let now: @Sendable () -> Double
 
-    public init(settings: VoiceChangeSettings, extractor: any VoiceprintExtractor) {
+    /// The least time between attempts to load a model that wasn't usable.
+    public static let retryInterval = 5.0
+
+    /// `now` gives seconds from any steady clock; tests pass their own.
+    public init(
+        settings: VoiceChangeSettings, extractor: any VoiceprintExtractor,
+        now: @escaping @Sendable () -> Double = { ProcessInfo.processInfo.systemUptime }
+    ) {
         self.extractor = extractor
+        self.now = now
         tracker = VoiceTracker(settings: settings)
     }
 
     /// Loads the voice model ahead of the first line. A model that won't load
     /// leaves lines without letters; it never stops the channel.
     public func prepare() async {
+        lastAttempt = now()
         do {
             try await extractor.prepare()
+            available = true
         } catch {
             available = false
         }
@@ -45,8 +58,17 @@ public actor VoiceAnnotator {
         _ line: TranscriptionEvent, audio: [Float], lineStart: Double, lineEnd: Double, words: [TimedWord] = []
     ) async -> [TranscriptionEvent] {
         var prints: [Voiceprint] = []
+        if !available, let last = lastAttempt, now() - last >= Self.retryInterval {
+            await prepare()
+        }
         if available, !audio.isEmpty {
-            prints = (try? await extractor.voiceprints(of: audio, startingAt: lineStart)) ?? []
+            do {
+                prints = try await extractor.voiceprints(of: audio, startingAt: lineStart)
+            } catch {
+                // Most likely the model was removed: stop trying until the next retry.
+                available = false
+                lastAttempt = now()
+            }
         }
         // The tracker sees the same words the splitter cuts at, so it only
         // gives letters to pieces that will be shown.
