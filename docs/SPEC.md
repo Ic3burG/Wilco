@@ -207,12 +207,21 @@ Per channel, one `ChannelTranscribing` implementation:
 | `longForm` | `SpeechTranscriber` (macOS 26) | *"Continuous speech model. Best for an open ring where people talk over each other. Downloads a model per language."* |
 | `dictation` | `DictationTranscriber` (macOS 26) | *"Uses the dictation model macOS already has — no download, more languages. Tuned for short calls like 'standby' and 'go'."* |
 | `whisper` | WhisperKit | One multilingual model shared by every Whisper channel (`WhisperModelManager` caches one `WhisperKit` per model). The only engine below macOS 26. |
-| `parakeet` | FluidAudio (NVIDIA Parakeet TDT 0.6B v3) | **New in the rebuild, not in the reference app.** One multilingual model on the Neural Engine, shared by every Parakeet channel; detects 25 European languages. Vocabulary boosting (a CTC model) applies to English channels only. No translate to English. |
+| `parakeet` | FluidAudio (NVIDIA Parakeet TDT 0.6B v3) | **New in the rebuild, not in the reference app.** One multilingual model on the Neural Engine, shared by every Parakeet channel; detects 25 European languages. Vocabulary boosting (a CTC model) applies to English channels only. No translate to English. Live preview with *Fast, then corrected*. |
 
 `leadAndCorrect` latency profile (Apple engines): two analyzer "lanes" — a
 fast **lead** pass shows italic volatile words, an accurate **anchor** pass
 replaces them (*"Roughly twice the CPU per channel"*). `single` = one `sole`
 lane. [meta: `TranscriberRole { lead, anchor, sole }`]
+
+On Parakeet channels (new in the rebuild), `leadAndCorrect` previews instead:
+while someone talks, the same shared model transcribes the utterance so far
+about every 0.5 s and shows it as volatile words, once there is 0.5 s of
+speech and not during a pause of 0.3 s or more. The final line at the pause
+replaces it as before. Final lines take priority: a preview is skipped,
+never queued, while any channel's final line is being transcribed, and
+previews never get vocabulary boosting. Previews reach the screen only, not
+rules or outputs. `single` sends final lines only. Whisper has no preview.
 
 Vocabulary biasing = global (show) vocabulary + every enabled rule /
 highlight phrase that listens to the channel (*"Rule phrases are biased in automatically"*).

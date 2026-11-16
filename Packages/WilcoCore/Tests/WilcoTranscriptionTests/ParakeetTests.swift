@@ -280,4 +280,13 @@ import WilcoCore
         let preview = await ParakeetRecognizer(store: Self.testStore(), language: .english).preview(half)
         #expect(preview?.text.isEmpty == false)
     }
+
+    @Test func previewsFollowTheLatencyPicker() {
+        func configuration(_ engine: SpeechEngine, _ profile: SpeechLatencyProfile) -> TranscriberConfiguration {
+            TranscriberConfiguration(channel: ChannelConfig(name: "A", engine: engine, latencyProfile: profile), show: ShowDocument())
+        }
+        #expect(ChannelTranscribers.previewInterval(for: configuration(.parakeet, .leadAndCorrect)) == .milliseconds(500))
+        #expect(ChannelTranscribers.previewInterval(for: configuration(.parakeet, .single)) == nil)
+        #expect(ChannelTranscribers.previewInterval(for: configuration(.whisper, .leadAndCorrect)) == nil)
+    }
 }

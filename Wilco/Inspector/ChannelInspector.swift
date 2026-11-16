@@ -185,8 +185,8 @@ private struct ChannelForm: View {
                     Text("Fast, then corrected").tag(SpeechLatencyProfile.leadAndCorrect)
                     Text("Single pass").tag(SpeechLatencyProfile.single)
                 }
-                .disabled(!channel.engine.isApple)
-                .help("A quick model shows words as they are spoken; an accurate one replaces them a moment later. Roughly twice the CPU per channel.")
+                .disabled(channel.engine == .whisper)
+                .help("Shows words as they are spoken, then replaces them with the finished line. Uses more CPU per channel.")
             } header: {
                 Text("Recognition")
             } footer: {

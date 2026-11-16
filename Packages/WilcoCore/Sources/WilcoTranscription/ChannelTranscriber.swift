@@ -106,6 +106,7 @@ public enum ChannelTranscribers {
                     vocabulary: configuration.vocabulary
                 ),
                 voiceChanges: configuration.voiceChanges, voiceprints: voiceprints,
+                previewInterval: previewInterval(for: configuration),
                 onEvent: onEvent, onStatus: onStatus
             )
         }
@@ -119,6 +120,15 @@ public enum ChannelTranscribers {
             configuration: configuration, source: source, sessionOffset: sessionOffset,
             models: whisperModels, voiceprints: voiceprints, onEvent: onEvent, onStatus: onStatus
         )
+    }
+}
+
+extension ChannelTranscribers {
+    /// How often a channel previews the words still being spoken, or nil for
+    /// none. Parakeet previews on "Fast, then corrected"; Apple's engines
+    /// stream their own; Whisper sends only final lines.
+    public static func previewInterval(for configuration: TranscriberConfiguration) -> Duration? {
+        configuration.engine == .parakeet && configuration.latencyProfile == .leadAndCorrect ? .milliseconds(500) : nil
     }
 }
 
