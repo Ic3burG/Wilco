@@ -12,7 +12,15 @@ struct UtteranceTranscriberTests {
         let prepared = Mutex(0)
         let previews = Mutex(0)
         let failPrepare: Bool
-        init(failPrepare: Bool = false) { self.failPrepare = failPrepare }
+        /// Throws when its task is cancelled, as Parakeet's pipeline does.
+        let honoursCancellation: Bool
+        /// What a final line says; empty when the model heard nothing.
+        let finalText: String
+        init(failPrepare: Bool = false, honoursCancellation: Bool = false, finalText: String = " standby go ") {
+            self.failPrepare = failPrepare
+            self.honoursCancellation = honoursCancellation
+            self.finalText = finalText
+        }
 
         func prepare() async throws {
             prepared.withLock { $0 += 1 }
@@ -21,7 +29,8 @@ struct UtteranceTranscriberTests {
 
         func recognize(_ samples: [Float]) async throws -> Recognition? {
             heard.withLock { $0.append(samples.count) }
-            return Recognition(text: " standby go ", confidence: 0.9)
+            if honoursCancellation { try Task.checkCancellation() }
+            return Recognition(text: finalText, confidence: 0.9)
         }
 
         func preview(_ samples: [Float]) async -> Recognition? {
@@ -207,5 +216,40 @@ struct UtteranceTranscriberTests {
         #expect(events[(first + 1)..<second].allSatisfy { $0.isFinal || $0.sessionOffset == events[second].sessionOffset })
         #expect(events[(first + 1)..<second].contains { !$0.isFinal })
         #expect(!events[(second + 1)...].contains { !$0.isFinal })
+    }
+
+    /// Stopping capture mid-call still sends the call's final line, even
+    /// with a model that gives up when its task is cancelled.
+    @Test(.timeLimit(.minutes(1))) func stoppingMidCallStillSendsTheFinalLine() async throws {
+        let rate = 48_000.0
+        let events = try await run(
+            quiet(seconds: 0.5, rate: rate) + talk(seconds: 2, rate: rate),
+            rate: rate, previewInterval: .milliseconds(500), stopEarly: true,
+            recognizer: FakeRecognizer(honoursCancellation: true)
+        )
+        #expect(events.last?.isFinal == true)
+        #expect(events.last?.text == "standby go")
+    }
+
+    /// A previewed call whose final line comes back empty clears its
+    /// italics rather than leaving words nobody will confirm.
+    @Test(.timeLimit(.minutes(1))) func previewIsClearedWhenTheFinalLineIsEmpty() async throws {
+        let rate = 48_000.0
+        let ring = AudioRingBuffer(capacity: Int(rate) * 30)
+        let log = Log()
+        let transcriber = UtteranceChannelTranscriber(
+            channelID: UUID(), source: AudioSource(ring: ring, sampleRate: { rate }), sessionOffset: 0,
+            recognizer: FakeRecognizer(finalText: "  "), previewInterval: .milliseconds(500),
+            onEvent: { event in log.events.withLock { $0.append(event) } }, onStatus: { _ in }
+        )
+        await transcriber.start()
+        try await play(quiet(seconds: 0.5, rate: rate) + talk(seconds: 2, rate: rate) + quiet(seconds: 1.5, rate: rate),
+                       into: ring, rate: rate)
+        await transcriber.stop()
+        let events = log.events.withLock { $0 }
+        #expect(events.contains { !$0.isFinal && $0.text == "standby" })
+        let last = try #require(events.last)
+        #expect(!last.isFinal)
+        #expect(last.text.isEmpty)
     }
 }

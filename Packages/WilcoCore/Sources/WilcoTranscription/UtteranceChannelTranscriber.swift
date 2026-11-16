@@ -66,6 +66,9 @@ public actor UtteranceChannelTranscriber: ChannelTranscriber {
     /// A pause this long may be about to end the utterance: its final line
     /// is close, so a preview would be wasted work.
     static let previewPauseCutoff = 0.3
+    /// Whether this utterance's words in progress are on screen, so they
+    /// can be cleared if no final line comes to replace them.
+    private var previewOnScreen = false
 
     /// With `voiceChanges` set, each line goes out `.recognized` and then
     /// `.annotated` with its voice letter; `voiceprints` is the app's shared
@@ -143,7 +146,10 @@ public actor UtteranceChannelTranscriber: ChannelTranscriber {
             try? await Task.sleep(for: pumpInterval)
         }
         if let last = segmenter.flush() {
-            await transcribe(last)
+            // The pump was cancelled to stop; a model that checks for
+            // cancellation would drop this last line, so it runs in a task
+            // of its own.
+            await Task { await self.transcribe(last) }.value
         }
     }
 
@@ -157,12 +163,25 @@ public actor UtteranceChannelTranscriber: ChannelTranscriber {
             channelID: channelID, text: text, isFinal: false,
             sessionOffset: sessionOffset + utterance.startOffset, confidence: recognition.confidence
         ))
+        previewOnScreen = true
     }
 
+    /// Sends the utterance's final line. If none comes (the model heard
+    /// nothing or failed), clears any words in progress left on screen.
     private func transcribe(_ utterance: UtteranceSegmenter.Utterance) async {
-        guard let recognition = try? await recognizer.recognize(utterance.samples) else { return }
-        let text = recognition.text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return }
+        let shown = previewOnScreen
+        previewOnScreen = false
+        let recognition = try? await recognizer.recognize(utterance.samples)
+        let text = recognition?.text.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard let recognition, !text.isEmpty else {
+            if shown {
+                onEvent(TranscriptionEvent(
+                    channelID: channelID, text: "", isFinal: false,
+                    sessionOffset: sessionOffset + utterance.startOffset, confidence: nil
+                ))
+            }
+            return
+        }
         let start = sessionOffset + utterance.startOffset
         let line = TranscriptionEvent(
             channelID: channelID,

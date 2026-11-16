@@ -699,6 +699,17 @@ All of this is tested, not verified.
   `docs/superpowers/plans/2026-11-16-parakeet-live-preview.md`. SPEC §6
   updated.
 
+### Fixes
+
+- **Stopping capture mid-call dropped the call's last line on Parakeet.**
+  The flush ran in the cancelled pump task, and Parakeet's pipeline checks
+  for cancellation, so the line was lost (this predates previews). The
+  flush now runs in a task of its own. With previews, the lost line would
+  also have left italics on screen.
+- **Italics left behind.** If a previewed call's final line comes back
+  empty or fails, the channel's words in progress are now cleared.
+- Both found by the final review, each with a regression test.
+
 ### Tooling
 
 - `wilco-bench` engines `parakeet-v3-preview` and
@@ -727,5 +738,12 @@ All of this is tested, not verified.
 - Watch for the Neural Engine stall on a show Mac. If it shows up in real
   use, find its cause (macOS speech services, power management) before
   relying on 32 Parakeet channels.
+- **Whisper may drop its last line on stop** the same way (its flush also
+  runs in the cancelled pump, `WhisperChannelTranscriber.swift`); check
+  and apply the same fix.
+- Review minors not done: a skipped preview waits a full 0.5 s before
+  retrying; preview cost grows with call length (consider previewing
+  only the last ~10 s of long calls); the greyed Latency picker on Whisper
+  channels still reads "Fast, then corrected".
 - Earlier items still open: real-show vocabulary check, voice letters on a
   real show, the voice threshold.
