@@ -31,6 +31,15 @@ public protocol UtteranceRecognizer: Sendable {
     /// Transcribes one utterance of 16 kHz mono audio. Nil or empty text
     /// means nothing was said.
     func recognize(_ samples: [Float]) async throws -> Recognition?
+    /// A quick look at an utterance still being spoken, shown as words in
+    /// progress. Nil skips this preview; it never throws, and it must not
+    /// hold up `recognize`.
+    func preview(_ samples: [Float]) async -> Recognition?
+}
+
+extension UtteranceRecognizer {
+    /// Models without previews send only final lines.
+    public func preview(_ samples: [Float]) async -> Recognition? { nil }
 }
 
 /// Transcribes a channel with an ``UtteranceRecognizer``: cuts the stream

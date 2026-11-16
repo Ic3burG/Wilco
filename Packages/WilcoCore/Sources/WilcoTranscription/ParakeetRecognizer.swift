@@ -39,11 +39,48 @@ public struct ParakeetRecognizer: UtteranceRecognizer {
     }
 
     public func recognize(_ samples: [Float]) async throws -> Recognition? {
+        // Counted before the model loads, so no preview starts while a
+        // final line waits for it.
+        let gate = store.previewGate
+        await gate.beginFinal()
+        do {
+            let recognition = try await recognizeFinal(samples)
+            await gate.endFinal()
+            return recognition
+        } catch {
+            await gate.endFinal()
+            throw error
+        }
+    }
+
+    /// Transcribes the audio so far, without vocabulary boosting, only when
+    /// no final line is in flight on the shared model. Nil when skipped or
+    /// when anything goes wrong: a missed preview costs nothing.
+    public func preview(_ samples: [Float]) async -> Recognition? {
+        let gate = store.previewGate
+        guard await gate.tryBeginPreview() else { return nil }
+        let recognition = try? await previewUnchecked(samples)
+        await gate.endPreview()
+        return recognition
+    }
+
+    private func previewUnchecked(_ samples: [Float]) async throws -> Recognition {
         let manager = try await store.manager()
-        // Parakeet refuses clips under a second; short calls ("Copy that.")
-        // get trailing silence.
+        var state = TdtDecoderState.make(decoderLayers: await manager.decoderLayerCount)
+        let result = try await manager.transcribe(Self.padded(samples), decoderState: &state, language: language)
+        return Recognition(text: result.text, confidence: Double(result.confidence))
+    }
+
+    /// Parakeet refuses clips under a second; short calls ("Copy that.") get
+    /// trailing silence.
+    private static func padded(_ samples: [Float]) -> [Float] {
         let minimum = ASRConstants.minimumRequiredSamples(forSampleRate: 16_000)
-        let audio = samples.count < minimum ? samples + [Float](repeating: 0, count: minimum - samples.count) : samples
+        return samples.count < minimum ? samples + [Float](repeating: 0, count: minimum - samples.count) : samples
+    }
+
+    private func recognizeFinal(_ samples: [Float]) async throws -> Recognition? {
+        let manager = try await store.manager()
+        let audio = Self.padded(samples)
         var state = TdtDecoderState.make(decoderLayers: await manager.decoderLayerCount)
         let result = try await manager.transcribe(audio, decoderState: &state, language: language)
         var text = result.text

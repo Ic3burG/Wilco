@@ -235,4 +235,49 @@ import WilcoCore
         return store.isInstalled()
             ? store : ParakeetModelStore(directory: AsrModels.defaultCacheDirectory(for: .v3).deletingLastPathComponent())
     }
+
+    // MARK: Preview gate
+
+    @Test func previewWaitsForNoFinal() async {
+        let gate = PreviewGate()
+        await gate.beginFinal()
+        #expect(await gate.tryBeginPreview() == false)
+        await gate.endFinal()
+        #expect(await gate.tryBeginPreview() == true)
+        // One preview at a time.
+        #expect(await gate.tryBeginPreview() == false)
+        await gate.endPreview()
+        #expect(await gate.tryBeginPreview() == true)
+    }
+
+    @Test func finalsNeverWaitForAPreview() async {
+        let gate = PreviewGate()
+        #expect(await gate.tryBeginPreview())
+        await gate.beginFinal()
+        #expect(await gate.finalsInFlight == 1)
+    }
+
+    @Test func aFinalThatThrowsStillEndsOnTheGate() async {
+        let store = ParakeetModelStore(directory: FileManager.default.temporaryDirectory.appending(path: UUID().uuidString))
+        let recognizer = ParakeetRecognizer(store: store, language: .english)
+        await #expect(throws: ParakeetError.notInstalled) { _ = try await recognizer.recognize([0]) }
+        #expect(await store.previewGate.finalsInFlight == 0)
+        #expect(await store.previewGate.tryBeginPreview())
+    }
+
+    @Test func previewWithoutAModelIsNil() async {
+        let store = ParakeetModelStore(directory: FileManager.default.temporaryDirectory.appending(path: UUID().uuidString))
+        let preview = await ParakeetRecognizer(store: store, language: .english).preview([Float](repeating: 0, count: 16_000))
+        #expect(preview == nil)
+        // The failed preview ended on the gate.
+        #expect(await store.previewGate.tryBeginPreview())
+    }
+
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["WILCO_ASR_TESTS"] != nil))
+    func previewsASpokenCall() async throws {
+        let samples = try sayClip("Standby lighting cue forty two")
+        let half = Array(samples.prefix(samples.count / 2))
+        let preview = await ParakeetRecognizer(store: Self.testStore(), language: .english).preview(half)
+        #expect(preview?.text.isEmpty == false)
+    }
 }

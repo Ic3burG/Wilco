@@ -26,6 +26,9 @@ public actor ParakeetModelStore {
     private var loading: Task<AsrManager, Error>?
     private var loadedCTC: CtcModels?
     private var loadingCTC: Task<CtcModels, Error>?
+    /// Lets channels preview words in progress only while no final line is
+    /// being transcribed on the shared model.
+    public nonisolated let previewGate = PreviewGate()
 
     public init(directory: URL = DataLocations.parakeetModels) {
         self.directory = directory
