@@ -186,6 +186,41 @@ struct TranscriptTimelineTests {
         #expect(timeline.segments.map(\.text) == ["Go"])
     }
 
+    private func staged(_ channel: UUID, _ text: String, _ id: UUID, _ stage: LineStage) -> TranscriptionEvent {
+        .init(channelID: channel, text: text, isFinal: true, sessionOffset: 5, confidence: nil, lineID: id, stage: stage)
+    }
+
+    @Test func clearingAChannelDropsLateAnnotationsOfItsEarlierLines() {
+        var timeline = TranscriptTimeline()
+        let early = UUID(), other = UUID(), later = UUID()
+        timeline.apply(staged(a, "Standby LX 42", early, .recognized), at: .now)
+        timeline.apply(staged(b, "LX standing by", other, .recognized), at: .now)
+        timeline.clear(channelID: a)
+
+        // Voice analysis for the cleared line finishes after the clear: it
+        // still goes to the session file, but doesn't come back on screen.
+        let late = timeline.apply(staged(a, "Standby LX 42", early, .annotated(voice: "A", exchange: 1)), at: .now)
+        #expect(late?.text == "Standby LX 42")
+        #expect(timeline.segments(for: a).isEmpty)
+
+        // Another channel's line, and a line heard after the clear, still show.
+        timeline.apply(staged(b, "LX standing by", other, .annotated(voice: "A", exchange: 1)), at: .now)
+        timeline.apply(staged(a, "Go", later, .recognized), at: .now)
+        timeline.apply(staged(a, "Go", later, .annotated(voice: "B", exchange: 1)), at: .now)
+        #expect(timeline.segments.map(\.text) == ["LX standing by", "Go"])
+    }
+
+    @Test func clearingEverythingDropsLateAnnotationsOfEveryChannel() {
+        var timeline = TranscriptTimeline()
+        let first = UUID(), second = UUID()
+        timeline.apply(staged(a, "one", first, .recognized), at: .now)
+        timeline.apply(staged(b, "two", second, .recognized), at: .now)
+        timeline.clear()
+        timeline.apply(staged(a, "one", first, .annotated(voice: "A", exchange: 1)), at: .now)
+        timeline.apply(staged(b, "two", second, .annotated(voice: "A", exchange: 1)), at: .now)
+        #expect(timeline.segments.isEmpty)
+    }
+
     @Test func completeLinesHaveNoVoice() {
         var timeline = TranscriptTimeline()
         let segment = timeline.apply(event(a, "Standby", final: true), at: .now)

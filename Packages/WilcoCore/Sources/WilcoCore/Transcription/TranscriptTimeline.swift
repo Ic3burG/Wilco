@@ -46,13 +46,23 @@ public struct TranscriptTimeline: Sendable {
     /// The line a channel's volatile text belongs to while it waits for voice
     /// analysis, so the annotation clears that line and not newer words.
     private var awaitingAnnotation: [UUID: UUID] = [:]
+    /// Recently recognised lines and their channels, oldest first, so a clear
+    /// knows which annotations still on their way belong to lines it removed.
+    private var recentLines: [(line: UUID, channel: UUID)] = []
+    /// Lines recognised before their channel was cleared, oldest first: their
+    /// late annotations go to the session file but not back on screen.
+    private var clearedLines: [UUID] = []
+    /// How many lines each of those lists remembers. Annotations arrive
+    /// within seconds; this covers many channels' worth of waiting lines.
+    static let rememberedLines = 512
     public let maximumSegments: Int
 
     public init(maximumSegments: Int = 5_000) {
         self.maximumSegments = maximumSegments
     }
 
-    /// Applies an event; returns the new segment when a line settles.
+    /// Applies an event; returns the new segment when a line settles (for the
+    /// session file, even when a clear keeps it off screen).
     /// `annotate` adds what automation found (keywords, highlights) before
     /// the line is stored.
     ///
@@ -80,6 +90,10 @@ public struct TranscriptTimeline: Sendable {
         case .recognized:
             volatile[channel] = text.isEmpty ? nil : text
             awaitingAnnotation[channel] = text.isEmpty ? nil : event.lineID
+            recentLines.append((event.lineID, channel))
+            if recentLines.count > Self.rememberedLines {
+                recentLines.removeFirst(recentLines.count - Self.rememberedLines)
+            }
             return nil
         case .annotated(let pieceVoice, let pieceExchange):
             if awaitingAnnotation[channel] == event.lineID {
@@ -101,6 +115,8 @@ public struct TranscriptTimeline: Sendable {
             exchange: exchange
         )
         annotate(&segment)
+        // A line cleared while its voice was worked out stays off screen.
+        if case .annotated = event.stage, clearedLines.contains(event.lineID) { return segment }
         segments.append(segment)
         if segments.count > maximumSegments {
             segments.removeFirst(segments.count - maximumSegments)
@@ -112,7 +128,15 @@ public struct TranscriptTimeline: Sendable {
         segments.filter { $0.channelID == channelID }
     }
 
+    /// Clears the screen. Lines still waiting for voice analysis are
+    /// remembered, so their annotations don't bring them back.
     public mutating func clear(channelID: UUID? = nil) {
+        let removed = recentLines.filter { channelID == nil || $0.channel == channelID }
+        recentLines.removeAll { channelID == nil || $0.channel == channelID }
+        clearedLines.append(contentsOf: removed.map(\.line))
+        if clearedLines.count > Self.rememberedLines {
+            clearedLines.removeFirst(clearedLines.count - Self.rememberedLines)
+        }
         if let channelID {
             segments.removeAll { $0.channelID == channelID }
             volatile[channelID] = nil
