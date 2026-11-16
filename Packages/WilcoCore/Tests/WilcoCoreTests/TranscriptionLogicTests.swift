@@ -72,6 +72,49 @@ struct UtteranceSegmenterTests {
         #expect(Double(first.samples.count) / rate < 6, "held open by noise: \(Double(first.samples.count) / rate) s")
     }
 
+    /// Talking as a mic in a room hears it: echoes fill the dips between
+    /// syllables, so they only fall to about a third of the speech level.
+    private func roomSyllables(_ seconds: Double, amplitude: Float = 0.3) -> [Float] {
+        let on = Int(0.2 * rate), period = Int(0.28 * rate)
+        return (0..<Int(seconds * rate)).map { i in
+            (i % period < on ? amplitude : amplitude * 0.35) * sin(Float(i) * 2 * .pi * 440 / Float(rate))
+        }
+    }
+
+    private func hiss(_ seconds: Double, amplitude: Float = 0.002) -> [Float] {
+        var generator = SystemRandomNumberGenerator()
+        return (0..<Int(seconds * rate)).map { _ in Float.random(in: -amplitude...amplitude, using: &generator) }
+    }
+
+    private func mixed(_ a: [Float], _ b: [Float]) -> [Float] { zip(a, b).map(+) }
+
+    /// The dips in room speech are not background: learning them as the
+    /// noise floor would put the speech itself under the threshold and end
+    /// the utterance mid-sentence.
+    @Test func continuousRoomSpeechIsNotLearnedAsBackground() throws {
+        var segmenter = UtteranceSegmenter(sampleRate: rate)
+        var utterances = segmenter.append(roomSyllables(10) + silence(1))
+        if let last = segmenter.flush() { utterances.append(last) }
+        #expect(utterances.count == 1)
+        let seconds = Double(try #require(utterances.first).samples.count) / rate
+        #expect(seconds >= 10, "cut after \(seconds) s of 10 s of talking")
+    }
+
+    /// Between utterances, sound too quiet to count as speech must not drag
+    /// the floor up to its own level unless it is steady, or the speaker has
+    /// to get much louder before anything is heard again.
+    @Test func quietMutteringDoesNotRaiseTheFloor() {
+        var segmenter = UtteranceSegmenter(sampleRate: rate)
+        let muttering = mixed(roomSyllables(5, amplitude: 0.006), hiss(5))
+        let talking = mixed(roomSyllables(3, amplitude: 0.012), hiss(3))
+        var utterances = segmenter.append(hiss(2) + muttering)
+        #expect(utterances.isEmpty)
+        utterances = segmenter.append(talking + hiss(1))
+        if let last = segmenter.flush() { utterances.append(last) }
+        let kept = Double(utterances.reduce(0) { $0 + $1.samples.count }) / rate
+        #expect(kept >= 2.7, "only \(kept) s of 3 s of talking came through")
+    }
+
     @Test func flushReturnsSpeechInProgress() {
         var segmenter = UtteranceSegmenter(sampleRate: rate)
         _ = segmenter.append(tone(1))

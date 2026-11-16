@@ -24,9 +24,13 @@ public struct UtteranceSegmenter: Sendable {
     public var minimumSpeech: Double = 0.2
     /// Nothing quieter than this counts as speech (about -46 dBFS).
     public var minimumThreshold: Float = 0.005
-    /// While speech goes on, the quietest frame in this window is taken as
-    /// the background. Speech dips between syllables; steady noise doesn't.
+    /// The noise floor only rises when this much recent sound was steady.
     public var floorWindow: Double = 1.0
+    /// Sound is steady background when its quietest frame in the window is
+    /// at least this share of its loud frames (the 90th percentile). Hiss
+    /// and hum stay above 0.9. Talking stays under about 0.3, even in a room
+    /// whose echoes fill the dips between syllables.
+    public var steadiness: Float = 0.5
 
     private let frameLength: Int
     private var pending: [Float] = []
@@ -38,7 +42,7 @@ public struct UtteranceSegmenter: Sendable {
     private var silentFrames = 0
     private var processed = 0
     private var noiseFloor: Float = 0.002
-    /// Frame levels during the current utterance, newest last, up to `floorWindow`.
+    /// The latest frame levels, newest last, up to `floorWindow`.
     private var recentLevels: [Float] = []
 
     public init(sampleRate: Double) {
@@ -101,8 +105,9 @@ public struct UtteranceSegmenter: Sendable {
                 preRollBuffer = []
                 speechFrames = 1
                 silentFrames = 0
+                learnFloor(rms)
             } else {
-                noiseFloor = noiseFloor * 0.95 + rms * 0.05
+                learnFloor(rms)
                 preRollBuffer.append(contentsOf: frame)
                 let keep = Int(preRoll * sampleRate)
                 if preRollBuffer.count > keep { preRollBuffer.removeFirst(preRollBuffer.count - keep) }
@@ -111,7 +116,7 @@ public struct UtteranceSegmenter: Sendable {
         }
 
         current.append(contentsOf: frame)
-        learnFloorDuringSpeech(rms)
+        learnFloor(rms)
         if isSpeech {
             speechFrames += 1
             silentFrames = 0
@@ -133,19 +138,28 @@ public struct UtteranceSegmenter: Sendable {
         return nil
     }
 
-    /// Noise that rises mid-utterance (a comms ring keyed open, a fan, music
-    /// bleed) would otherwise count as speech until the maximum length.
-    private mutating func learnFloorDuringSpeech(_ rms: Float) {
+    /// Between utterances the floor falls freely. It rises, in or out of an
+    /// utterance, only towards steady sound. Noise that starts mid-utterance
+    /// (a comms ring keyed open, a fan) is steady, so it is learned and the
+    /// utterance can end. Talking is not: learning its dips as background
+    /// would put the speech itself under the threshold.
+    private mutating func learnFloor(_ rms: Float) {
         let window = max(1, Int(floorWindow / frameSeconds))
         recentLevels.append(rms)
         if recentLevels.count > window { recentLevels.removeFirst(recentLevels.count - window) }
-        guard recentLevels.count == window, let quietest = recentLevels.min(), quietest > noiseFloor else { return }
+        if !inSpeech, rms < noiseFloor {
+            noiseFloor = noiseFloor * 0.95 + rms * 0.05
+            return
+        }
+        guard recentLevels.count == window else { return }
+        let sorted = recentLevels.sorted()
+        let quietest = sorted[0], loud = sorted[(window * 9) / 10]
+        guard quietest > noiseFloor, quietest >= steadiness * loud else { return }
         noiseFloor += (quietest - noiseFloor) * 0.1
     }
 
     private mutating func finish() -> Utterance? {
         defer {
-            recentLevels = []
             inSpeech = false
             current = []
             speechFrames = 0

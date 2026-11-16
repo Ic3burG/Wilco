@@ -809,3 +809,61 @@ cuts also feed the voice tracker.
   channels still reads "Fast, then corrected".
 - Earlier items still open: real-show vocabulary check, voice letters on a
   real show, the voice threshold.
+
+## 2026-11-16 — Segmenter no longer drops continuous speech
+
+### Fixes
+
+- **`UtteranceSegmenter` cut continuous talking mid-sentence and then
+  ignored what followed** (the lock-out found in app testing above). The
+  noise floor now rises only towards *steady* sound: over the last 1 s, the
+  quietest 20 ms frame must be at least half the level of the loud frames
+  (90th percentile). Hiss, hum and a tone measure about 0.94 and are still
+  learned within a second or so. Talking never gets above 0.31, even with
+  room echo filling the dips, so it is never learned. The same rule applies
+  between utterances; the floor still falls freely there.
+- Why the old rule failed: in a room the quietest frame in any second of
+  speech is about a third of the median level, and speech had to be 4× the
+  floor, so the threshold ended up above most of the speech. A longer
+  window or a low percentile only narrowed this (3 s minimum still gave a
+  threshold of 60–80% of the median).
+- Known cost, accepted by the user: background that is not steady (music
+  or crowd bleed, an off-mic conversation) is no longer learned mid-call
+  and can hold a call open to the 20 s cut. Open mics are rare on the
+  user's shows.
+
+### Tests
+
+- `ContinuousSpeechSegmenterTests` (`WILCO_ASR_TESTS`): a 14.9 s continuous
+  `say` sentence with room echo and hiss must come through ≥ 90% at ×0.1
+  and ×0.3 (was 67%, now whole), and loud talking followed by the same
+  sentence at ×0.06 must too (was 33%).
+- Two synthetic tests that run on CI: `continuousRoomSpeechIsNotLearnedAsBackground`
+  (was cut at 1.96 s of 10 s) and `quietMutteringDoesNotRaiseTheFloor`.
+- `noiseThatStartsMidSpeechStillEndsTheUtterance` and
+  `steadyToneIsLearnedAsBackground` still pass unchanged.
+
+### Numbers (`say` speech, M1 Max)
+
+- Short calls are unaffected: at 32 channels, 0 missed, final p95 0.77 s
+  (Parakeet), 0.76 s (with preview), 0.99 s (Whisper base); CPU 37% / 64% /
+  30% of a core. Details in `docs/benchmarks/2026-11-16-m1-max-say-segmenter-fix.md`.
+- Conversation, 32 channels: keeps up, 0 missed; merged turns 74 of 192
+  against 63 before (cause likely the old rule shortening turn tails; not
+  confirmed).
+
+Tested, not verified.
+
+### Next steps / where we left off
+
+- **Compare against long-form on the built-in mic again** (Parakeet and
+  Whisper): the missing stretches should be gone.
+- **Add continuous long-talk clips with room echo to `wilco-bench`.** It
+  still only has short calls, so it cannot see this class of bug.
+- Quiet mics: speech under the 0.005 absolute minimum (the ×0.04 case)
+  still gives nothing. Not addressed here.
+- Then the voice threshold on a laptop mic (6–15 letters per session),
+  now that mid-sentence cuts no longer feed the voice tracker.
+- The other items from the previous section still stand (try previews in
+  the app, the Neural Engine stall, Whisper's last line on stop, review
+  minors).
