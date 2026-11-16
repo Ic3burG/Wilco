@@ -62,6 +62,13 @@ public struct UtteranceSegmenter: Sendable {
         return finished
     }
 
+    /// The utterance being spoken now, as far as it has got (pre-roll
+    /// included), or nil between utterances. For previews; it is not cut.
+    public var inProgress: Utterance? {
+        guard inSpeech else { return nil }
+        return Utterance(samples: current, startOffset: Double(currentStart) / sampleRate)
+    }
+
     /// Ends any utterance in progress, for when capture stops.
     public mutating func flush() -> Utterance? {
         guard inSpeech else { return nil }

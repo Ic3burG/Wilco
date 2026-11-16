@@ -78,6 +78,37 @@ struct UtteranceSegmenterTests {
         #expect(segmenter.flush() != nil)
         #expect(segmenter.flush() == nil)
     }
+
+    @Test func inProgressIsNilInSilence() {
+        var segmenter = UtteranceSegmenter(sampleRate: rate)
+        _ = segmenter.append(silence(1))
+        #expect(segmenter.inProgress == nil)
+    }
+
+    @Test func inProgressGrowsDuringSpeechAndClearsAfterTheCut() throws {
+        var segmenter = UtteranceSegmenter(sampleRate: rate)
+        _ = segmenter.append(silence(1) + syllables(0.5))
+        let early = try #require(segmenter.inProgress)
+        _ = segmenter.append(syllables(0.5))
+        let later = try #require(segmenter.inProgress)
+        #expect(later.samples.count > early.samples.count)
+        #expect(later.startOffset == early.startOffset)
+        // One second of silence less the pre-roll.
+        #expect(abs(early.startOffset - (1 - segmenter.preRoll)) < 0.03)
+        let finished = segmenter.append(silence(1))
+        #expect(finished.count == 1)
+        #expect(segmenter.inProgress == nil)
+    }
+
+    @Test func inProgressRestartsAfterAMaximumLengthCut() throws {
+        var segmenter = UtteranceSegmenter(sampleRate: rate)
+        segmenter.maximumLength = 2
+        let cut = segmenter.append(syllables(2.5))
+        #expect(cut.count == 1)
+        let next = try #require(segmenter.inProgress)
+        #expect(next.startOffset >= 1.99)
+        #expect(Double(next.samples.count) / rate < 0.6)
+    }
 }
 
 @Suite("Recogniser vocabulary")
