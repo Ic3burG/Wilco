@@ -1,5 +1,6 @@
 import FluidAudio
 import Foundation
+import WilcoCore
 import WilcoTranscription
 
 /// NVIDIA Parakeet TDT through FluidAudio, on the Neural Engine. v3 is the
@@ -32,6 +33,15 @@ extension BenchEngine {
                 // One recognizer per channel over one shared store, as the app builds them.
                 let store = ParakeetModelStore(directory: sharedCache)
                 return factory { ParakeetRecognizer(store: store, language: nil) }
+            }
+        ),
+        BenchEngine(
+            id: "parakeet-v3-preview",
+            summary: "Parakeet TDT 0.6B v3 with live preview (fast, then corrected)",
+            unavailableReason: { unavailable(version: .v3, id: "parakeet-v3") },
+            makeFactory: {
+                let store = ParakeetModelStore(directory: sharedCache)
+                return factory(previewInterval: previewInterval) { ParakeetRecognizer(store: store, language: nil) }
             }
         ),
         BenchEngine(
@@ -80,6 +90,33 @@ extension BenchEngine {
         }
     )
 
+    /// As the app previews on "Fast, then corrected".
+    private static let previewInterval = ChannelTranscribers.previewInterval(
+        for: TranscriberConfiguration(channel: ChannelConfig(name: "Bench", engine: .parakeet), show: ShowDocument())
+    )
+
+    /// v3 with voice changes and live preview, as a new Parakeet channel runs.
+    static let parakeetPreviewVoices = BenchEngine(
+        id: "parakeet-v3-preview-voices",
+        summary: "Parakeet TDT 0.6B v3 with live preview and voice changes",
+        unavailableReason: { unavailable(version: .v3, id: "parakeet-v3") ?? voiceModelMissing() },
+        install: installVoiceModel,
+        detectsVoiceChanges: true,
+        makeFactory: {
+            let store = ParakeetModelStore(directory: sharedCache)
+            let voiceprints = WeSpeakerVoiceprints()
+            return { channel in
+                VoiceModelFirst(voiceprints: voiceprints, transcriber: UtteranceChannelTranscriber(
+                    channelID: channel.id, source: channel.source, sessionOffset: 0,
+                    recognizer: ParakeetRecognizer(store: store, language: nil),
+                    voiceChanges: channel.voiceChanges, voiceprints: voiceprints,
+                    previewInterval: previewInterval,
+                    onEvent: channel.onEvent, onStatus: channel.onStatus
+                ))
+            }
+        }
+    )
+
     /// FluidAudio's own model cache, so an existing download is reused.
     private static var sharedCache: URL {
         AsrModels.defaultCacheDirectory(for: .v3).deletingLastPathComponent()
@@ -90,10 +127,13 @@ extension BenchEngine {
             ? nil : "the model isn't downloaded (wilco-bench --install \(id))"
     }
 
-    private static func factory(recognizer: @escaping @Sendable () -> some UtteranceRecognizer) -> BenchChannelFactory {
+    private static func factory(
+        previewInterval: Duration? = nil, recognizer: @escaping @Sendable () -> some UtteranceRecognizer
+    ) -> BenchChannelFactory {
         { channel in
             UtteranceChannelTranscriber(
                 channelID: channel.id, source: channel.source, sessionOffset: 0, recognizer: recognizer(),
+                previewInterval: previewInterval,
                 onEvent: channel.onEvent, onStatus: channel.onStatus
             )
         }

@@ -70,6 +70,7 @@ extension BenchEngine {
               summary: "Apple long-form with voice changes", voices: true),
         whisper(.base, voices: true),
         parakeetVoices,
+        parakeetPreviewVoices,
     ]
 
     public static func named(_ id: String) -> BenchEngine? {
