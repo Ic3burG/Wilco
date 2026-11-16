@@ -12,6 +12,13 @@ public enum ParakeetVocabulary {
         language == .english && !cleaned(terms).isEmpty
     }
 
+    /// Whether to tell the user a Parakeet channel's terms won't be boosted:
+    /// it gets terms (its own, the show's or rule and highlight phrases) but
+    /// isn't English.
+    public static func noticeNeeded(language: Language?, terms: [String]) -> Bool {
+        language != .english && !cleaned(terms).isEmpty
+    }
+
     /// Conservative: a term must win on the audio alone and look like the
     /// heard words, so correctly heard words are rarely replaced.
     public static let thresholds = VocabularyBoostingSession.Thresholds(cbw: 0, minSimilarity: 0.7)

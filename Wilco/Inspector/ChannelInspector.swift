@@ -191,8 +191,10 @@ private struct ChannelForm: View {
                     Text("Terms listed here are biased into this channel's recogniser. Crew names, venue names and cue labels are the ones worth adding.")
                     if channel.engine == .parakeet {
                         Text("Parakeet ignores terms shorter than 3 characters.")
-                        if ParakeetLanguages.language(for: channel.localeIdentifier) != .english,
-                           !(channel.vocabulary.isEmpty && model.document.globalVocabulary.isEmpty) {
+                        if ParakeetVocabulary.noticeNeeded(
+                            language: ParakeetLanguages.language(for: channel.localeIdentifier),
+                            terms: model.document.vocabulary(for: channel.id)
+                        ) {
                             Text("Vocabulary applies to English channels only.")
                         }
                     }

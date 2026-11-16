@@ -39,6 +39,20 @@ import WilcoCore
         #expect(!ParakeetVocabulary.applies(language: .english, terms: []))
     }
 
+    @Test func englishOnlyNoticeCountsEveryTermTheChannelGets() {
+        // Rule phrases are part of a channel's vocabulary, so a French
+        // channel with only a rule phrase still needs telling.
+        var show = ShowDocument()
+        let channel = show.addChannel(engine: .parakeet)
+        show.rules = [AutomationRule(name: "Standby", phrases: ["standby"])]
+        let terms = show.vocabulary(for: channel.id)
+        #expect(!terms.isEmpty)
+        #expect(ParakeetVocabulary.noticeNeeded(language: .french, terms: terms))
+        #expect(ParakeetVocabulary.noticeNeeded(language: nil, terms: terms))
+        #expect(!ParakeetVocabulary.noticeNeeded(language: .english, terms: terms))
+        #expect(!ParakeetVocabulary.noticeNeeded(language: .french, terms: [" "]))
+    }
+
     @Test func conservativeThresholds() {
         #expect(ParakeetVocabulary.thresholds == VocabularyBoostingSession.Thresholds(cbw: 0, minSimilarity: 0.7))
     }
