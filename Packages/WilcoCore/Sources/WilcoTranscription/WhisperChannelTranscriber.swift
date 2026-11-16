@@ -207,7 +207,8 @@ actor WhisperChannelTranscriber: ChannelTranscriber {
             utterance.samples, model: configuration.whisperModel,
             language: language, vocabulary: configuration.vocabulary,
             translate: configuration.translateToEnglish,
-            wordTimestamps: annotator != nil
+            // Word times cost Whisper time; only ask when voice analysis can use them.
+            wordTimestamps: annotator?.isUsable == true
         ) else { return }
         let segments = results.flatMap(\.segments)
         let text = segments.map(\.text).joined().trimmingCharacters(in: .whitespaces)

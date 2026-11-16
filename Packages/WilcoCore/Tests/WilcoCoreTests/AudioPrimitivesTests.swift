@@ -53,6 +53,20 @@ struct AudioHistoryTests {
         #expect(history.samples(from: 1, to: 2) == [Float](repeating: 0, count: 100))
         #expect(abs((history.samples(from: 0, to: 1).last ?? 0) - 0.99) < 0.02)
     }
+
+    @Test func skippingMovesTheTimelineOnWithoutKeepingAudio() {
+        // Voice analysis isn't usable for a while: the history's clock keeps
+        // up with the analyzer's but nothing is stored, and audio after it is
+        // still found where it was heard.
+        var history = AudioHistory(sampleRate: 100, seconds: 30)
+        history.append(ramp(from: 0, seconds: 2, rate: 100), lasting: 2)
+        history.skip(3)
+        #expect(history.samples(from: 0, to: 5).isEmpty, "audio from before the gap is let go")
+        history.append(ramp(from: 5, seconds: 1, rate: 100), lasting: 1)
+        let after = history.samples(from: 5, to: 6)
+        #expect(after.count == 100)
+        #expect(abs((after.first ?? 0) - 5) < 0.02)
+    }
 }
 
 @Suite("Audio ring buffer")

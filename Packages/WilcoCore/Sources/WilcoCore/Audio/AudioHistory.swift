@@ -8,7 +8,11 @@ import Foundation
 /// given is continuous: each append ends where the samples it holds end.
 public struct AudioHistory: Sendable {
     public let sampleRate: Double
-    private var buffer: [Float]
+    /// Samples the history can hold.
+    private let capacity: Int
+    /// Allocated on the first audio kept, so a history that only ever skips
+    /// costs nothing.
+    private var buffer: [Float] = []
     /// Where the next sample goes.
     private var writeIndex = 0
     /// Samples held, up to the buffer's size.
@@ -18,14 +22,15 @@ public struct AudioHistory: Sendable {
 
     public init(sampleRate: Double = 16_000, seconds: Double = 30) {
         self.sampleRate = sampleRate
-        buffer = [Float](repeating: 0, count: max(Int(sampleRate * seconds), 1))
+        capacity = max(Int(sampleRate * seconds), 1)
     }
 
     /// Adds `samples`, the last of which ends `offset` seconds into the session.
     public mutating func append(_ samples: [Float], endingAt offset: Double) {
         endOffset = offset
         guard !samples.isEmpty else { return }
-        let capacity = buffer.count
+        if buffer.isEmpty { buffer = [Float](repeating: 0, count: capacity) }
+        let capacity = capacity
         // Only the newest `capacity` samples can be kept.
         let kept = samples.count > capacity ? samples[(samples.count - capacity)...] : samples[...]
         buffer.withUnsafeMutableBufferPointer { out in
@@ -53,6 +58,15 @@ public struct AudioHistory: Sendable {
         }
     }
 
+    /// Moves the timeline on by `seconds` without keeping any audio, for a
+    /// stretch nobody will ask for. Audio held from before it is let go, as
+    /// the history only holds continuous audio.
+    public mutating func skip(_ seconds: Double) {
+        endOffset += seconds
+        count = 0
+        writeIndex = 0
+    }
+
     /// The audio between two session offsets. Any part older than the history,
     /// or newer than its last sample, is left out.
     public func samples(from start: Double, to end: Double) -> [Float] {
@@ -61,7 +75,7 @@ public struct AudioHistory: Sendable {
         let first = max(Int(((start - oldest) * sampleRate).rounded()), 0)
         let last = min(Int(((end - oldest) * sampleRate).rounded()), count)
         guard first < last else { return [] }
-        let capacity = buffer.count
+        let capacity = capacity
         // The oldest held sample sits at `writeIndex` once the buffer has wrapped.
         let base = count == capacity ? writeIndex : 0
         var out = [Float]()

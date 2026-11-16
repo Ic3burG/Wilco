@@ -169,6 +169,23 @@ struct VoiceAnnotatorTests {
         #expect(await stage(annotator, 6) == .annotated(voice: "A", exchange: 1))
     }
 
+    @Test func usableFollowsWhetherTheModelLoads() async {
+        let extractor = FlakyVoiceprints()
+        let clock = Mutex(0.0)
+        let annotator = VoiceAnnotator(settings: .standard, extractor: extractor, now: { clock.withLock { $0 } })
+        await annotator.prepare()
+        #expect(!annotator.isUsable, "transcribers skip word times and audio history")
+
+        extractor.installed.withLock { $0 = true }
+        clock.withLock { $0 += VoiceAnnotator.retryInterval }
+        _ = await stage(annotator, 0)
+        #expect(annotator.isUsable, "a model installed mid-run is picked up")
+
+        extractor.installed.withLock { $0 = false }
+        _ = await stage(annotator, 3)
+        #expect(!annotator.isUsable, "a model removed mid-run is let go")
+    }
+
     @Test func missingModelIsRetriedOncePerIntervalWhateverTheLineRate() async {
         let extractor = FlakyVoiceprints()
         let clock = Mutex(0.0)

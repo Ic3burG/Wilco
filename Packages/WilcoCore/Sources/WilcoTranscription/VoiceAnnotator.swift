@@ -14,7 +14,13 @@ public actor VoiceAnnotator {
     /// False while the voice model isn't usable: lines then go out without
     /// letters, and loading is retried at most once per `retryInterval`
     /// (a model installed mid-run is picked up; one removed mid-run is let go).
-    private var available = true
+    /// Readable from any thread, so a transcriber can skip the work that only
+    /// voice analysis needs (word times, a 16 kHz audio history).
+    private let usable = Atomic<Bool>(true)
+    private var available: Bool {
+        get { usable.load(ordering: .relaxed) }
+        set { usable.store(newValue, ordering: .relaxed) }
+    }
     private var lastAttempt: Double?
     private let now: @Sendable () -> Double
 
@@ -30,6 +36,10 @@ public actor VoiceAnnotator {
         self.now = now
         tracker = VoiceTracker(settings: settings)
     }
+
+    /// Whether lines can get letters now. True until the model first fails
+    /// to load, then follows each retry. Cheap; check it per line.
+    public nonisolated var isUsable: Bool { usable.load(ordering: .relaxed) }
 
     /// New settings, used from the next line on. The exchange so far and its
     /// letters are kept.

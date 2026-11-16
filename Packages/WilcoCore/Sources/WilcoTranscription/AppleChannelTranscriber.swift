@@ -19,7 +19,7 @@ actor AppleChannelTranscriber: ChannelTranscriber {
     private var voices: VoiceAnnotationQueue?
     /// Recent 16 kHz audio on the analyzer's timeline (seconds since the first
     /// sample fed), so a final line's audio can be found by its range. Only
-    /// kept when voice changes are on.
+    /// with voice changes on, and only filled while the voice model is usable.
     private var history: AudioHistory?
 
     private var analyzer: SpeechAnalyzer?
@@ -120,22 +120,27 @@ actor AppleChannelTranscriber: ChannelTranscriber {
 
     private func feed(_ continuation: AsyncStream<AnalyzerInput>.Continuation, format: AVAudioFormat) async {
         let converter = SampleRateConverter(output: format)
-        // A second resampler, to 16 kHz for voiceprints, only with voice changes on.
-        let voiceConverter = history == nil ? nil : SampleRateConverter.whisper()
+        // A second resampler, to 16 kHz for voiceprints, made the first time
+        // the voice model is usable.
+        var voiceConverter: SampleRateConverter?
         while !Task.isCancelled {
             let samples = source.ring.read(maxCount: source.ring.availableToRead)
             if !samples.isEmpty, let buffers = try? converter.convert(samples, sampleRate: source.sampleRate()) {
                 for buffer in buffers { continuation.yield(AnalyzerInput(buffer: buffer)) }
                 if !buffers.isEmpty { receivedAudio = true }
-                if let voiceConverter {
+                if history != nil {
                     // The history's clock moves on by what the analyzer was
                     // fed, even when this resampler fails (silence is kept
-                    // instead), so later lines still find their own audio.
+                    // instead) or the voice model isn't usable (nothing is
+                    // kept), so later lines still find their own audio.
                     let rate = source.sampleRate()
-                    history?.append(
-                        try? voiceConverter.convertToSamples(samples, sampleRate: rate),
-                        lasting: Double(samples.count) / rate
-                    )
+                    let seconds = Double(samples.count) / rate
+                    if annotator?.isUsable == true {
+                        if voiceConverter == nil { voiceConverter = SampleRateConverter.whisper() }
+                        history?.append(try? voiceConverter?.convertToSamples(samples, sampleRate: rate), lasting: seconds)
+                    } else {
+                        history?.skip(seconds)
+                    }
                 }
             }
             try? await Task.sleep(for: pumpInterval)
@@ -177,7 +182,7 @@ actor AppleChannelTranscriber: ChannelTranscriber {
         deliverFinalLine(
             event, voices: voices, onEvent: onEvent,
             lineStart: sessionOffset + start, lineEnd: sessionOffset + end,
-            words: annotator == nil ? [] : Self.words(in: text, sessionOffset: sessionOffset),
+            words: annotator?.isUsable == true ? Self.words(in: text, sessionOffset: sessionOffset) : [],
             audio: { history?.samples(from: start, to: end) ?? [] }
         )
     }
