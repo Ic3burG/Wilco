@@ -74,8 +74,12 @@ public struct BenchRunner: Sendable {
         var drainSeconds = 0.0
         let origin = clock.now
         if recorder.failures.isEmpty {
-            let tracks = scenario.channels.map {
-                ChannelTrack(utterances: $0, clips: clips.map(\.samples), sampleRate: sampleRate)
+            let samples = clips.map(\.samples)
+            let tracks = scenario.channels.enumerated().map { index, utterances in
+                ChannelTrack(
+                    utterances: utterances, clips: samples, sampleRate: sampleRate,
+                    hiss: scenario.hiss, hissSeed: UInt64(index)
+                )
             }
             recorder.begin(at: origin)
             var written = 0

@@ -12,14 +12,24 @@ public struct ScheduledUtterance: Codable, Equatable, Sendable {
     /// Which exchange on its channel the call belongs to, in conversation
     /// runs. Letters are only compared within one exchange.
     public var exchange: Int?
+    /// The level the clip plays at, in long-talk runs. Nil plays it as recorded.
+    public var gain: Float?
+    /// Seconds into the clip after which the speaker drops their voice to
+    /// `Scenario.quietGain`. Nil keeps one level throughout.
+    public var quietFrom: Double?
     public var end: Double { start + duration }
 
-    public init(clip: Int, start: Double, duration: Double, voice: Int? = nil, exchange: Int? = nil) {
+    public init(
+        clip: Int, start: Double, duration: Double, voice: Int? = nil, exchange: Int? = nil,
+        gain: Float? = nil, quietFrom: Double? = nil
+    ) {
         self.clip = clip
         self.start = start
         self.duration = duration
         self.voice = voice
         self.exchange = exchange
+        self.gain = gain
+        self.quietFrom = quietFrom
     }
 }
 
@@ -40,6 +50,10 @@ public struct Scenario: Equatable, Sendable {
     public var duration: Double
     public var dutyCycle: Double
     public var channels: [[ScheduledUtterance]]
+    /// A long-talk run: scored on words lost as well as on delay.
+    public var longTalk = false
+    /// Hiss within ±this under each channel's whole track. 0 for none.
+    public var hiss: Float = 0
 
     /// Silence between calls. Longer than the pause that closes an utterance
     /// (0.7 s) plus the transcribers' 100 ms pump, so each call stands alone.
@@ -129,30 +143,106 @@ public struct Scenario: Equatable, Sendable {
         let share = duration > 0 && channelCount > 0 ? speech / (duration * Double(channelCount)) : 0
         return Scenario(duration: duration, dutyCycle: share, channels: channels)
     }
+
+    /// Quiet between long talks: well over the pause that closes an
+    /// utterance, short enough that a channel is mostly talking.
+    public static let talkGap = 3.0...8.0
+    /// Each channel's own level in a long-talk run, like mics at different gains.
+    public static let channelLevel: ClosedRange<Float> = 0.1...0.3
+    /// A talk that drops partway starts at `loudGain` and falls to `quietGain`.
+    public static let loudGain: Float = 0.3
+    public static let quietGain: Float = 0.06
+
+    /// Each channel holds talks of unbroken speech (the clips), `talkGap`
+    /// apart, at a level of its own. About one talk in three starts loud and
+    /// drops to a quiet voice halfway: a segmenter that learned the loud half
+    /// as background would lose the rest. Only whole talks are placed.
+    public static func generateLongTalks(
+        channels channelCount: Int, clipDurations: [Double], duration: Double, seed: UInt64
+    ) -> Scenario {
+        precondition(!clipDurations.isEmpty)
+        let channels = (0..<channelCount).map { index -> [ScheduledUtterance] in
+            var random = SplitMix64(seed: seed &+ UInt64(index) &* 0x9E37_79B9_7F4A_7C15)
+            let level = channelLevel.lowerBound
+                + Float(random.unit()) * (channelLevel.upperBound - channelLevel.lowerBound)
+            var time = random.unit() * min(3, duration / 4)
+            var talks: [ScheduledUtterance] = []
+            while true {
+                let clip = random.index(below: clipDurations.count)
+                let length = clipDurations[clip]
+                let drops = random.index(below: 3) == 0
+                guard time + length <= duration - minimumGap else { break }
+                talks.append(ScheduledUtterance(
+                    clip: clip, start: time, duration: length,
+                    gain: drops ? loudGain : level, quietFrom: drops ? length / 2 : nil
+                ))
+                time += length + talkGap.lowerBound + random.unit() * (talkGap.upperBound - talkGap.lowerBound)
+            }
+            return talks
+        }
+        let speech = channels.joined().map(\.duration).reduce(0, +)
+        let share = duration > 0 && channelCount > 0 ? speech / (duration * Double(channelCount)) : 0
+        return Scenario(
+            duration: duration, dutyCycle: share, channels: channels, longTalk: true, hiss: RoomSound.hissLevel
+        )
+    }
 }
 
 /// A channel's audio, built on demand from its schedule so a long 32-channel
 /// run never holds every track in memory.
 public struct ChannelTrack: Sendable {
-    private let placed: [(start: Int, clip: Int)]
-    private let clips: [[Float]]
-
-    public init(utterances: [ScheduledUtterance], clips: [[Float]], sampleRate: Double) {
-        placed = utterances.map { (Int(($0.start * sampleRate).rounded()), $0.clip) }
-        self.clips = clips
+    private struct Placed: Sendable {
+        var start: Int
+        var clip: Int
+        var gain: Float?
+        /// Frame of the clip from which it plays at `Scenario.quietGain`.
+        var quietFrom: Int?
     }
 
-    /// `count` samples starting at frame `from`; silence where no one talks.
+    private let placed: [Placed]
+    private let clips: [[Float]]
+    private let hiss: Float
+    private let hissSeed: UInt64
+
+    /// `hiss` (±level) runs under the whole track, talking or not, as a
+    /// live input's noise does; `hissSeed` makes each channel's its own.
+    public init(
+        utterances: [ScheduledUtterance], clips: [[Float]], sampleRate: Double, hiss: Float = 0, hissSeed: UInt64 = 0
+    ) {
+        placed = utterances.map {
+            Placed(
+                start: Int(($0.start * sampleRate).rounded()), clip: $0.clip, gain: $0.gain,
+                quietFrom: $0.quietFrom.map { Int(($0 * sampleRate).rounded()) }
+            )
+        }
+        self.clips = clips
+        self.hiss = hiss
+        self.hissSeed = hissSeed
+    }
+
+    /// `count` samples starting at frame `from`; silence (or hiss) where no one talks.
     public func samples(from: Int, count: Int) -> [Float] {
         var output = [Float](repeating: 0, count: count)
         let end = from + count
-        for (start, clip) in placed {
-            let samples = clips[clip]
-            let clipEnd = start + samples.count
-            guard start < end, clipEnd > from else { continue }
-            let lower = max(start, from), upper = min(clipEnd, end)
-            for frame in lower..<upper {
-                output[frame - from] = samples[frame - start]
+        for item in placed {
+            let samples = clips[item.clip]
+            let clipEnd = item.start + samples.count
+            guard item.start < end, clipEnd > from else { continue }
+            let lower = max(item.start, from), upper = min(clipEnd, end)
+            if item.gain == nil, item.quietFrom == nil {
+                for frame in lower..<upper { output[frame - from] = samples[frame - item.start] }
+            } else {
+                let gain = item.gain ?? 1
+                let quietFrom = item.quietFrom ?? .max
+                for frame in lower..<upper {
+                    let position = frame - item.start
+                    output[frame - from] = samples[position] * (position >= quietFrom ? Scenario.quietGain : gain)
+                }
+            }
+        }
+        if hiss > 0 {
+            for index in 0..<count {
+                output[index] += RoomSound.hiss(frame: from + index, seed: hissSeed, level: hiss)
             }
         }
         return output

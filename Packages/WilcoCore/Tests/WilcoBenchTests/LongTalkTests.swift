@@ -33,4 +33,62 @@ struct LongTalkTests {
             #expect(!hasDigits)
         }
     }
+
+    @Test func longTalksAreSeededSpacedAndWhole() throws {
+        let durations = [12.0, 18.0, 24.0]
+        let a = Scenario.generateLongTalks(channels: 8, clipDurations: durations, duration: 120, seed: 3)
+        #expect(a == Scenario.generateLongTalks(channels: 8, clipDurations: durations, duration: 120, seed: 3))
+        #expect(a != Scenario.generateLongTalks(channels: 8, clipDurations: durations, duration: 120, seed: 4))
+        #expect(a.longTalk && a.hiss == 0.002)
+        var quiet = 0, total = 0
+        for channel in a.channels {
+            #expect(!channel.isEmpty)
+            for (talk, next) in zip(channel, channel.dropFirst()) {
+                let gap = next.start - talk.end
+                #expect((3.0...8.0).contains(gap), "gap \(gap)")
+            }
+            let lastEnd = try #require(channel.last).end
+            #expect(lastEnd <= 120 - Scenario.minimumGap)
+            let steady = Set(channel.filter { $0.quietFrom == nil }.compactMap { $0.gain })
+            #expect(steady.count <= 1)  // one level per channel
+            for talk in channel {
+                total += 1
+                #expect(talk.duration == durations[talk.clip])
+                if let from = talk.quietFrom {
+                    quiet += 1
+                    #expect(talk.gain == 0.3 && from == talk.duration / 2)
+                } else {
+                    let gain = try #require(talk.gain)
+                    #expect((0.1...0.3).contains(gain))
+                }
+            }
+        }
+        #expect(quiet > 0 && quiet < total / 2)
+        let levels = Set(a.channels.compactMap { $0.first { $0.quietFrom == nil }?.gain })
+        #expect(levels.count > 1)  // channels differ
+    }
+
+    @Test func trackAppliesGainTheQuietHalfAndHiss() {
+        let clip = [Float](repeating: 1, count: 1_000)
+        let talk = ScheduledUtterance(clip: 0, start: 1, duration: 1, gain: 0.3, quietFrom: 0.5)
+        let track = ChannelTrack(utterances: [talk], clips: [clip], sampleRate: 1_000, hiss: 0.002, hissSeed: 5)
+        let all = track.samples(from: 0, count: 3_000)
+        #expect(abs(all[1_100] - 0.3) <= 0.002 && abs(all[1_700] - 0.06) <= 0.002)
+        #expect(all[500] != 0 && abs(all[500]) <= 0.002)  // hiss between talks
+        // The same audio however it's chunked.
+        let chunked = stride(from: 0, to: 3_000, by: 137).flatMap {
+            track.samples(from: $0, count: min(137, 3_000 - $0))
+        }
+        #expect(chunked == all)
+        let other = ChannelTrack(utterances: [talk], clips: [clip], sampleRate: 1_000, hiss: 0.002, hissSeed: 6)
+        #expect(other.samples(from: 0, count: 3_000) != all)
+    }
+
+    @Test func defaultTrackIsUnchanged() {
+        let clip = [Float](repeating: 0.5, count: 100)
+        let track = ChannelTrack(
+            utterances: [.init(clip: 0, start: 0, duration: 0.1)], clips: [clip], sampleRate: 1_000
+        )
+        #expect(track.samples(from: 0, count: 200) == clip + [Float](repeating: 0, count: 100))
+    }
 }

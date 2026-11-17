@@ -44,4 +44,18 @@ struct ContinuousSpeechSegmenterTests {
         let kept = Self.coverage(of: audio)
         #expect(kept >= 0.9, "only \(Int(kept * 100))% reached the recogniser after the speaker dropped their voice")
     }
+
+    /// The benchmark's long talks drop from ×0.3 to ×0.06 halfway. Every
+    /// voice it uses must still come through at that level, or a lost half
+    /// would be the level's fault and not the segmenter's.
+    @Test(.enabled(if: asrTests), arguments: ["Samantha", "Daniel", "Karen", "Moira"])
+    func everyBenchVoiceSurvivesTheQuietHalf(voice: String) throws {
+        let clip = RoomSound.echoed(try sayClip(ClipLibrary.passages[0], voice: sayVoice(voice)), sampleRate: Self.rate)
+        let half = clip.count / 2
+        let audio = clip.enumerated().map {
+            $1 * ($0 < half ? Scenario.loudGain : Scenario.quietGain) + RoomSound.hiss(frame: $0, seed: 1)
+        }
+        let kept = Self.coverage(of: audio)
+        #expect(kept >= 0.9, "only \(Int(kept * 100))% of \(voice) came through")
+    }
 }
