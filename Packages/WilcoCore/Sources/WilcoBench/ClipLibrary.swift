@@ -50,7 +50,7 @@ public enum ClipLibrary {
         "Standing by.",
     ]
 
-    /// Unbroken talking of 10–25 s, as someone explains a problem or talks a
+    /// Unbroken talking of about 15 s (13–17 s in the usual voices), as someone explains a problem or talks a
     /// crew through a sequence on comms. Few full stops, so the voices don't
     /// pause long enough to end the line. Plain words and no digits, so a
     /// lost word is a lost word and not a spelling difference.

@@ -30,7 +30,7 @@ let usage = """
                              some back to back) instead of lone calls, and
                              `-voices` engines are scored on voice changes.
                              --duty doesn't apply.
-      --long-talk            Channels hold 10–25 s of unbroken talking in room
+      --long-talk            Channels hold about 15 s of unbroken talking in room
                              sound (echo and hiss), some dropping to a quiet
                              voice halfway. Fails when over 10% of the words
                              are lost. --duty doesn't apply.

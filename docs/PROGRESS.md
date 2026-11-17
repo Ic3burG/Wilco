@@ -886,7 +886,10 @@ Tested, not verified.
 - Design and plan: `docs/superpowers/specs/2026-11-16-long-talk-benchmark-design.md`,
   `docs/superpowers/plans/2026-11-16-long-talk-benchmark.md`. How to run
   it: `BENCHMARK.md`, "Long talks".
-- 10 new package tests.
+- A long-talk run now waits 3 s after the last line before stopping. It
+  used to stop once every talk had one line, which could cut off a talk's
+  later lines. Found by the branch review.
+- 11 new package tests.
 
 ### Numbers (`say` speech, M1 Max, 120 s runs)
 
@@ -898,18 +901,34 @@ Full tables: `docs/benchmarks/2026-11-16-m1-max-say-long-talk.md`.
 - **Parakeet**: no words lost at 1, 8 and 32 channels, final p95 0.86 s at
   32, using 84% of a core.
 - **Apple long-form**: keeps up at 32 channels, 0.2% of words lost.
-- **Whisper base falls behind at 32 channels of long talking**: 47 of 164
-  talks missed, final p95 14 s, audio dropped. It keeps up at 8. This is
-  load, not the segmenter.
+- **Whisper base fails at 32 channels of long talking** (it keeps up at
+  8), but that row's numbers contradict each other: 47 of 164 talks
+  "missed" with only 4.6% of words gone. Likely cause, read from the code
+  and not measured: a Whisper channel waits for the shared model before
+  reading more audio; past 2 s the ring treats it as not listening and
+  stops counting what it discards, and the channel's line times drift
+  early.
 
 Tested, not verified.
 
 ### Next steps / where we left off
 
-- **Whisper base loses 3.5% of words at 8 channels** in long talks, with
-  no dropped audio. Find where (the quiet halves, or the ends of talks).
-- Whisper base at 32 channels of long talking: decide whether that matters
-  for the user's shows, where channels rarely talk 70% of the time.
+- **Whisper under overload** (possibly an app bug too): confirm that a
+  Whisper channel waiting on the model loses audio uncounted and stamps
+  lines too early. Log each line's start and arrival in a 32-channel
+  long-talk run. If so, read the ring while waiting, or count the loss.
+- Whisper base loses 3.5% of words at 8 channels: the model ends two talks
+  at "…keep dropping..." and leaves out the rest. Parakeet gets them
+  whole, so it isn't the segmenter.
+- **Decide:** words lost counts only missing words. An engine that writes
+  wrong words over a lost stretch could still pass. Add a WER limit to
+  long-talk runs?
+- Add passages of 22–25 s so the segmenter's 20 s cut is exercised; the
+  current ones are 13–17 s.
+- Review minors not done: `--corpus --long-talk` doesn't check recording
+  levels; the per-voice quiet test covers only the four default voices;
+  the `--duration` guard is untested; a talk cut short shows a negative
+  delay; the runner tests take 25 s.
 - Add the preview engines to a long-talk run: first words currently come
   about 16 s after a talk starts without preview.
 - **Compare against long-form on the built-in mic again** (still open from

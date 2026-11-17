@@ -217,4 +217,76 @@ struct LongTalkTests {
             #expect(result.keepsUp)
         }
     }
+
+    /// Writes a talk as two lines: the first half midway through it, the
+    /// rest `lag` seconds after it ends, like an engine that cuts a long
+    /// talk in two and is slow with the second part.
+    actor TwoLineTranscriber: ChannelTranscriber {
+        let channel: BenchChannel
+        let talk: ScheduledUtterance
+        let words: [Substring]
+        let lag: Double
+        var pump: Task<Void, Never>?
+
+        init(channel: BenchChannel, talk: ScheduledUtterance, text: String, lag: Double) {
+            self.channel = channel
+            self.talk = talk
+            words = text.split(separator: " ")
+            self.lag = lag
+        }
+
+        func start() async {
+            channel.onStatus(.listening)
+            pump = Task { await self.run() }
+        }
+
+        func stop() async {
+            pump?.cancel()
+            await pump?.value
+        }
+
+        func updateVoiceSettings(_ settings: VoiceChangeSettings) async {}
+
+        private func run() async {
+            var heard = 0.0
+            var sent = 0
+            let middle = talk.start + talk.duration / 2
+            while !Task.isCancelled {
+                heard += Double(channel.source.ring.read(maxCount: channel.source.ring.availableToRead).count)
+                    / channel.source.sampleRate()
+                if sent == 0, heard >= middle {
+                    send(words.prefix(words.count / 2), at: talk.start)
+                    sent = 1
+                } else if sent == 1, heard >= talk.end + lag {
+                    send(words.suffix(words.count - words.count / 2), at: middle)
+                    sent = 2
+                }
+                try? await Task.sleep(for: .milliseconds(20))
+            }
+        }
+
+        private func send(_ words: some Sequence<Substring>, at offset: Double) {
+            channel.onEvent(TranscriptionEvent(
+                channelID: channel.id, text: words.joined(separator: " "), isFinal: true,
+                sessionOffset: offset, confidence: nil
+            ))
+        }
+    }
+
+    @Test(.timeLimit(.minutes(1))) func aLongTalkRunWaitsForATalksLastLine() async throws {
+        let text = "one two three four five six seven eight"
+        let clips = [BenchClip(text: text, samples: [Float](repeating: 0.1, count: 48_000))]
+        let talk = ScheduledUtterance(clip: 0, start: 1, duration: 3, gain: 0.2)
+        let scenario = Scenario(duration: 5.5, dutyCycle: 0.5, channels: [[talk]], longTalk: true, hiss: 0.002)
+        let engine = BenchEngine(id: "two-line", summary: "test double", unavailableReason: { nil }) {
+            { channel in TwoLineTranscriber(channel: channel, talk: talk, text: text, lag: 2) }
+        }
+        let result = await BenchRunner(clips: clips, sampleRate: 16_000)
+            .run(engine: engine, scenario: scenario, drainTimeout: 10)
+        // The second line comes at 6 s, after the audio stops at 5.5 s.
+        #expect(result.wordsLost == 0, "words lost \(result.wordsLost)")
+        #expect(result.drainSeconds > 0.3, "backlog \(result.drainSeconds)")
+        let latency = try #require(result.finalLatency)
+        #expect(latency.max > 1.8, "final delay \(latency.max)")
+    }
 }

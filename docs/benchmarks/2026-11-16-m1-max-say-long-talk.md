@@ -3,13 +3,14 @@
 **Result:** the new `--long-talk` run sees the segmenter bug the other runs
 couldn't. With the old noise-floor rule put back, 62–64% of the words are
 lost and the run fails, while "Missed" still reads 0/40. With the current
-rule Parakeet loses nothing at 1, 8 or 32 channels. Whisper base falls
-behind at 32 channels of near-continuous talking.
+rule Parakeet loses nothing at 1, 8 or 32 channels. Whisper base doesn't
+cope with 32 channels of long talking, though its numbers there can't be
+trusted in detail.
 
 2026-11-16, Apple M1 Max, 10 cores, 64 GB, macOS 27.2.1, on AC power under
 `caffeinate -dims`. `say` speech: 7 passages of 13–17 s in 4 voices
 (Samantha, Daniel, Karen, Moira), with room echo and hiss, 3–8 s apart,
-seed 1, 120 s runs. Channels talk about 70% of the time. "Mac idle" read
+seed 1, 120 s runs. Channels talk about 65% of the time. "Mac idle" read
 18% before the run, so treat CPU (Mac) as noise.
 
 ## Current segmenter
@@ -32,16 +33,40 @@ Run: `wilco-bench --long-talk --duration 120 --engines parakeet-v3,whisper-base,
 - **Parakeet** keeps up at 32 channels with no words lost. It uses 84% of
   a core here against 37% on short calls at 30% talk time: there is more
   than twice the speech.
-- **Whisper base can't carry 32 channels of long talking.** Lines arrive
-  up to 23 s late and audio is dropped. This is load, not the segmenter:
-  at 8 channels it keeps up. It matches the earlier 64-channel, 60%
-  talk-time run, where Whisper base also fell behind.
-- **Whisper base loses 3.5% of words at 8 channels** with no dropped audio
-  and nothing late. Not looked into yet. It is under the 10% bar.
+- **Whisper base fails at 32 channels, but that row doesn't add up.** 47
+  talks count as missed, yet only 4.6% of the words are gone, and no line
+  arrived after the audio stopped although delays read up to 23 s. Likely
+  cause, from the code and not yet measured: each Whisper channel waits
+  for the shared model before reading more audio. When that wait passes
+  2 s the channel's buffer treats it as not listening, and audio it then
+  discards isn't counted as dropped. The channel's clock falls behind, so
+  its lines carry start times that are too early and get matched to the
+  wrong talk or to none. So "something is wrong at 32 channels" holds
+  (it keeps up at 8); the missed count and the delays in that row don't.
+- **Whisper base loses 3.5% of words at 8 channels** with no dropped
+  audio. The saved transcripts show where: twice it ends a talk at "…keep
+  dropping..." and leaves out the rest. Parakeet gets the same talks whole
+  from the same segmenter, so this is the Whisper model giving up on a
+  line, not audio going missing. It is under the 10% bar.
 - **Apple long-form** keeps up and loses almost nothing. It doesn't use
   the segmenter. Its slowest line was 6.4 s behind.
 - Parakeet and Whisper show first words about 16 s after a talk starts:
   without live preview, nothing appears until the talk ends.
+
+## After the run-end fix
+
+The table above was measured before a fix to how a long-talk run ends: it
+used to stop as soon as every talk had one line, which could cut off a
+talk's later lines. Parakeet and Apple long-form were run again at 32
+channels with the fix (`2026-11-16-m1-max-say-long-talk-rerun.json`), and
+nothing moved beyond run-to-run noise:
+
+| Engine | Ch | WER | Words lost | Missed | Final p50 / p95 / max | CPU (us) | Keeps up |
+|---|---:|---:|---:|---:|---|---:|:---:|
+| parakeet-v3 | 32 | 0.3% | 0.0% | 0/164 | 0.63 / 0.85 / 1.03 s | 84% | yes |
+| apple-longform | 32 | 1.9% | 0.2% | 0/164 | 0.49 / 1.18 / 6.44 s | 18% | yes |
+
+Whisper base and the old-rule run were not repeated.
 
 ## Old segmenter rule
 

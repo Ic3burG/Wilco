@@ -104,7 +104,9 @@ public struct BenchRunner: Sendable {
             while elapsed < scenario.duration + drainTimeout {
                 feed(until: elapsed)
                 meter.sample()
-                if allAnswered(scenario, recorder) { break }
+                // A long talk can come back as several lines, so one line
+                // doesn't mean it's answered: wait for the quiet period.
+                if !scenario.longTalk, allAnswered(scenario, recorder) { break }
                 if elapsed - max(scenario.duration, recorder.lastArrival ?? 0) > Self.quietPeriod { break }
                 try? await Task.sleep(for: Self.feedInterval)
                 elapsed = seconds(clock.now - origin)

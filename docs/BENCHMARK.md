@@ -32,7 +32,7 @@ share the speech hardware, and keep the Mac otherwise quiet.
 | `--out DIR` | `./bench-results` | JSON and Markdown report, saved after every run (gitignored). |
 | `--stop-when-behind` | off | Skip an engine's larger counts once it falls behind. |
 | `--conversation` | off | Channels hold exchanges between voices instead of lone calls (see below). `--duty` doesn't apply. |
-| `--long-talk` | off | Channels hold 10–25 s of unbroken talking in room sound, and the run is also judged on words lost (see below). `--duty` doesn't apply. Can't be combined with `--conversation`. |
+| `--long-talk` | off | Channels hold about 15 s of unbroken talking in room sound, and the run is also judged on words lost (see below). `--duty` doesn't apply. Can't be combined with `--conversation`. |
 | `--voice-threshold D` | the app's default | Voice-change threshold (cosine distance) for the `-voices` engines. |
 
 ### Live preview
@@ -81,22 +81,24 @@ can't see a segmenter that stops listening partway through a long
 sentence, because every call still gets a line. `--long-talk` is the run
 for that.
 
-Each channel plays written passages of 10–25 s of unbroken talking, 3–8 s
-apart, so a channel is talking most of the time. The audio is made to sound
+Each channel plays written passages of 13–17 s of unbroken talking, 3–8 s
+apart, so a channel is talking about two thirds of the time. The audio is made to sound
 like a mic in a room:
 
 - four early echoes (30, 70, 130 and 210 ms) fill the dips between
   syllables;
 - a little hiss runs under the whole channel, talking or not;
-- each channel has its own level, from a tenth to a third of full scale;
+- each channel plays at its own level, from a tenth to a third of the
+  clip's recorded level;
 - about one talk in three starts loud and drops to a quiet voice halfway.
 
 The report gains a **Words lost** column: spoken words with nothing in the
 transcript where they belong, as a share of all words spoken. Wrong words
 don't count, only missing ones. "Keeps up" also needs words lost of 10% or
-less. A talk longer than the segmenter's 20 s limit comes back as several
-lines; that's expected, and its delay runs from the end of the talk to its
-last line.
+less. A talk can come back as several lines; its delay runs from the end
+of the talk to its last line, and the run waits 3 s after the last line
+before it stops. No passage is long enough yet to reach the segmenter's
+20 s limit, so that cut isn't exercised.
 
 ```sh
 swift run -c release wilco-bench --long-talk --duration 120 \
@@ -108,7 +110,10 @@ must be long enough for the longest talk; the tool says so if it isn't.
 
 `say` passages are still a best case. With `--corpus`, the recordings are
 played as they are (they carry their own room) with the levels and hiss
-applied, so use recordings of long talking, not single calls.
+applied, so use recordings of long talking, not single calls. The quiet
+half plays at 6% of the recorded level: a recording that isn't close to
+full level can fall under the segmenter's minimum there and look like lost
+speech when it isn't.
 
 ## What a run does
 

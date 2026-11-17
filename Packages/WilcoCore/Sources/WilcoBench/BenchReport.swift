@@ -200,8 +200,8 @@ public struct BenchReport: Codable, Equatable, Sendable {
             lines += [
                 "",
                 "Words lost: spoken words with nothing in the transcript where they belong, as a share of all words "
-                    + "spoken. Each call here is 10–25 s of unbroken talking in room sound (echo and hiss), and some "
-                    + "drop to a quiet voice halfway. Keeps up also needs words lost ≤ "
+                    + "spoken. Each call here is a long stretch of unbroken talking over hiss, and some drop to a "
+                    + "quiet voice halfway. Keeps up also needs words lost ≤ "
                     + "\(Int(RunResult.acceptableWordsLost * 100))%.",
             ]
         }
