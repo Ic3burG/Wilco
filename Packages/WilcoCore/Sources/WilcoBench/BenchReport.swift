@@ -43,6 +43,9 @@ public struct RunResult: Codable, Equatable, Sendable {
     /// Conversation turns answered by the previous turn's line in the same
     /// exchange (final only after they ended). Not counted as missed.
     public var merged: Int?
+    /// True for long-talk runs, which are also judged on words lost. Nil for
+    /// other runs and in reports from before long talks.
+    public var longTalk: Bool?
 
     public struct Sample: Codable, Equatable, Sendable {
         public var reference: String
@@ -50,6 +53,13 @@ public struct RunResult: Codable, Equatable, Sendable {
     }
 
     public var wordErrorRate: Double { wordErrors.rate }
+
+    /// Share of the spoken words with nothing in the transcript where they
+    /// belong. Wrong words don't count, only missing ones: it's what a
+    /// segmenter that stops listening partway through a talk looks like.
+    public var wordsLost: Double {
+        wordErrors.referenceWords > 0 ? Double(wordErrors.deletions) / Double(wordErrors.referenceWords) : 0
+    }
 
     /// Cues kept pace: nothing failed or was dropped, almost every call got a
     /// final line, and final lines (when rules fire) came within a few
@@ -60,6 +70,7 @@ public struct RunResult: Codable, Equatable, Sendable {
             && Double(missed) <= Double(utterances) * 0.05
             && (finalLatency?.p95 ?? .infinity) <= Self.acceptableDelay
             && drainSeconds <= Self.acceptableDelay
+            && (longTalk != true || wordsLost <= Self.acceptableWordsLost)
     }
 
     /// For engines that detect voice changes: lines reached the screen, with
@@ -76,6 +87,8 @@ public struct RunResult: Codable, Equatable, Sendable {
 
     /// A call's line should be on screen within this many seconds of it ending.
     public static let acceptableDelay = 3.0
+    /// A long-talk run may lose this share of its words and still pass.
+    public static let acceptableWordsLost = 0.10
 }
 
 public struct BenchReport: Codable, Equatable, Sendable {
@@ -100,10 +113,16 @@ public struct BenchReport: Codable, Equatable, Sendable {
         self.results = results
     }
 
-    public static let tableHeader = """
-        | Engine | Ch | WER | Missed | Final delay p50 / p95 / max | Display p95 | First words p50 | Backlog | Start | CPU (us) | CPU (Mac) | Memory | Dropped | Keeps up |
-        |---|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|:---:|
-        """
+    public static let tableHeader = tableHeader(longTalk: false)
+
+    /// Long-talk runs get a "Words lost" column after WER.
+    public static func tableHeader(longTalk: Bool) -> String {
+        let lost = longTalk ? (" Words lost |", "---:|") : ("", "")
+        return """
+            | Engine | Ch | WER |\(lost.0) Missed | Final delay p50 / p95 / max | Display p95 | First words p50 | Backlog | Start | CPU (us) | CPU (Mac) | Memory | Dropped | Keeps up |
+            |---|---:|---:|\(lost.1)---:|---|---:|---:|---:|---:|---:|---:|---:|---:|:---:|
+            """
+    }
 
     public static func tableRow(_ r: RunResult) -> String {
         func s(_ value: Double?) -> String { value.map { String(format: "%.2f s", $0) } ?? "–" }
@@ -112,6 +131,7 @@ public struct BenchReport: Codable, Equatable, Sendable {
             r.engine,
             "\(r.channels)",
             String(format: "%.1f%%", r.wordErrorRate * 100),
+        ] + (r.longTalk == true ? [String(format: "%.1f%%", r.wordsLost * 100)] : []) + [
             "\(r.missed)/\(r.utterances)" + ((r.merged ?? 0) > 0 ? " (\(r.merged!) merged)" : ""),
             delay,
             s(r.displayLatency?.p95),
@@ -153,13 +173,14 @@ public struct BenchReport: Codable, Equatable, Sendable {
 
     public func markdown() -> String {
         let formatter = ISO8601DateFormatter()
+        let longTalk = results.contains { $0.longTalk == true }
         var lines = [
             "# Wilco transcription benchmark",
             "",
             "\(formatter.string(from: date)) · \(machine) · macOS \(osVersion) · speech: \(corpus)"
                 + (idleSystemCPU.map { String(format: " · Mac idle: %.0f%% CPU", $0 * 100) } ?? ""),
             "",
-            Self.tableHeader,
+            Self.tableHeader(longTalk: longTalk),
         ]
         lines += results.map(Self.tableRow)
         let limit = Int(RunResult.acceptableDelay)
@@ -175,6 +196,15 @@ public struct BenchReport: Codable, Equatable, Sendable {
                 + "dropped audio, ≤ 5% of calls missed, p95 final delay and backlog ≤ \(limit) s; with voice changes "
                 + "on, also display p95 and display backlog ≤ \(limit) s.",
         ]
+        if longTalk {
+            lines += [
+                "",
+                "Words lost: spoken words with nothing in the transcript where they belong, as a share of all words "
+                    + "spoken. Each call here is 10–25 s of unbroken talking in room sound (echo and hiss), and some "
+                    + "drop to a quiet voice halfway. Keeps up also needs words lost ≤ "
+                    + "\(Int(RunResult.acceptableWordsLost * 100))%.",
+            ]
+        }
         let voiced = results.filter { $0.voices != nil }
         if !voiced.isEmpty {
             lines += ["", "## Voice changes", "", Self.voiceTableHeader]

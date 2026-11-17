@@ -91,4 +91,130 @@ struct LongTalkTests {
         )
         #expect(track.samples(from: 0, count: 200) == clip + [Float](repeating: 0, count: 100))
     }
+
+    static func result(deletions: Int, longTalk: Bool?) -> RunResult {
+        RunResult(
+            engine: "parakeet-v3", channels: 8, duration: 120, dutyCycle: 0.7, speechSeconds: 600,
+            utterances: 40, missed: 0, wordErrors: WordErrors(deletions: deletions, referenceWords: 100),
+            finalLatency: LatencySummary([0.5, 0.7]), firstWordLatency: nil,
+            startSeconds: 1, drainSeconds: 0.5, droppedFrames: 0,
+            processCPU: 1, systemCPU: 0.2, peakMemoryMB: 500, failures: [], longTalk: longTalk
+        )
+    }
+
+    @Test func wordsLostFailsOnlyLongTalkRuns() {
+        #expect(Self.result(deletions: 20, longTalk: nil).wordsLost == 0.2)
+        #expect(Self.result(deletions: 20, longTalk: nil).keepsUp)
+        #expect(!Self.result(deletions: 20, longTalk: true).keepsUp)
+        #expect(Self.result(deletions: 10, longTalk: true).keepsUp)
+        #expect(Self.result(deletions: 11, longTalk: true).keepsUp == false)
+        var empty = Self.result(deletions: 0, longTalk: true)
+        empty.wordErrors = WordErrors()
+        #expect(empty.wordsLost == 0)
+    }
+
+    @Test func olderReportsStillDecode() throws {
+        let data = try JSONEncoder().encode(Self.result(deletions: 20, longTalk: true))
+        var object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        #expect(object.removeValue(forKey: "longTalk") != nil)
+        let old = try JSONDecoder().decode(RunResult.self, from: JSONSerialization.data(withJSONObject: object))
+        #expect(old.longTalk == nil)
+        #expect(old.keepsUp)
+    }
+
+    @Test func longTalkRowHasWordsLost() {
+        let plain = BenchReport.tableRow(Self.result(deletions: 20, longTalk: nil))
+        let long = BenchReport.tableRow(Self.result(deletions: 20, longTalk: true))
+        func cells(_ row: String) -> Int { row.split(separator: "|").count }
+        #expect(cells(long) == cells(plain) + 1)
+        #expect(long.contains("| 20.0% | 20.0% |"))  // WER, then words lost
+        #expect(BenchReport.tableHeader(longTalk: true).contains("| WER | Words lost |"))
+        #expect(BenchReport.tableHeader(longTalk: false) == BenchReport.tableHeader)
+        for line in BenchReport.tableHeader(longTalk: true).split(separator: "\n") {
+            #expect(cells(String(line)) == cells(long))
+        }
+        let report = BenchReport(
+            date: Date(timeIntervalSince1970: 0), machine: "Test Mac", osVersion: "27.2", corpus: "say",
+            results: [Self.result(deletions: 20, longTalk: true)]
+        )
+        #expect(report.markdown().contains("| WER | Words lost |"))
+        #expect(report.markdown().contains("Words lost:"))
+    }
+
+    /// Writes the first `share` of each talk's words as one final line when
+    /// the talk ends: an engine whose segmenter stopped listening partway.
+    actor PartialTranscriber: ChannelTranscriber {
+        let channel: BenchChannel
+        let utterances: [ScheduledUtterance]
+        let texts: [String]
+        let share: Double
+        var pump: Task<Void, Never>?
+
+        init(channel: BenchChannel, utterances: [ScheduledUtterance], texts: [String], share: Double) {
+            self.channel = channel
+            self.utterances = utterances
+            self.texts = texts
+            self.share = share
+        }
+
+        func start() async {
+            channel.onStatus(.listening)
+            pump = Task { await self.run() }
+        }
+
+        func stop() async {
+            pump?.cancel()
+            await pump?.value
+        }
+
+        func updateVoiceSettings(_ settings: VoiceChangeSettings) async {}
+
+        private func run() async {
+            var heard = 0.0
+            var next = 0
+            while !Task.isCancelled {
+                heard += Double(channel.source.ring.read(maxCount: channel.source.ring.availableToRead).count)
+                    / channel.source.sampleRate()
+                while next < utterances.count, utterances[next].end <= heard {
+                    let words = texts[utterances[next].clip].split(separator: " ")
+                    let kept = words.prefix(Int(Double(words.count) * share)).joined(separator: " ")
+                    channel.onEvent(TranscriptionEvent(
+                        channelID: channel.id, text: kept, isFinal: true,
+                        sessionOffset: utterances[next].start, confidence: nil
+                    ))
+                    next += 1
+                }
+                try? await Task.sleep(for: .milliseconds(20))
+            }
+        }
+    }
+
+    @Test(.timeLimit(.minutes(1)), arguments: [0.5, 1.0])
+    func anEngineThatDropsTheSecondHalfDoesNotKeepUp(share: Double) async {
+        let clips = [
+            BenchClip(text: "one two three four five six seven eight", samples: [Float](repeating: 0.1, count: 48_000)),
+            BenchClip(text: "red blue green pink grey black white gold", samples: [Float](repeating: 0.1, count: 48_000)),
+        ]
+        let scenario = Scenario.generateLongTalks(channels: 2, clipDurations: [3, 3], duration: 20, seed: 1)
+        let texts = clips.map(\.text)
+        let engine = BenchEngine(id: "partial", summary: "test double", unavailableReason: { nil }) {
+            { channel in
+                PartialTranscriber(
+                    channel: channel, utterances: scenario.channels[channel.index], texts: texts, share: share
+                )
+            }
+        }
+        let result = await BenchRunner(clips: clips, sampleRate: 16_000)
+            .run(engine: engine, scenario: scenario, drainTimeout: 5)
+        #expect(result.failures.isEmpty)
+        #expect(result.longTalk == true)
+        #expect(result.utterances > 0 && result.missed == 0)
+        if share < 1 {
+            #expect(result.wordsLost > 0.4, "words lost \(result.wordsLost)")
+            #expect(!result.keepsUp)
+        } else {
+            #expect(result.wordsLost == 0)
+            #expect(result.keepsUp)
+        }
+    }
 }

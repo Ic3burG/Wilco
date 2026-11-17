@@ -156,7 +156,8 @@ public struct BenchRunner: Sendable {
             displayBacklog: recorder.lastDisplayArrival.map { max(0, $0 - scenario.duration) } ?? 0,
             voices: voices,
             voiceThreshold: engine.detectsVoiceChanges ? voiceChanges.threshold : nil,
-            merged: scores.map(\.merged).reduce(0, +)
+            merged: scores.map(\.merged).reduce(0, +),
+            longTalk: scenario.longTalk ? true : nil
         )
     }
 
