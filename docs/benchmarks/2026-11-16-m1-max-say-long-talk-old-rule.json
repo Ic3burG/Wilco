@@ -1,0 +1,119 @@
+{
+  "corpus" : "say (Samantha en_US, Daniel en_GB, Karen en_AU, Moira en_IE; 28 clips, long talks",
+  "date" : "2026-11-17T00:40:35Z",
+  "idleSystemCPU" : 0.24341329138812426,
+  "machine" : "Apple M1 Max, 10 cores, 64 GB",
+  "osVersion" : "Version 27.2.1 (Build 26B131)",
+  "results" : [
+    {
+      "channels" : 8,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : -0.4719366800205762,
+        "mean" : -9.678751605000489,
+        "p50" : -9.821236002067312,
+        "p95" : -3.8042348196376423
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 120,
+      "dutyCycle" : 0.644838888888889,
+      "engine" : "parakeet-v3",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : -0.4719366800205762,
+        "mean" : -9.678751605000489,
+        "p50" : -9.821236002067312,
+        "p95" : -3.8042348196376423
+      },
+      "firstWordLatency" : {
+        "max" : 9.613270812907402,
+        "mean" : 4.998596456432848,
+        "p50" : 4.500931723832684,
+        "p95" : 9.515252485681557
+      },
+      "longTalk" : true,
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 229.25089263916016,
+      "processCPU" : 0.08840692334808162,
+      "samples" : [
+        {
+          "hypothesis" : "So what happened in the first half was that the truck came on a little late because the wagon brake was still down, and by the way. When we get to the end of the song I am going to call the lights first and then the fly piece, and I need everyone on the deck to wait and So what happened in the first half was that the truck came on a little late because the wagon brake was still down. When we get to the end of the song I am going to call the lights first and then the fly piece, and I need everyone on the deck to wait until the cloth is all the way and then you hear me say clear c. I have been listening to the vocal on the left side of the",
+          "reference" : "So what happened in the first half was that the truck came on a little late because the wagon brake was still down, and by the time we got it released the lighting had already moved on to the next look, which is why the whole shift looked messy from the front and why I want to run it again before we break. When we get to the end of the song I am going to call the lights first and then the fly piece, and I need everyone on the deck to wait until the cloth is all the way in and you hear me say clear before anybody walks under it, because we came very close to someone standing in the wrong place last night. So what happened in the first half was that the truck came on a little late because the wagon brake was still down, and by the time we got it released the lighting had already moved on to the next look, which is why the whole shift looked messy from the front and why I want to run it again before we break. When we get to the end of the song I am going to call the lights first and then the fly piece, and I need everyone on the deck to wait until the cloth is all the way in and you hear me say clear before anybody walks under it, because we came very close to someone standing in the wrong place last night. I have been listening to the vocal on the left side of the room and it sounds thin to me, as if something is missing in the low end, so could somebody walk out to the middle of the house and tell me whether it is the speaker itself or just where I happen to be sitting at the back."
+        },
+        {
+          "hypothesis" : "The long form seems to do the live transcription much faster, and and it builds better sentences. While the other two engines keep dropping whole stress. The long form seems to do the live transcription much faster, and Before we open the house I want to go through the whole change one more time with the crew, starting to see the first So that everybody knows exactly what I'm saying. The long form seems to do the live transcription much faster, and it builds better sentences, while it's not Before we open the house I want to go through the whole change one. So that everybody knows exactly what we're doing.",
+          "reference" : "The long form seems to do the live transcription much faster, and it builds better sentences, while the other two engines keep dropping whole stretches of what I am saying whenever I talk for a while without stopping to take a proper breath between one thought and the next one. The long form seems to do the live transcription much faster, and it builds better sentences, while the other two engines keep dropping whole stretches of what I am saying whenever I talk for a while without stopping to take a proper breath between one thought and the next one. Before we open the house I want to go through the whole change one more time with the crew, starting from the moment the table comes off and going right through until the chairs are set and the door is closed, so that everybody knows exactly where they are meant to be standing and nobody is left guessing in the dark. The long form seems to do the live transcription much faster, and it builds better sentences, while the other two engines keep dropping whole stretches of what I am saying whenever I talk for a while without stopping to take a proper breath between one thought and the next one. Before we open the house I want to go through the whole change one more time with the crew, starting from the moment the table comes off and going right through until the chairs are set and the door is closed, so that everybody knows exactly where they are meant to be standing and nobody is left guessing in the dark."
+        }
+      ],
+      "speechSeconds" : 619.0453333333334,
+      "startSeconds" : 0.150559208,
+      "systemCPU" : 0.24607172393053153,
+      "utterances" : 40,
+      "wordErrors" : {
+        "deletions" : 1467,
+        "insertions" : 1,
+        "referenceWords" : 2368,
+        "substitutions" : 47
+      }
+    },
+    {
+      "channels" : 8,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : -0.29784126302055824,
+        "mean" : -9.542867795300486,
+        "p50" : -9.667853164886274,
+        "p95" : -3.815087319637641
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 120,
+      "dutyCycle" : 0.644838888888889,
+      "engine" : "whisper-base",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : -0.29784126302055824,
+        "mean" : -9.542867795300486,
+        "p50" : -9.667853164886274,
+        "p95" : -3.815087319637641
+      },
+      "firstWordLatency" : {
+        "max" : 9.787139354907396,
+        "mean" : 5.139664418257847,
+        "p50" : 4.685553676257129,
+        "p95" : 9.713274569681559
+      },
+      "longTalk" : true,
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 210.7042465209961,
+      "processCPU" : 0.07054804377547011,
+      "samples" : [
+        {
+          "hypothesis" : "So what happened in the first half was that the truck came on a little late because the wagon break was still done and by When we get to the end of the song, I am going to call the lights first and then the fly piece and I need everyone on the deck to wait and So what happened in the first half was that the truck came on a little late because the wagon brake was still down. When we get to the end of the song I am going to call the lights first and then the fly piece, and I need everyone on the deck to wait until the clock is all the way and then you hear me say clear I have been listening to the vocal on the left side of the room.",
+          "reference" : "So what happened in the first half was that the truck came on a little late because the wagon brake was still down, and by the time we got it released the lighting had already moved on to the next look, which is why the whole shift looked messy from the front and why I want to run it again before we break. When we get to the end of the song I am going to call the lights first and then the fly piece, and I need everyone on the deck to wait until the cloth is all the way in and you hear me say clear before anybody walks under it, because we came very close to someone standing in the wrong place last night. So what happened in the first half was that the truck came on a little late because the wagon brake was still down, and by the time we got it released the lighting had already moved on to the next look, which is why the whole shift looked messy from the front and why I want to run it again before we break. When we get to the end of the song I am going to call the lights first and then the fly piece, and I need everyone on the deck to wait until the cloth is all the way in and you hear me say clear before anybody walks under it, because we came very close to someone standing in the wrong place last night. I have been listening to the vocal on the left side of the room and it sounds thin to me, as if something is missing in the low end, so could somebody walk out to the middle of the house and tell me whether it is the speaker itself or just where I happen to be sitting at the back."
+        },
+        {
+          "hypothesis" : "The long form seems to do the live transcription much faster. and it builds better sentences. while the other two engines keep dropping. The long-form scenes to do the live transcription much faster and Before we open the house I want to go through the whole change one more time with the crew, starting so that everybody knows exactly The long form seems to do the live transcription much faster and it builds better sentences. Before we open the house I want to go through the whole change one So that everybody knows exactly",
+          "reference" : "The long form seems to do the live transcription much faster, and it builds better sentences, while the other two engines keep dropping whole stretches of what I am saying whenever I talk for a while without stopping to take a proper breath between one thought and the next one. The long form seems to do the live transcription much faster, and it builds better sentences, while the other two engines keep dropping whole stretches of what I am saying whenever I talk for a while without stopping to take a proper breath between one thought and the next one. Before we open the house I want to go through the whole change one more time with the crew, starting from the moment the table comes off and going right through until the chairs are set and the door is closed, so that everybody knows exactly where they are meant to be standing and nobody is left guessing in the dark. The long form seems to do the live transcription much faster, and it builds better sentences, while the other two engines keep dropping whole stretches of what I am saying whenever I talk for a while without stopping to take a proper breath between one thought and the next one. Before we open the house I want to go through the whole change one more time with the crew, starting from the moment the table comes off and going right through until the chairs are set and the door is closed, so that everybody knows exactly where they are meant to be standing and nobody is left guessing in the dark."
+        }
+      ],
+      "speechSeconds" : 619.0453333333334,
+      "startSeconds" : 0.731968708,
+      "systemCPU" : 0.24757083842439054,
+      "utterances" : 40,
+      "wordErrors" : {
+        "deletions" : 1528,
+        "insertions" : 0,
+        "referenceWords" : 2368,
+        "substitutions" : 21
+      }
+    }
+  ]
+}

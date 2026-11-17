@@ -32,6 +32,7 @@ share the speech hardware, and keep the Mac otherwise quiet.
 | `--out DIR` | `./bench-results` | JSON and Markdown report, saved after every run (gitignored). |
 | `--stop-when-behind` | off | Skip an engine's larger counts once it falls behind. |
 | `--conversation` | off | Channels hold exchanges between voices instead of lone calls (see below). `--duty` doesn't apply. |
+| `--long-talk` | off | Channels hold 10–25 s of unbroken talking in room sound, and the run is also judged on words lost (see below). `--duty` doesn't apply. Can't be combined with `--conversation`. |
 | `--voice-threshold D` | the app's default | Voice-change threshold (cosine distance) for the `-voices` engines. |
 
 ### Live preview
@@ -72,6 +73,42 @@ with a one-letter mark (`A: Standby lighting cue five.`). The same letter in
 different files is the same person. A recording is one turn, so all its
 marked lines must name the same speaker. `--conversation` then builds
 exchanges from the recordings, and needs at least two speakers.
+
+### Long talks
+
+The default sweep plays short, clean calls with gaps between them. It
+can't see a segmenter that stops listening partway through a long
+sentence, because every call still gets a line. `--long-talk` is the run
+for that.
+
+Each channel plays written passages of 10–25 s of unbroken talking, 3–8 s
+apart, so a channel is talking most of the time. The audio is made to sound
+like a mic in a room:
+
+- four early echoes (30, 70, 130 and 210 ms) fill the dips between
+  syllables;
+- a little hiss runs under the whole channel, talking or not;
+- each channel has its own level, from a tenth to a third of full scale;
+- about one talk in three starts loud and drops to a quiet voice halfway.
+
+The report gains a **Words lost** column: spoken words with nothing in the
+transcript where they belong, as a share of all words spoken. Wrong words
+don't count, only missing ones. "Keeps up" also needs words lost of 10% or
+less. A talk longer than the segmenter's 20 s limit comes back as several
+lines; that's expected, and its delay runs from the end of the talk to its
+last line.
+
+```sh
+swift run -c release wilco-bench --long-talk --duration 120 \
+  --engines parakeet-v3,whisper-base,apple-longform --channels 1,8,32
+```
+
+Use `--duration 120` or more so each channel gets several talks. The run
+must be long enough for the longest talk; the tool says so if it isn't.
+
+`say` passages are still a best case. With `--corpus`, the recordings are
+played as they are (they carry their own room) with the levels and hiss
+applied, so use recordings of long talking, not single calls.
 
 ## What a run does
 

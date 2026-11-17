@@ -867,3 +867,51 @@ Tested, not verified.
 - The other items from the previous section still stand (try previews in
   the app, the Neural Engine stall, Whisper's last line on stop, review
   minors).
+
+## 2026-11-16 — Long-talk benchmark
+
+### Tooling
+
+- **`wilco-bench --long-talk`**: each channel plays written passages of
+  13–17 s of unbroken talking, 3–8 s apart, made to sound like a mic in a
+  room (four early echoes, hiss under the whole channel, a level per
+  channel). About one talk in three starts loud and drops to a quiet voice
+  halfway.
+- **Words lost** is a new column for these runs: spoken words with nothing
+  in the transcript where they belong. "Keeps up" also needs it at 10% or
+  less. Before this, a talk cut off partway still counted as answered.
+- The room sound moved from the segmenter test into `WilcoBench`
+  (`RoomSound`), and the test uses the shared one. A new gated test checks
+  that every benchmark voice comes through at the quiet level.
+- Design and plan: `docs/superpowers/specs/2026-11-16-long-talk-benchmark-design.md`,
+  `docs/superpowers/plans/2026-11-16-long-talk-benchmark.md`. How to run
+  it: `BENCHMARK.md`, "Long talks".
+- 10 new package tests.
+
+### Numbers (`say` speech, M1 Max, 120 s runs)
+
+Full tables: `docs/benchmarks/2026-11-16-m1-max-say-long-talk.md`.
+
+- **The run catches the segmenter bug.** With the old noise-floor rule put
+  back, 62–64% of words are lost at 8 channels and the run fails, with
+  0/40 talks "missed".
+- **Parakeet**: no words lost at 1, 8 and 32 channels, final p95 0.86 s at
+  32, using 84% of a core.
+- **Apple long-form**: keeps up at 32 channels, 0.2% of words lost.
+- **Whisper base falls behind at 32 channels of long talking**: 47 of 164
+  talks missed, final p95 14 s, audio dropped. It keeps up at 8. This is
+  load, not the segmenter.
+
+Tested, not verified.
+
+### Next steps / where we left off
+
+- **Whisper base loses 3.5% of words at 8 channels** in long talks, with
+  no dropped audio. Find where (the quiet halves, or the ends of talks).
+- Whisper base at 32 channels of long talking: decide whether that matters
+  for the user's shows, where channels rarely talk 70% of the time.
+- Add the preview engines to a long-talk run: first words currently come
+  about 16 s after a talk starts without preview.
+- **Compare against long-form on the built-in mic again** (still open from
+  the segmenter fix).
+- The other items from the previous sections still stand.

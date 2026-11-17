@@ -30,6 +30,10 @@ let usage = """
                              some back to back) instead of lone calls, and
                              `-voices` engines are scored on voice changes.
                              --duty doesn't apply.
+      --long-talk            Channels hold 10–25 s of unbroken talking in room
+                             sound (echo and hiss), some dropping to a quiet
+                             voice halfway. Fails when over 10% of the words
+                             are lost. --duty doesn't apply.
       --voice-threshold D    Voice-change threshold for `-voices` engines
                              (default: the app's, \(VoiceChangeSettings.standard.threshold)).
     """
@@ -47,6 +51,7 @@ struct Options {
     var out = URL(fileURLWithPath: "bench-results", isDirectory: true)
     var stopWhenBehind = false
     var conversation = false
+    var longTalk = false
     var voiceThreshold = VoiceChangeSettings.standard.threshold
 }
 
@@ -81,11 +86,13 @@ func parse(_ arguments: [String]) -> Options {
         case "--out": options.out = URL(fileURLWithPath: value(argument), isDirectory: true)
         case "--stop-when-behind": options.stopWhenBehind = true
         case "--conversation": options.conversation = true
+        case "--long-talk": options.longTalk = true
         case "--voice-threshold": options.voiceThreshold = number(argument) { $0 > 0 && $0 < 2 }
         case "-h", "--help": print(usage); exit(0)
         default: fail("unknown option \(argument)")
         }
     }
+    if options.longTalk, options.conversation { fail("--long-talk and --conversation can't be combined") }
     return options
 }
 
@@ -160,8 +167,20 @@ let clips: [BenchClip]
 let corpusName: String
 do {
     if let folder = options.corpus {
+        // Recordings carry their own room, so long talks play them as they are.
         clips = try ClipLibrary.load(folder: folder, sampleRate: sampleRate)
-        corpusName = "\(clips.count) recordings from \(folder.lastPathComponent)"
+        corpusName = "\(clips.count) recordings from \(folder.lastPathComponent)" + (options.longTalk ? ", long talks" : "")
+    } else if options.longTalk {
+        let cache = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appending(path: "WilcoBench/say", directoryHint: .isDirectory)
+        log("Rendering long talks with `say` (cached after the first run)…")
+        let synthesized = try ClipLibrary.synthesized(
+            ClipLibrary.passages, sampleRate: sampleRate, cacheDirectory: cache, voiceLimit: options.voices
+        )
+        clips = synthesized.clips.map {
+            BenchClip(text: $0.text, samples: RoomSound.echoed($0.samples, sampleRate: sampleRate), voice: $0.voice)
+        }
+        corpusName = "say (\(synthesized.voices.joined(separator: ", ")); \(clips.count) clips, long talks"
     } else {
         let cache = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
             .appending(path: "WilcoBench/say", directoryHint: .isDirectory)
@@ -179,6 +198,16 @@ runner.voiceChanges.threshold = options.voiceThreshold
 let durations = clips.map { $0.duration(sampleRate: sampleRate) }
 if options.conversation, Set(clips.map(\.voice)).count < 2 {
     fail("--conversation needs at least two voices (more `say` voices, or speaker marks in the corpus)")
+}
+if options.longTalk {
+    // Every channel must fit at least one talk, whichever it draws first.
+    let needed = (durations.max() ?? 0) + 3 + Scenario.minimumGap
+    if options.duration < needed {
+        fail(String(
+            format: "the longest talk is %.0f s, so --long-talk needs --duration %.0f or more",
+            durations.max() ?? 0, needed.rounded(.up)
+        ))
+    }
 }
 let started = Date()
 let stamp = {
@@ -208,15 +237,19 @@ log("Measuring idle CPU…")
 report.idleSystemCPU = await BenchRunner.idleSystemCPU()
 log(String(format: "Mac idle: %.0f%% of all cores busy", (report.idleSystemCPU ?? 0) * 100))
 log("\(report.machine) · \(engines.count) engine(s) × channels \(options.channels) · \(Int(options.duration)) s runs, "
-    + (options.conversation ? "conversations" : "\(Int(options.duty * 100))% talk time")
+    + (options.conversation ? "conversations" : options.longTalk ? "long talks" : "\(Int(options.duty * 100))% talk time")
     + (engines.contains(where: \.detectsVoiceChanges) ? " · voice threshold \(options.voiceThreshold)" : ""))
-print(BenchReport.tableHeader)
+print(BenchReport.tableHeader(longTalk: options.longTalk))
 for engine in engines {
     for channels in options.channels {
         let scenario = options.conversation
             ? Scenario.generateConversations(
                 channels: channels, duration: options.duration, seed: options.seed,
                 clips: clips.map { $0.conversationClip(sampleRate: sampleRate) }
+            )
+            : options.longTalk
+            ? Scenario.generateLongTalks(
+                channels: channels, clipDurations: durations, duration: options.duration, seed: options.seed
             )
             : Scenario.generate(
                 channelCount: channels, clipDurations: durations,
