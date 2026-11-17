@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import WilcoBench
 @testable import WilcoCore
 
 /// Someone talking without a real pause, on a mic that hears the room. The
@@ -7,34 +8,14 @@ import Testing
 @Suite("Segmenter with continuous speech")
 struct ContinuousSpeechSegmenterTests {
     static let rate = 16_000.0
-    static let sentence = "The long form seems to do the live transcription much faster, and it builds better sentences, "
-        + "while the other two engines keep dropping whole stretches of what I am saying whenever I talk for a while "
-        + "without stopping to take a proper breath between one thought and the next one."
+    static let sentence = ClipLibrary.passages[0]
 
-    /// Repeatable hiss, so a failure can be run again.
-    struct Hiss: RandomNumberGenerator {
-        var state: UInt64 = 0x9E37_79B9_7F4A_7C15
-        mutating func next() -> UInt64 {
-            state = state &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
-            var z = state
-            z ^= z >> 33
-            z = z &* 0xFF51_AFD7_ED55_8CCD
-            z ^= z >> 33
-            return z
-        }
-    }
-
-    /// `samples` as a laptop mic in a room hears them: four early echoes
-    /// fill the dips between syllables, plus a little hiss.
+    /// `samples` as a laptop mic in a room hears them: early echoes fill the
+    /// dips between syllables, plus a little hiss.
     static func room(_ samples: [Float], level: Float) -> [Float] {
-        let echoes: [(delay: Double, gain: Float)] = [(0.03, 0.5), (0.07, 0.35), (0.13, 0.25), (0.21, 0.15)]
-        var out = samples + [Float](repeating: 0, count: Int(0.21 * rate))
-        for echo in echoes {
-            let shift = Int(echo.delay * rate)
-            for index in samples.indices { out[index + shift] += samples[index] * echo.gain }
+        RoomSound.echoed(samples, sampleRate: rate).enumerated().map {
+            $1 * level + RoomSound.hiss(frame: $0, seed: 1)
         }
-        var hiss = Hiss()
-        return out.map { $0 * level + Float.random(in: -0.002...0.002, using: &hiss) }
     }
 
     /// The share of `audio` that comes out in utterances.

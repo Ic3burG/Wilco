@@ -50,6 +50,36 @@ public enum ClipLibrary {
         "Standing by.",
     ]
 
+    /// Unbroken talking of 10–25 s, as someone explains a problem or talks a
+    /// crew through a sequence on comms. Few full stops, so the voices don't
+    /// pause long enough to end the line. Plain words and no digits, so a
+    /// lost word is a lost word and not a spelling difference.
+    public static let passages = [
+        "The long form seems to do the live transcription much faster, and it builds better sentences, "
+            + "while the other two engines keep dropping whole stretches of what I am saying whenever I talk for a while "
+            + "without stopping to take a proper breath between one thought and the next one.",
+        "So what happened in the first half was that the truck came on a little late because the wagon brake "
+            + "was still down, and by the time we got it released the lighting had already moved on to the next look, "
+            + "which is why the whole shift looked messy from the front and why I want to run it again before we break.",
+        "When we get to the end of the song I am going to call the lights first and then the fly piece, "
+            + "and I need everyone on the deck to wait until the cloth is all the way in and you hear me say clear "
+            + "before anybody walks under it, because we came very close to someone standing in the wrong place last night.",
+        "I have been listening to the vocal on the left side of the room and it sounds thin to me, "
+            + "as if something is missing in the low end, so could somebody walk out to the middle of the house "
+            + "and tell me whether it is the speaker itself or just where I happen to be sitting at the back.",
+        "Before we open the house I want to go through the whole change one more time with the crew, "
+            + "starting from the moment the table comes off and going right through until the chairs are set "
+            + "and the door is closed, so that everybody knows exactly where they are meant to be standing "
+            + "and nobody is left guessing in the dark.",
+        "The reason the picture dropped out for a moment is that the cable running along the back wall "
+            + "got kicked when the band were loading in their cases, and although we have pushed it back in "
+            + "and taped it down I would still like someone to stay near it during the show in case it happens again.",
+        "Thank you everyone for a really good afternoon, we got through a lot more than I expected, "
+            + "and after the break we are going to pick up from the top of the second half and keep going "
+            + "without stopping unless something is unsafe, so please be back in your places and ready to go "
+            + "a few minutes before the hour.",
+    ]
+
     /// The cue words `phrases` use, as a show would list them for boosting.
     public static let vocabulary = [
         "Standby", "Lighting", "Sound", "Video", "Automation", "Pyro", "Places",
@@ -87,11 +117,11 @@ public enum ClipLibrary {
         .init(name: "Reed", locale: "en_US"), .init(name: "Shelley", locale: "en_GB"),
     ]
 
-    /// Every phrase in up to `voiceLimit` voices, rendered by `say` once and
+    /// Every text (the short calls, unless told otherwise) in up to `voiceLimit` voices, rendered by `say` once and
     /// cached. Synthetic speech is clean, so treat it as a best case: real
     /// comms (hiss, clipping, talking over) will score worse.
     public static func synthesized(
-        sampleRate: Double, cacheDirectory: URL, voiceLimit: Int = 4
+        _ texts: [String] = phrases, sampleRate: Double, cacheDirectory: URL, voiceLimit: Int = 4
     ) throws -> (clips: [BenchClip], voices: [String]) {
         let voices = pick(preferredVoices, from: parseVoices(try run("/usr/bin/say", ["-v", "?"])), limit: voiceLimit)
         guard !voices.isEmpty else {
@@ -101,7 +131,7 @@ public enum ClipLibrary {
 
         var clips: [BenchClip] = []
         for (number, voice) in voices.enumerated() {
-            for phrase in phrases {
+            for phrase in texts {
                 let key = SHA256.hash(data: Data("\(voice.label)|\(phrase)|\(Int(sampleRate))".utf8))
                     .prefix(8).map { String(format: "%02x", $0) }.joined()
                 let file = cacheDirectory.appending(path: "\(key).wav")

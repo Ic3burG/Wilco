@@ -58,7 +58,7 @@ let package = Package(
         ),
         .testTarget(
             name: "WilcoTranscriptionTests",
-            dependencies: ["WilcoTranscription"]
+            dependencies: ["WilcoTranscription", "WilcoBench"]
         ),
         .testTarget(
             name: "WilcoBenchTests",
