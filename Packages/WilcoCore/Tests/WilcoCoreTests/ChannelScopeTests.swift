@@ -85,4 +85,38 @@ struct ChannelScopeTests {
             }
         }
     }
+
+    // MARK: Chip clicks
+
+    private let x = UUID(), y = UUID(), z = UUID()
+    private var three: [UUID] { [x, y, z] }
+
+    @Test func plainClickTogglesOneChannel() {
+        #expect(ChannelScope.chips([], afterClicking: x, among: three, excluding: false) == [x])
+        #expect(ChannelScope.chips([x, y], afterClicking: x, among: three, excluding: false) == [y])
+    }
+
+    @Test func excludingClickFromAllHidesJustThatChannel() {
+        #expect(ChannelScope.chips([], afterClicking: y, among: three, excluding: true) == [x, z])
+    }
+
+    @Test func excludingClickAgainShowsItAndReturnsToAll() {
+        let hidden = ChannelScope.chips([], afterClicking: y, among: three, excluding: true)
+        #expect(ChannelScope.chips(hidden, afterClicking: y, among: three, excluding: true) == [])
+    }
+
+    @Test func excludingClicksHideSeveralChannels() {
+        let one = ChannelScope.chips([], afterClicking: x, among: three, excluding: true)
+        #expect(ChannelScope.chips(one, afterClicking: y, among: three, excluding: true) == [z])
+    }
+
+    @Test func excludingTheLastShownChannelChangesNothing() {
+        #expect(ChannelScope.chips([z], afterClicking: z, among: three, excluding: true) == [z])
+    }
+
+    @Test func staleChipsAreDroppedOnClick() {
+        let stale = UUID()
+        #expect(ChannelScope.chips([stale], afterClicking: x, among: three, excluding: true) == [y, z])
+        #expect(ChannelScope.chips([stale], afterClicking: x, among: three, excluding: false) == [x])
+    }
 }

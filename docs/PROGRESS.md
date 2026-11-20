@@ -934,3 +934,39 @@ Tested, not verified.
 - **Compare against long-form on the built-in mic again** (still open from
   the segmenter fix).
 - The other items from the previous sections still stand.
+
+## 2026-11-20 — Hiding a channel from Combined; quiet channels' "." rows
+
+Asked for during a show with real comms, to help troubleshooting.
+
+### Features
+
+- **Option- or Shift-click a channel chip to hide that one channel** in
+  Combined or a group view. From "All channels" it turns every other chip
+  on; more modifier-clicks hide more channels, and a modifier-click on a
+  hidden chip shows it again. Once every channel is showing again it goes
+  back to "All channels". Hiding the last channel still shown does
+  nothing. A plain click works as before. The logic is
+  `ChannelScope.chips(_:afterClicking:among:excluding:)`; the chips still
+  store which channels are shown, so nothing new is saved.
+
+### Fixes
+
+- **Quiet channels no longer leave a "." row at the live end.** On a
+  quiet channel the recogniser could report a lone "." as words in
+  progress, which sat at the bottom of Combined, groups and Matrix
+  columns. Text in progress with no letters or digits now counts as
+  none (`TranscriptTimeline.hasWords`). Settled lines and the session
+  file are unchanged.
+
+Tested, and verified by the user in the app on live comms.
+
+### Next steps / where we left off
+
+- Hiding is stored as "show these channels", so a channel added during a
+  session stays hidden until "All channels" is clicked. Store exclusions
+  separately if that gets in the way.
+- If "." lines still turn up as settled lines, filter them where lines
+  settle too (and decide whether the session file keeps them).
+- The report window's chips don't take modifier-clicks yet.
+- The items from 2026-11-16 still stand.

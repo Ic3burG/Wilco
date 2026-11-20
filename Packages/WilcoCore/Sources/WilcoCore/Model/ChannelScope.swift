@@ -55,6 +55,30 @@ public enum ChannelScope: Hashable, Sendable {
         return live.isEmpty || live.contains(channelID)
     }
 
+    /// The chips after a click on `channelID`'s chip. Empty chips mean every
+    /// channel in scope (`inScope`, the view's channels).
+    ///
+    /// A plain click adds or removes that one channel. An excluding click
+    /// (Option- or Shift-click) works on what is shown instead: from "All
+    /// channels" it hides just that channel by turning every other chip on,
+    /// and a second excluding click shows it again. Hiding the only channel
+    /// left changes nothing, and a selection that covers every channel goes
+    /// back to "All channels".
+    public static func chips(
+        _ chips: Set<UUID>, afterClicking channelID: UUID, among inScope: [UUID], excluding: Bool
+    ) -> Set<UUID> {
+        let all = Set(inScope)
+        var on = chips.intersection(all)
+        guard excluding else {
+            if on.contains(channelID) { on.remove(channelID) } else { on.insert(channelID) }
+            return on
+        }
+        var shown = on.isEmpty ? all : on
+        if shown.contains(channelID) { shown.remove(channelID) } else { shown.insert(channelID) }
+        if shown.isEmpty { return chips }
+        return shown == all ? [] : shown
+    }
+
     private func isMember(_ channelID: UUID, of show: ShowDocument) -> Bool {
         switch self {
         case .all:

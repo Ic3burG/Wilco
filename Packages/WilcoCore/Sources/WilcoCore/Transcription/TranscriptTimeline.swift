@@ -78,7 +78,7 @@ public struct TranscriptTimeline: Sendable {
         let text = event.text.trimmingCharacters(in: .whitespacesAndNewlines)
         let channel = event.channelID
         guard event.isFinal else {
-            volatile[channel] = text.isEmpty ? nil : text
+            volatile[channel] = Self.hasWords(text) ? text : nil
             awaitingAnnotation[channel] = nil
             return nil
         }
@@ -88,7 +88,7 @@ public struct TranscriptTimeline: Sendable {
             volatile[channel] = nil
             awaitingAnnotation[channel] = nil
         case .recognized:
-            volatile[channel] = text.isEmpty ? nil : text
+            volatile[channel] = Self.hasWords(text) ? text : nil
             awaitingAnnotation[channel] = text.isEmpty ? nil : event.lineID
             recentLines.append((event.lineID, channel))
             if recentLines.count > Self.rememberedLines {
@@ -122,6 +122,13 @@ public struct TranscriptTimeline: Sendable {
             segments.removeFirst(segments.count - maximumSegments)
         }
         return segment
+    }
+
+    /// Whether words in progress are worth a row. On a quiet channel the
+    /// recogniser can report a lone "." or "…"; text with no letters or
+    /// digits would only leave an empty row at the live end.
+    static func hasWords(_ text: String) -> Bool {
+        text.contains { $0.isLetter || $0.isNumber }
     }
 
     public func segments(for channelID: UUID) -> [TranscriptSegment] {

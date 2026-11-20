@@ -250,10 +250,13 @@ private struct LiveHeader: View {
             ForEach(channels) { channel in
                 Chip(title: channel.name, count: lineCounts[channel.id] ?? 0, color: channel.tint.color,
                      isOn: on.contains(channel.id)) {
-                    var chips = on
-                    if chips.contains(channel.id) { chips.remove(channel.id) } else { chips.insert(channel.id) }
-                    model.chipFilters[scope] = chips
+                    let modifiers = NSEvent.modifierFlags
+                    model.chipFilters[scope] = ChannelScope.chips(
+                        on, afterClicking: channel.id, among: channels.map(\.id),
+                        excluding: modifiers.contains(.option) || modifiers.contains(.shift)
+                    )
                 }
+                .help("Click to show only chosen channels; Option-click to hide \(channel.name)")
             }
         }
     }

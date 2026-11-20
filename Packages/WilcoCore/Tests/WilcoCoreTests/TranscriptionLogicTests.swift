@@ -207,6 +207,24 @@ struct TranscriptTimelineTests {
         #expect(timeline.segments.map(\.text) == ["Standby LX 5."])
     }
 
+    /// A quiet channel reporting a lone "." left an empty row at the live end.
+    @Test func punctuationOnlyWordsInProgressAreHidden() {
+        var timeline = TranscriptTimeline()
+        timeline.apply(event(a, ".", final: false), at: .now)
+        timeline.apply(event(b, " … ", final: false), at: .now)
+        #expect(timeline.volatile.isEmpty)
+
+        timeline.apply(event(a, "Go 12.", final: false), at: .now)
+        #expect(timeline.volatile[a] == "Go 12.")
+        timeline.apply(event(a, ".", final: false), at: .now)
+        #expect(timeline.volatile[a] == nil)
+
+        let recognized = TranscriptionEvent(channelID: b, text: ".", isFinal: true, sessionOffset: 0,
+                                            confidence: nil, stage: .recognized)
+        timeline.apply(recognized, at: .now)
+        #expect(timeline.volatile[b] == nil)
+    }
+
     @Test func annotationIsStoredWithTheLine() {
         var timeline = TranscriptTimeline()
         let segment = timeline.apply(event(a, "Standby", final: true), at: .now) { $0.matchedKeywords = ["standby"] }
