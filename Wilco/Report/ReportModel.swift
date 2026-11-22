@@ -47,7 +47,9 @@ final class ReportModel {
     /// A message the chat log should scroll to.
     var focusedMessage: UUID?
 
-    /// The show whose channel names and colours label the report.
+    /// The open show. A session is labelled with the show it was recorded
+    /// with; this is the fallback, and wins a tie when guessing for a session
+    /// recorded before shows were kept beside transcripts.
     var show = ShowDocument()
     private var loadTask: Task<Void, Never>?
 
@@ -111,6 +113,12 @@ final class ReportModel {
         focusedMessage = marker.messageID
     }
 
+    /// Every saved configuration, for guessing an older session's show.
+    nonisolated private static func savedShows() -> [ShowDocument] {
+        let store = ConfigurationStore()
+        return store.list().compactMap { try? store.document($0.id) }
+    }
+
     private func load() {
         loadTask?.cancel()
         report = nil
@@ -122,7 +130,10 @@ final class ReportModel {
             let built = await Task.detached(priority: .userInitiated) { () -> Result<ShowReport, Error> in
                 Result {
                     let segments = TranscriptFile.segments(in: try Data(contentsOf: url))
-                    return ShowReportBuilder.build(segments: segments, show: show, sourceName: url.lastPathComponent, generated: .now)
+                    let recordedWith = SessionShow.load(forTranscript: url)
+                        ?? SessionShow.bestMatch(for: segments, among: [show] + Self.savedShows())
+                        ?? show
+                    return ShowReportBuilder.build(segments: segments, show: recordedWith, sourceName: url.lastPathComponent, generated: .now)
                 }
             }.value
             guard !Task.isCancelled else { return }

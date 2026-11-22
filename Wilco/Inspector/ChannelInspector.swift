@@ -101,7 +101,27 @@ private struct ChannelForm: View {
         )
     }
 
-    private let symbols = ["person.wave.2", "headphones", "lightbulb", "speaker.wave.2", "video", "theatermasks", "music.mic"]
+    /// Channel symbols by kind, as (SF Symbol, menu name). All exist on
+    /// macOS 15. Keep every symbol once offered here, or channels already using
+    /// it show a blank picker.
+    private static let symbolSections: [(title: String, symbols: [(name: String, label: String)])] = [
+        ("Comms", [
+            ("person.wave.2", "Caller"), ("headset", "Headset"), ("headphones", "Headphones"),
+            ("radio", "Radio"), ("antenna.radiowaves.left.and.right", "Antenna"),
+            ("phone", "Phone"), ("megaphone", "Megaphone"),
+        ]),
+        ("Departments", [
+            ("lightbulb", "Lighting"), ("light.beacon.max", "Beacon"), ("speaker.wave.2", "Sound"),
+            ("music.mic", "Vocal mic"), ("music.note", "Music"), ("pianokeys", "Keys"),
+            ("guitars", "Guitars"), ("video", "Video"), ("camera", "Camera"), ("display", "Screens"),
+            ("flame", "Pyro"), ("smoke", "Haze"), ("sparkles", "Effects"),
+        ]),
+        ("Stage", [
+            ("theatermasks", "Stage"), ("curtains.closed", "Curtain"), ("figure.walk", "Performer"),
+            ("wrench.and.screwdriver", "Crew"), ("timer", "Timing"), ("cross.case", "Medical"),
+            ("shield", "Security"),
+        ]),
+    ]
 
     var body: some View {
         Form {
@@ -109,14 +129,16 @@ private struct ChannelForm: View {
                 TextField("Name", text: $channel.name)
                 Picker("Colour", selection: $channel.tint) {
                     ForEach(ChannelTint.allCases, id: \.self) { tint in
-                        Label(tint.rawValue.capitalized, systemImage: "circle.fill")
-                            .foregroundStyle(tint.color)
-                            .tag(tint)
+                        tint.pickerLabel.tag(tint)
                     }
                 }
                 Picker("Symbol", selection: $channel.symbol) {
-                    ForEach(symbols, id: \.self) { symbol in
-                        Image(systemName: symbol).tag(symbol)
+                    ForEach(Self.symbolSections, id: \.title) { section in
+                        Section(section.title) {
+                            ForEach(section.symbols, id: \.name) { symbol in
+                                Label(symbol.label, systemImage: symbol.name).tag(symbol.name)
+                            }
+                        }
                     }
                 }
                 Picker("Group", selection: groupSelection) {

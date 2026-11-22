@@ -57,6 +57,7 @@ struct WilcoApp: App {
                     .keyboardShortcut("n", modifiers: [.command, .shift])
             }
             ConfigurationCommands(model: model)
+            CaptureCommands(model: model)
         }
     }
 }

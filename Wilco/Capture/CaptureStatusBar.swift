@@ -86,10 +86,10 @@ struct CaptureButton: View {
     var body: some View {
         if model.isCapturing {
             Button("Stop", systemImage: "stop.circle.fill", action: model.toggleCapture)
-                .help("Stop capture and transcription")
+                .help("Stop capture and transcription (⌘.)")
         } else {
             Button("Start", systemImage: "record.circle", action: model.toggleCapture)
-                .help("Start capture and transcription")
+                .help("Start capture and transcription (⌘R)")
         }
     }
 }
@@ -111,6 +111,23 @@ extension CaptureState {
         case .starting, .recovering: .orange
         case .running: .green
         case .failed: .red
+        }
+    }
+}
+
+/// The Capture menu. Start and stop are separate keys so a double press can't
+/// stop a running show; ⌘. is the usual Mac key for stopping.
+struct CaptureCommands: Commands {
+    let model: AppModel
+
+    var body: some Commands {
+        CommandMenu("Capture") {
+            Button("Start Capture") { Task { await model.startCapture() } }
+                .keyboardShortcut("r", modifiers: .command)
+                .disabled(model.isCapturing)
+            Button("Stop Capture", action: model.stopCapture)
+                .keyboardShortcut(".", modifiers: .command)
+                .disabled(!model.isCapturing)
         }
     }
 }

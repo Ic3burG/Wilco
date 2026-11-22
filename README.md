@@ -28,7 +28,8 @@ The core app works and is in testing; it is not yet released. See
 ## Files
 
 - Shows are `.wilco` files (JSON, `formatVersion` 1) and transcripts are
-  `.jsonl`, one line per finalised segment. Both live in
+  `.jsonl`, one line per finalised segment, with a `.wilco` copy of the
+  show each session was recorded with beside it. Both live in
   `~/Library/Application Support/Wilco` along with downloaded Whisper models.
 - New show fields always get defaults, so older files keep opening.
 

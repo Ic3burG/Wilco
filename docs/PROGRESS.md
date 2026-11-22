@@ -970,3 +970,54 @@ Tested, and verified by the user in the app on live comms.
   settle too (and decide whether the session file keeps them).
 - The report window's chips don't take modifier-clicks yet.
 - The items from 2026-11-16 still stand.
+
+## 2026-11-21 — Reports name their own show; colour dots; more symbols; capture shortcuts
+
+### Fixes
+
+- **Post-show reports now carry the show they were recorded with.** Every
+  report used to take its title, channel names and colours from whichever
+  show was open. Capture now keeps a copy of the show beside each
+  transcript (`Transcripts/Session yyyy-MM-dd HHmm-ss.wilco`), written with
+  the first line and updated when capture stops, so a rename during the
+  session is kept. A silent session still leaves no files. Older sessions
+  have no copy, so the report takes the saved or open show sharing the
+  most channel IDs with the lines (the open show wins a tie), else the
+  open show. This is a best guess: YE Phoenix and YE Dallas share 14
+  channel IDs, so most of their older sessions tie and go to whichever is
+  open. The `.jsonl` format is unchanged. Logic in `SessionShow`; the
+  writer change is in `TranscriptWriter`.
+- **Colour pickers show coloured dots.** Menu-style pickers become an
+  `NSMenu`, which draws symbol images as templates and ignores
+  `foregroundStyle`, so every dot was white. The dots are now non-template
+  images (`ChannelTint.swatch`), in Automation settings and the channel
+  inspector.
+- **Starting capture twice quickly no longer starts two sessions.** A
+  second press while the microphone check was pending is ignored.
+
+### Features
+
+- **More channel symbols, including a radio.** The Symbol picker has 27
+  symbols in Comms, Departments and Stage sections, each with a name:
+  Radio and Antenna (there is no walkie-talkie symbol), headset, phone,
+  megaphone, pyro, haze, effects, curtain, crew, medical, security and
+  more. The original seven are kept.
+- **Capture menu with shortcuts:** Start Capture ⌘R, Stop Capture ⌘.
+  Separate keys, so a double press can't stop a running show; each is
+  greyed out when it doesn't apply. The Start/Stop button tooltips show
+  them.
+
+Tested (8 new tests for the show copy and matching); the user reports
+everything looks good.
+
+### Next steps / where we left off
+
+- Older sessions that tie between shows follow whichever show is open. If
+  that's a problem, add a Show menu to the report header that saves the
+  choice as the session's copy.
+- A channel added during capture is in the show copy only after capture
+  stops; if the app quits mid-session, the copy is the show at the first
+  line.
+- Symbol names were checked on macOS 27; confirm they all draw on a
+  macOS 15 Mac.
+- The items from 2026-11-20 still stand.

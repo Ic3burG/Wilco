@@ -211,9 +211,11 @@ final class AppModel {
             lastMessage = "Wilco can't use audio input. Allow it in System Settings › Privacy & Security › Microphone, then start capture again."
             return
         }
+        // A second press while the access check was pending.
+        guard !isCapturing else { return }
         let start = Date()
         sessionStart = start
-        writer = TranscriptWriter(url: DataLocations.transcripts.appending(path: TranscriptFile.fileName(for: start)))
+        writer = TranscriptWriter(url: DataLocations.transcripts.appending(path: TranscriptFile.fileName(for: start)), show: document)
         reportedWriteFailure = false
         evaluator.reset()
         pendingLines = PendingLines()
@@ -236,7 +238,10 @@ final class AppModel {
         let transcription = transcription
         Task {
             await transcription.stopAll()
-            if sessionStart == nil { writer = nil }
+            if sessionStart == nil {
+                writer?.finish(show: document)
+                writer = nil
+            }
         }
     }
 

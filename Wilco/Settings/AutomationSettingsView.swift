@@ -260,9 +260,7 @@ private struct HighlightEditor: View {
                 Toggle("Enabled", isOn: $highlight.isEnabled)
                 Picker("Colour", selection: $highlight.tint) {
                     ForEach(ChannelTint.allCases, id: \.self) { tint in
-                        Label(tint.rawValue.capitalized, systemImage: "circle.fill")
-                            .foregroundStyle(tint.color)
-                            .tag(tint)
+                        tint.pickerLabel.tag(tint)
                     }
                 }
             }
