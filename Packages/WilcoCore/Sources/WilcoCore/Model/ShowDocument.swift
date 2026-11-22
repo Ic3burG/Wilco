@@ -37,6 +37,13 @@ public struct ShowDocument: Codable, Equatable, Sendable {
     public var mosNCSID: String
     /// Tuning for voice-change detection on channels that turn it on.
     public var voiceChanges: VoiceChangeSettings = .standard
+    /// The report's run-of-show marker lists. `nil` until edited, meaning the
+    /// built-in lists, so an unedited show's file has no `markers` key and
+    /// picks up improvements to the built-in lists.
+    public var markers: MarkerSettings? = nil
+
+    /// The marker lists the report uses for this show.
+    public var markerSettings: MarkerSettings { markers ?? .standard }
 
     public init(
         formatVersion: Int = ShowDocument.currentFormatVersion,
@@ -83,7 +90,7 @@ public struct ShowDocument: Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case formatVersion, name, deviceUID, channels, groups, sidebarOrder, rules, highlights,
              destinations, globalVocabulary, whisperModel, mcpEnabled, mcpPort,
-             networkEnabled, peerName, mosEnabled, mosHost, mosPort, mosID, mosNCSID, voiceChanges
+             networkEnabled, peerName, mosEnabled, mosHost, mosPort, mosID, mosNCSID, voiceChanges, markers
     }
 
     public init(from decoder: Decoder) throws {
@@ -114,6 +121,7 @@ public struct ShowDocument: Codable, Equatable, Sendable {
         mosID = try c.decodeIfPresent(String.self, forKey: .mosID) ?? d.mosID
         mosNCSID = try c.decodeIfPresent(String.self, forKey: .mosNCSID) ?? d.mosNCSID
         voiceChanges = try c.decodeIfPresent(VoiceChangeSettings.self, forKey: .voiceChanges) ?? d.voiceChanges
+        markers = try c.decodeIfPresent(MarkerSettings.self, forKey: .markers)
         let channelTerms = try c.decodeIfPresent([LegacyChannelVocabulary].self, forKey: .channels)?
             .flatMap { $0.vocabulary ?? [] } ?? []
         globalVocabulary = Self.adding(channelTerms, to: globalVocabulary)

@@ -2,7 +2,7 @@ import Foundation
 
 /// A post-show breakdown of one capture session.
 public struct ShowReport: Sendable {
-    public enum MarkerCategory: String, CaseIterable, Sendable {
+    public enum MarkerCategory: String, CaseIterable, Codable, Sendable {
         case phase, houseLights, song, cue, department
 
         public var title: String {
