@@ -154,7 +154,7 @@ public enum ShowReportBuilder {
 
         var messages: [ShowReport.Message] = []
         var markers: [ShowReport.Marker] = []
-        let markerSettings = show.markerSettings
+        let preparedMarkers = MarkerDetector.Prepared(show.markerSettings)
         var lastSeen: [String: (index: Int, elapsed: Double)] = [:]
         var words: [UUID: Int] = [:]
         var termCounts: [UUID: [String: Int]] = [:]
@@ -177,7 +177,7 @@ public enum ShowReportBuilder {
                 termCounts[line.channelID, default: [:]][term, default: 0] += 1
             }
 
-            for detection in MarkerDetector.detect(in: line.text, settings: markerSettings) {
+            for detection in MarkerDetector.detect(in: line.text, prepared: preparedMarkers) {
                 let key = "\(line.channelID)|\(detection.category.rawValue)|\(detection.label)"
                 if let seen = lastSeen[key], line.sessionOffset - seen.elapsed <= repeatWindow {
                     markers[seen.index].repeats += 1
@@ -322,7 +322,8 @@ public enum ShowReportSearch {
 }
 
 /// Finds a phrase in a line the way people say it: any case, and with
-/// spaces, hyphens or nothing between its words, so "stand by" finds
+/// spaces, hyphens, other punctuation or nothing between its words, the
+/// way phrase matching ignores punctuation, so "stand by" finds
 /// "Stand-by" and "standby", and "standby" finds "Stand by" (speech
 /// engines split and join words freely). Only whole words match.
 public enum PhraseLocator {
@@ -332,7 +333,7 @@ public enum PhraseLocator {
         // A separator may fall anywhere inside the phrase, not just between its words.
         let letters = words.joined().map { NSRegularExpression.escapedPattern(for: String($0)) }
         let pattern = "(?<![\\p{L}\\p{N}])"
-            + letters.joined(separator: "[\\s\\-]*")
+            + letters.joined(separator: "[^\\p{L}\\p{N}']*")
             + "(?![\\p{L}\\p{N}])"
         guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { return [] }
         return regex.matches(in: text, range: NSRange(text.startIndex..., in: text))

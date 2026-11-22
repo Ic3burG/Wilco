@@ -117,7 +117,9 @@ struct MarkerSettingsView: View {
         switch selection {
         case .label(let id):
             if let label = labelBinding(id) {
+                // A fresh editor per label, so a half-typed phrase isn't added to the next one.
                 LabelEditor(label: label)
+                    .id(id)
             } else {
                 nothingSelected
             }
@@ -230,7 +232,7 @@ private struct DepartmentsEditor: View {
             } header: {
                 Text("Departments")
             } footer: {
-                Text("Matches “rigging go” and “go rigging”. “Cue 12 go” is always matched.")
+                Text("Matches “rigging go” and “go rigging”. “Cue 12 go” is matched even with no departments listed.")
             }
         }
         .formStyle(.grouped)

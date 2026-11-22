@@ -10,30 +10,67 @@ public enum MarkerDetector {
         public var matched: String
     }
 
+    /// A show's marker settings with every phrase and department already
+    /// split into words, so a report splits them once rather than per line.
+    public struct Prepared: Sendable {
+        struct PhraseLabel: Sendable {
+            var category: ShowReport.MarkerCategory
+            var name: String
+            var phrases: [(phrase: String, words: [String])]
+        }
+
+        var labels: [PhraseLabel]
+        /// Each department's "X go" and "go X" word runs with their labels.
+        var departmentRuns: [(words: [String], label: String)]
+        var departmentGosEnabled: Bool
+        var countdownEnabled: Bool
+        var songStartEnabled: Bool
+
+        public init(_ settings: MarkerSettings) {
+            labels = settings.labels.filter(\.isEnabled).map { label in
+                let name = label.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                return PhraseLabel(category: label.category, name: name.isEmpty ? "Untitled Label" : name,
+                            phrases: label.phrases.map { ($0, KeywordMatcher.tokens($0)) })
+            }
+            departmentRuns = settings.departments.flatMap { department -> [(words: [String], label: String)] in
+                let name = department.trimmingCharacters(in: .whitespacesAndNewlines)
+                let words = KeywordMatcher.tokens(name)
+                guard !words.isEmpty else { return [] }
+                return [(words + ["go"], MarkerDetector.capitalised(name) + " go"), (["go"] + words, "Go " + name)]
+            }
+            departmentGosEnabled = settings.departmentGosEnabled
+            countdownEnabled = settings.countdownEnabled
+            songStartEnabled = settings.songStartEnabled
+        }
+    }
+
     /// At most one marker per category per line: the first that matches, so
     /// more specific labels come first within a category.
     public static func detect(in text: String, settings: MarkerSettings = .standard) -> [Detection] {
+        detect(in: text, prepared: Prepared(settings))
+    }
+
+    public static func detect(in text: String, prepared: Prepared) -> [Detection] {
         let words = KeywordMatcher.tokens(text)
         return ShowReport.MarkerCategory.allCases.compactMap { category in
             switch category {
             case .phase:
-                phrase(.phase, settings, words)
-                    ?? (settings.countdownEnabled ? pattern(countdown, label: "Countdown", .phase, in: text) : nil)
+                phrase(.phase, prepared, words)
+                    ?? (prepared.countdownEnabled ? pattern(countdown, label: "Countdown", .phase, in: text) : nil)
             case .song:
-                (settings.songStartEnabled ? pattern(songStart, label: "Song start", .song, in: text) : nil)
-                    ?? phrase(.song, settings, words)
+                (prepared.songStartEnabled ? pattern(songStart, label: "Song start", .song, in: text) : nil)
+                    ?? phrase(.song, prepared, words)
             case .houseLights, .cue:
-                phrase(category, settings, words)
+                phrase(category, prepared, words)
             case .department:
-                settings.departmentGosEnabled ? departmentGo(settings.departments, words) : nil
+                prepared.departmentGosEnabled ? departmentGo(prepared.departmentRuns, words) : nil
             }
         }
     }
 
-    private static func phrase(_ category: ShowReport.MarkerCategory, _ settings: MarkerSettings, _ words: [String]) -> Detection? {
-        for label in settings.labels where label.category == category && label.isEnabled {
-            let phrases = label.phrases.map { ($0, KeywordMatcher.tokens($0)) }
-            if let phrase = KeywordMatcher.firstMatch(of: phrases, in: words) {
+    private static func phrase(_ category: ShowReport.MarkerCategory, _ prepared: Prepared, _ words: [String]) -> Detection? {
+        for label in prepared.labels where label.category == category {
+            if let phrase = KeywordMatcher.firstMatch(of: label.phrases, in: words) {
                 return Detection(category: category, label: label.name, matched: phrase)
             }
         }
@@ -51,19 +88,17 @@ public enum MarkerDetector {
     /// joined, so "pyrogo" and "good to go" don't count. The call said first
     /// wins ("go pyro, go lasers" is "Go pyro"), then the longest, so "follow
     /// spot go" beats "spot go" whatever the list order.
-    private static func departmentGo(_ departments: [String], _ words: [String]) -> Detection? {
+    private static func departmentGo(_ runs: [(words: [String], label: String)], _ words: [String]) -> Detection? {
+        // Every department call has "go" in it; most lines don't.
+        guard words.contains("go") else { return nil }
         var best: (start: Int, length: Int, label: String)?
         func consider(_ run: [String], label: @autoclosure () -> String) {
             guard let start = firstIndex(of: run, in: words) else { return }
             if let current = best, current.start < start || (current.start == start && current.length >= run.count) { return }
             best = (start, run.count, label())
         }
-        for department in departments {
-            let name = department.trimmingCharacters(in: .whitespacesAndNewlines)
-            let tokens = KeywordMatcher.tokens(name)
-            guard !tokens.isEmpty else { continue }
-            consider(tokens + ["go"], label: capitalised(name) + " go")
-            consider(["go"] + tokens, label: "Go " + name)
+        for run in runs {
+            consider(run.words, label: run.label)
         }
         for index in words.indices where words[index] == "cue" && index + 1 < words.count {
             let number = words[index + 1]
@@ -76,10 +111,10 @@ public enum MarkerDetector {
 
     private static func firstIndex(of run: [String], in words: [String]) -> Int? {
         guard run.count <= words.count else { return nil }
-        return (0...(words.count - run.count)).first { Array(words[$0..<$0 + run.count]) == run }
+        return (0...(words.count - run.count)).first { words[$0..<$0 + run.count].elementsEqual(run) }
     }
 
-    private static func capitalised(_ text: String) -> String {
+    fileprivate static func capitalised(_ text: String) -> String {
         text.prefix(1).uppercased() + text.dropFirst()
     }
 

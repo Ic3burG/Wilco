@@ -72,6 +72,21 @@ struct MarkerDetectorTests {
         #expect(labels("Three, two, one, go pyro, go lasers") == ["department:Go pyro"])
     }
 
+    @Test func preparedSettingsDetectTheSame() {
+        var s = MarkerSettings.standard
+        s.departments.append("follow spot")
+        let prepared = MarkerDetector.Prepared(s)
+        for text in ["Standby house lights out", "Follow spot, go", "We're 5 minutes to doors", "Cue 4 go", "Going into the next song"] {
+            #expect(MarkerDetector.detect(in: text, prepared: prepared) == MarkerDetector.detect(in: text, settings: s))
+        }
+    }
+
+    @Test func blankLabelNameIsUntitled() {
+        var s = MarkerSettings.standard
+        s.labels = [MarkerLabel(category: .cue, name: "   ", phrases: ["standby"])]
+        #expect(labels("Standby", s) == ["cue:Untitled Label"])
+    }
+
     @Test func departmentNeedsGoNextToIt() {
         #expect(labels("pyro is good to go") == [])
         #expect(labels("pyrogo") == [])
@@ -222,6 +237,11 @@ struct ReportExportTests {
         #expect(html.contains("Standby &lt;LX&gt;"))
         #expect(!html.contains("<LX>"))
         #expect(html.contains(#"data-tab="run""#) && html.contains(#"data-tab="log""#) && html.contains(#"data-tab="channels""#))
+    }
+
+    @Test func htmlMarksADepartmentCallSaidWithAComma() {
+        #expect(ShowReportHTML.marked("Content, go", phrase: "Content go") == #"<mark class="call">Content, go</mark>"#)
+        #expect(ShowReportHTML.marked("one, go, pyro", phrase: "Go pyro") == #"one, <mark class="call">go, pyro</mark>"#)
     }
 
     @Test func htmlMarksTheCallWithoutBreakingEscaping() {

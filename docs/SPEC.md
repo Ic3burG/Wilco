@@ -271,10 +271,12 @@ built-in `MarkerSettings.standard`, so an unedited show's file has no
   Intermission, Encore, Show clear, Load out*; house lights *out / at half /
   up / discussed*; *Playback*; *Standby, Hold*.
 - **Departments**: a list of names, each matched as "X go" or "go X"
-  (consecutive words, punctuation ignored), plus the always-on "cue N go" /
-  "go cue N". The call said first in the line wins, then the longest name.
-  The label is the name as listed: "LX go", "Go pyro". There's one on/off
-  switch for all department gos.
+  (consecutive words, punctuation ignored), plus "cue N go" / "go cue N",
+  which needs no list entry. The call said first in the line wins, then the longest name.
+  The label is the name as listed: "LX go", "Go pyro". One on/off switch
+  covers all department gos, cue gos included. The report highlights the call
+  across punctuation ("Content, go"), as `PhraseLocator` skips punctuation
+  between words.
 - **Built-in patterns**, each with an on/off switch only: countdown
   (`\d{1,3} minutes? to…`, a phase, tried after the phase labels) and song
   start (*"top of the next song"*, *"playback rolling"*…, tried before the song
