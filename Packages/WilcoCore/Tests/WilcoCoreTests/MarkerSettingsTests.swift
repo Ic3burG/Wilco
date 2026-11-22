@@ -64,4 +64,21 @@ struct MarkerSettingsTests {
         #expect(standard.labels(in: .department).isEmpty)
         #expect(standard.departments.contains("LX") && standard.departments.contains("pyro"))
     }
+
+    @Test func movingLabelsStaysWithinTheirCategory() {
+        var settings = MarkerSettings.standard
+        // Move "Hold" above "Standby" in Cue calls.
+        settings.moveLabels(in: .cue, fromOffsets: IndexSet(integer: 1), toOffset: 0)
+        #expect(settings.labels(in: .cue).map(\.name) == ["Hold", "Standby"])
+        #expect(settings.labels(in: .houseLights).map(\.name) == MarkerSettings.standard.labels(in: .houseLights).map(\.name))
+        #expect(settings.labels.count == MarkerSettings.standard.labels.count)
+    }
+
+    @Test func movingToTheEndOfACategory() {
+        var settings = MarkerSettings.standard
+        settings.moveLabels(in: .houseLights, fromOffsets: IndexSet(integer: 0), toOffset: 4)
+        #expect(settings.labels(in: .houseLights).map(\.name) == [
+            "House lights at half", "House lights up", "House lights discussed", "House lights out",
+        ])
+    }
 }

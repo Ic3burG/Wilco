@@ -18,6 +18,9 @@ struct SettingsView: View {
             Tab("Automation", systemImage: "bolt") {
                 AutomationSettingsView()
             }
+            Tab("Markers", systemImage: "flag") {
+                MarkerSettingsView()
+            }
             Tab("Destinations", systemImage: "paperplane") {
                 DestinationSettingsView()
             }

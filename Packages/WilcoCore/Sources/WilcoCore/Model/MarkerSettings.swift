@@ -57,6 +57,19 @@ public struct MarkerSettings: Codable, Equatable, Sendable {
         labels.filter { $0.category == category }
     }
 
+    /// Reorders labels within one category, with offsets counted inside that
+    /// category the way a list section reports them. Other categories' labels
+    /// keep their places.
+    public mutating func moveLabels(in category: ShowReport.MarkerCategory, fromOffsets source: IndexSet, toOffset destination: Int) {
+        let slots = labels.indices.filter { labels[$0].category == category }
+        var section = slots.map { labels[$0] }
+        let moving = source.filter { $0 < section.count }.map { section[$0] }
+        let insertAt = destination - source.filter { $0 < destination }.count
+        for offset in source.sorted(by: >) where offset < section.count { section.remove(at: offset) }
+        section.insert(contentsOf: moving, at: min(max(insertAt, 0), section.count))
+        for (slot, label) in zip(slots, section) { labels[slot] = label }
+    }
+
     private enum CodingKeys: String, CodingKey {
         case labels, departments, departmentGosEnabled, countdownEnabled, songStartEnabled
     }
