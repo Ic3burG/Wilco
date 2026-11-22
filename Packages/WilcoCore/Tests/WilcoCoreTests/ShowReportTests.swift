@@ -32,6 +32,79 @@ struct MarkerDetectorTests {
     @Test func ordinaryChatterMarksNothing() {
         #expect(labels("Can someone grab me a coffee") == [])
     }
+
+    private func labels(_ text: String, _ settings: MarkerSettings) -> [String] {
+        MarkerDetector.detect(in: text, settings: settings).map { "\($0.category.rawValue):\($0.label)" }
+    }
+
+    @Test func customLabelIsDetected() {
+        var s = MarkerSettings.standard
+        s.labels.append(MarkerLabel(category: .phase, name: "Keynote", phrases: ["  Key Note! "]))
+        #expect(labels("Standby for the key note", s) == ["phase:Keynote", "cue:Standby"])
+    }
+
+    @Test func disabledLabelIsSkipped() {
+        var s = MarkerSettings.standard
+        s.labels = s.labels.map { var label = $0; if label.name == "Standby" { label.isEnabled = false }; return label }
+        #expect(labels("Stand by pyro", s) == [])
+    }
+
+    @Test func earlierLabelWinsWithinACategory() {
+        var s = MarkerSettings.standard
+        s.labels.insert(MarkerLabel(category: .houseLights, name: "Houses", phrases: ["house lights"]), at: 0)
+        #expect(labels("House lights out", s) == ["houseLights:Houses"])
+    }
+
+    @Test func addedDepartmentMatchesEitherOrder() {
+        var s = MarkerSettings.standard
+        s.departments += ["rigging", "follow spot"]
+        #expect(labels("Rigging go", s) == ["department:Rigging go"])
+        #expect(labels("go follow spot", s) == ["department:Go follow spot"])
+        #expect(labels("Follow spot, go", s) == ["department:Follow spot go"])
+    }
+
+    @Test func departmentLabelUsesTheListsSpelling() {
+        #expect(labels("lx go") == ["department:LX go"])
+        #expect(labels("Go LX") == ["department:Go LX"])
+    }
+
+    @Test func firstDepartmentCallInTheLineWins() {
+        #expect(labels("Three, two, one, go pyro, go lasers") == ["department:Go pyro"])
+    }
+
+    @Test func departmentNeedsGoNextToIt() {
+        #expect(labels("pyro is good to go") == [])
+        #expect(labels("pyrogo") == [])
+    }
+
+    @Test func cueNumberGoIsAlwaysMatched() {
+        var s = MarkerSettings.standard
+        s.departments = []
+        #expect(labels("Cue 47 go", s) == ["department:Cue 47 go"])
+        #expect(labels("go cue 12", s) == ["department:Go cue 12"])
+    }
+
+    @Test func departmentGosCanBeTurnedOff() {
+        var s = MarkerSettings.standard
+        s.departmentGosEnabled = false
+        #expect(labels("Pyro go", s) == [])
+        #expect(labels("Cue 47 go", s) == [])
+    }
+
+    @Test func builtInPatternsCanBeTurnedOff() {
+        var s = MarkerSettings.standard
+        s.countdownEnabled = false
+        s.songStartEnabled = false
+        #expect(labels("We're 5 minutes to doors", s) == [])
+        #expect(labels("Going into the next song", s) == [])
+    }
+
+    @Test func blanksAndEmptyCategoriesMatchNothing() {
+        var s = MarkerSettings.standard
+        s.labels = [MarkerLabel(category: .cue, name: "Empty", phrases: ["", "   "])]
+        s.departments = ["", " "]
+        #expect(labels("Standby, go", s) == [])
+    }
 }
 
 @Suite("Show report")
@@ -58,6 +131,19 @@ struct ShowReportBuilderTests {
         ]
         let report = ShowReportBuilder.build(segments: segments, show: show, sourceName: "Session.jsonl", generated: start)
         return (report, show.channels[0], show.channels[1])
+    }
+
+    @Test func reportUsesTheShowsMarkers() {
+        var show = ShowDocument(name: "Conference")
+        let sm = show.addChannel()
+        var settings = MarkerSettings.standard
+        settings.labels.append(MarkerLabel(category: .phase, name: "Keynote", phrases: ["keynote"]))
+        show.markers = settings
+        let report = ShowReportBuilder.build(
+            segments: [line(sm.id, "Standing by for the keynote", at: 5)],
+            show: show, sourceName: "Session.jsonl", generated: start
+        )
+        #expect(report.markers.map(\.label) == ["Keynote"])
     }
 
     @Test func summarisesTheSession() {

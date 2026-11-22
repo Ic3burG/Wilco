@@ -154,6 +154,7 @@ public enum ShowReportBuilder {
 
         var messages: [ShowReport.Message] = []
         var markers: [ShowReport.Marker] = []
+        let markerSettings = show.markerSettings
         var lastSeen: [String: (index: Int, elapsed: Double)] = [:]
         var words: [UUID: Int] = [:]
         var termCounts: [UUID: [String: Int]] = [:]
@@ -176,7 +177,7 @@ public enum ShowReportBuilder {
                 termCounts[line.channelID, default: [:]][term, default: 0] += 1
             }
 
-            for detection in MarkerDetector.detect(in: line.text) {
+            for detection in MarkerDetector.detect(in: line.text, settings: markerSettings) {
                 let key = "\(line.channelID)|\(detection.category.rawValue)|\(detection.label)"
                 if let seen = lastSeen[key], line.sessionOffset - seen.elapsed <= repeatWindow {
                     markers[seen.index].repeats += 1
