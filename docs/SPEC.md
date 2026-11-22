@@ -257,13 +257,33 @@ Toggling it off removes the rules and destination. [str 18086, 27490–27497]
 ## 8. Run-of-show markers & post-show report
 
 `MarkerDetector` classifies final lines into `ShowReport.MarkerCategory`
-{ `phase`, `houseLights`, `song`, `cue`, `department` } using fixed phrase
-lists and regexes — e.g. house-lights phrases (*"house lights out"*, *"house
-to half"*…), song regex (*"top of the song"*, *"playback rolling"*…),
-department "X go" regex, countdown regex (`\d{1,3} minutes? to`), phase labels
-*Doors, Walk-in, Top of show, Downbeat, Blackout, Curtain, Intermission,
-Encore, Show clear, Load out*. Exact lists: `reference/strings.txt` 18055–18080
-and 27440–27490.
+{ `phase`, `houseLights`, `song`, `cue`, `department` } using the show's
+`MarkerSettings` (`ShowDocument.markers`). `nil`, the default, means the
+built-in `MarkerSettings.standard`, so an unedited show's file has no
+`markers` key. The lists are edited per show in **Settings › Markers**;
+**Restore Defaults** sets `markers` back to `nil`.
+
+- **Labels** (`MarkerLabel`: category, name, on/off, phrases) for phases,
+  house lights, songs and cue calls. Phrases match as whole words, any case,
+  like automation rules. Within a category, labels are tried in list order and
+  the first match wins (at most one marker per category per line). Built-in
+  phase labels: *Doors, Walk-in, Top of show, Downbeat, Blackout, Curtain,
+  Intermission, Encore, Show clear, Load out*; house lights *out / at half /
+  up / discussed*; *Playback*; *Standby, Hold*.
+- **Departments**: a list of names, each matched as "X go" or "go X"
+  (consecutive words, punctuation ignored), plus the always-on "cue N go" /
+  "go cue N". The call said first in the line wins, then the longest name.
+  The label is the name as listed: "LX go", "Go pyro". There's one on/off
+  switch for all department gos.
+- **Built-in patterns**, each with an on/off switch only: countdown
+  (`\d{1,3} minutes? to…`, a phase, tried after the phase labels) and song
+  start (*"top of the next song"*, *"playback rolling"*…, tried before the song
+  labels).
+
+A label from a newer file with an unknown category is dropped on decode.
+A report uses the markers of the show the session was recorded with
+(`SessionShow`), so editing later doesn't change past reports. The original
+lists: `reference/strings.txt` 18055–18080 and 27440–27490.
 
 `ShowReportWindow` opens any past session (`ReportModel`, sessions =
 `Transcripts/*.jsonl`) with tabs **Run of show / Chat log / Channels**,
