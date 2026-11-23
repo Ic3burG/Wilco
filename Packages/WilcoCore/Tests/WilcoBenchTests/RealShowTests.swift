@@ -108,7 +108,8 @@ struct RealShowTests {
             missed: 0, wordErrors: WordErrors(referenceWords: 7), startSeconds: 1, drainSeconds: 0, droppedFrames: 0,
             processCPU: 0.1, systemCPU: 0.1, peakMemoryMB: 100, failures: [],
             samples: [.init(reference: "Zebedee to the stage", hypothesis: "Zebedee to the stage")],
-            nonVoterWordErrors: WordErrors(substitutions: 1, referenceWords: 3), nonVoterCalls: 1
+            nonVoterWordErrors: WordErrors(substitutions: 1, referenceWords: 3), nonVoterCalls: 1,
+            voterAllWordErrors: WordErrors(substitutions: 1, referenceWords: 7), voterAllCalls: 2
         ).numbersOnly()
         var report = BenchReport(date: Date(), machine: "Mac", osVersion: "26", corpus: set.summary, results: [result])
         report.live = set.live
@@ -202,6 +203,36 @@ struct RealShowTests {
         #expect(all.errors == 1 && all.referenceWords == 4)
         let second = Scorer.wordErrors(utterances: utterances, texts: texts, events: events, clips: [1])
         #expect(second.errors == 0 && second.referenceWords == 2)
+    }
+
+    private func voterResult(fair: WordErrors, fairCalls: Int, all: WordErrors, allCalls: Int) -> RunResult {
+        RunResult(
+            engine: "parakeet-ultra", channels: 1, duration: 60, dutyCycle: 0.3, speechSeconds: 4, utterances: allCalls,
+            missed: 0, wordErrors: all, startSeconds: 1, drainSeconds: 0, droppedFrames: 0,
+            processCPU: 0.1, systemCPU: 0.1, peakMemoryMB: 100, failures: [],
+            nonVoterWordErrors: fair, nonVoterCalls: fairCalls, voterAllWordErrors: all, voterAllCalls: allCalls
+        )
+    }
+
+    @Test func voterLineComparesLikeWithLike() {
+        let r = voterResult(fair: WordErrors(substitutions: 1, referenceWords: 10), fairCalls: 4,
+                            all: WordErrors(substitutions: 1, referenceWords: 20), allCalls: 9)
+        let line = BenchReport.voterLine(r)
+        #expect(line.contains("10.0%") && line.contains("4 calls"))
+        #expect(line.contains("5.0%") && line.contains("9 calls"))
+        #expect(line.contains("per call"))
+        let report = BenchReport(date: Date(), machine: "Mac", osVersion: "26", corpus: "real show", results: [r])
+        #expect(report.markdown().contains(line))
+    }
+
+    @Test func voterLineWithNoFairCallsShowsNoRate() {
+        let r = voterResult(fair: WordErrors(), fairCalls: 0,
+                            all: WordErrors(substitutions: 1, referenceWords: 20), allCalls: 9)
+        let line = BenchReport.voterLine(r)
+        #expect(!line.contains("0 calls"))
+        #expect(!line.contains("0.0%"))
+        #expect(line.contains("–"))
+        #expect(line.contains("5.0%") && line.contains("9 calls"))
     }
 
     @Test func voterEnginesMapToTheirVoter() {

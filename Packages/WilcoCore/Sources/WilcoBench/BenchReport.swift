@@ -59,6 +59,10 @@ public struct RunResult: Codable, Equatable, Sendable {
     /// how many calls that covers. Nil otherwise (and in older reports).
     public var nonVoterWordErrors: WordErrors?
     public var nonVoterCalls: Int?
+    /// The same run scored the same way (per call) on every call, so the
+    /// fair rate above has a like-for-like number to compare with.
+    public var voterAllWordErrors: WordErrors?
+    public var voterAllCalls: Int?
 
     public struct Sample: Codable, Equatable, Sendable {
         public var reference: String
@@ -211,14 +215,18 @@ public struct BenchReport: Codable, Equatable, Sendable {
         String(format: "Live on the night: %.1f%% WER over %d clips.", live.rate * 100, clips)
     }
 
-    /// A voter engine's word error rate on the clips it didn't help label,
-    /// where the answer isn't partly its own.
+    /// A voter engine's word error rate on the calls whose clip it didn't
+    /// help label (where the answer isn't partly its own), beside its rate
+    /// on every call. Both are scored per call, against the lines
+    /// attributed to each, so they differ by bias rather than by method.
     public static func voterLine(_ r: RunResult) -> String {
-        let errors = r.nonVoterWordErrors ?? WordErrors()
-        return String(
-            format: "%@ (voter) × %d ch: %.1f%% WER on the %d calls where it wasn't an agreeing voter.",
-            r.engine, r.channels, errors.rate * 100, r.nonVoterCalls ?? 0
-        )
+        func rate(_ errors: WordErrors?, calls: Int?) -> String {
+            guard let errors, let calls, calls > 0 else { return "–" }
+            return String(format: "%.1f%% WER on %d calls", errors.rate * 100, calls)
+        }
+        return "\(r.engine) (voter) × \(r.channels) ch: "
+            + rate(r.nonVoterWordErrors, calls: r.nonVoterCalls) + " it didn't agree on, vs "
+            + rate(r.voterAllWordErrors, calls: r.voterAllCalls) + " in all (both scored per call)."
     }
 
     public func markdown() -> String {

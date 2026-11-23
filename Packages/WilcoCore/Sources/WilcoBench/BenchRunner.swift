@@ -168,15 +168,22 @@ public struct BenchRunner: Sendable {
                 .map { Scorer.scoreVoices(utterances: $1, events: recorder.events(channel: $0)) }
                 .reduce(VoiceScore(), +)
             : nil
+        // Voter engines in real-show runs: per-call word errors on the clips
+        // they didn't agree on, and on every clip, from this run's lines.
         var nonVoter: (errors: WordErrors, calls: Int)?
+        var voterAll: (errors: WordErrors, calls: Int)?
         if let agreeingVoters, let voter = RealShowSet.voter(forEngine: engine.id) {
-            let fair = Set(agreeingVoters.indices.filter { !agreeingVoters[$0].contains(voter) })
-            nonVoter = scenario.channels.enumerated().reduce((WordErrors(), 0)) { sum, channel in
-                let errors = Scorer.wordErrors(
-                    utterances: channel.element, texts: texts, events: recorder.events(channel: channel.offset), clips: fair
-                )
-                return (sum.0 + errors, sum.1 + channel.element.filter { fair.contains($0.clip) }.count)
+            func perCall(_ chosen: Set<Int>) -> (errors: WordErrors, calls: Int) {
+                scenario.channels.enumerated().reduce((WordErrors(), 0)) { sum, channel in
+                    let errors = Scorer.wordErrors(
+                        utterances: channel.element, texts: texts, events: recorder.events(channel: channel.offset),
+                        clips: chosen
+                    )
+                    return (sum.0 + errors, sum.1 + channel.element.filter { chosen.contains($0.clip) }.count)
+                }
             }
+            nonVoter = perCall(Set(agreeingVoters.indices.filter { !agreeingVoters[$0].contains(voter) }))
+            voterAll = perCall(Set(agreeingVoters.indices))
         }
         let result = RunResult(
             engine: engine.id,
@@ -207,7 +214,9 @@ public struct BenchRunner: Sendable {
             diagnosticsRows: diagnosticsRows,
             classifiedRows: classifiedRows,
             nonVoterWordErrors: nonVoter?.errors,
-            nonVoterCalls: nonVoter?.calls
+            nonVoterCalls: nonVoter?.calls,
+            voterAllWordErrors: voterAll?.errors,
+            voterAllCalls: voterAll?.calls
         )
         return keepsTexts ? result : result.numbersOnly()
     }

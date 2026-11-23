@@ -133,8 +133,11 @@ The report gains a **Live on the night** line: the live transcript's word
 error rate on the same clips, against the same answers. Engines that are
 also voters (`parakeet-ultra`, `apple-longform*`, `whisper-large*`) are
 marked "(voter)" and get a line of their own with their word error rate on
-just the calls whose clip they weren't an agreeing voter for, since an
-answer that is partly their own flatters them.
+just the calls whose clip they weren't an agreeing voter for (an answer
+that is partly their own flatters them), beside their rate on every call.
+Both are scored per call, against the lines attributed to each call, so
+they can be compared with each other; the table's WER is over each
+channel's whole transcript and is counted differently.
 
 The clips are real voices, so a real-show run prints and saves numbers
 only: no clip text, answers, candidates or channel names, and no
