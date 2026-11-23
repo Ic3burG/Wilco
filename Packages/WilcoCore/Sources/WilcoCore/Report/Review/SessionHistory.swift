@@ -13,6 +13,15 @@ public struct SessionSummary: Sendable, Identifiable {
     public var unclearShare: Double
     public var delayP90: Double?
     public var names = NameCounts()
+    /// Word errors on this session's labelled clips, for channels with at least one.
+    public var clipErrors: [UUID: WordErrors] = [:]
+    /// How many labelled clips each channel in `clipErrors` had.
+    public var clipCounts: [UUID: Int] = [:]
+    /// The error rate over every labelled clip in the session; nil when there are none.
+    public var clipErrorRate: Double? {
+        guard !clipErrors.isEmpty else { return nil }
+        return clipErrors.values.reduce(WordErrors(), +).rate
+    }
 
     public init(id: URL, started: Date, showName: String, lines: Int, fillerShare: Double, unclearShare: Double,
                 delayP90: Double?) {
@@ -46,6 +55,12 @@ public enum SessionHistory {
         )
         summary.names = NameCounts.make(segments)
         summary.timeZone = zone
+        if let clips = SessionClips.load(forTranscript: transcript) {
+            for (channel, scored) in ClipAccuracy.perChannel(segments: segments, clips: clips) {
+                summary.clipErrors[channel] = scored.errors
+                summary.clipCounts[channel] = scored.clips
+            }
+        }
         return summary
     }
 

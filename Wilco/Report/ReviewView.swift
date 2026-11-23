@@ -220,18 +220,20 @@ private struct TrendTable: View {
     var body: some View {
         Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 6) {
             GridRow {
-                ForEach(["Session", "Lines", "Fillers", "Unclear", "Delay (90%)"], id: \.self) {
+                ForEach(["Session", "Lines", "Fillers", "Unclear", "Delay (90%)", "Hard-line errors"], id: \.self) {
                     Text($0).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 }
             }
             Divider().gridCellUnsizedAxes(.horizontal)
             row("This session", lines: review.stats.lines, fillers: review.stats.fillerShare,
-                unclear: review.stats.unclearShare, delay: review.stats.delayP90)
+                unclear: review.stats.unclearShare, delay: review.stats.delayP90,
+                hardLineErrors: review.clipErrorRate)
                 .fontWeight(.semibold)
             ForEach(review.trend) { past in
                 row(CaptureClock(capture: past.timeZone, at: past.started)
                         .format(past.started, .dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute()),
-                    lines: past.lines, fillers: past.fillerShare, unclear: past.unclearShare, delay: past.delayP90)
+                    lines: past.lines, fillers: past.fillerShare, unclear: past.unclearShare, delay: past.delayP90,
+                    hardLineErrors: past.clipErrorRate)
             }
         }
         .font(.callout)
@@ -243,13 +245,14 @@ private struct TrendTable: View {
         }
     }
 
-    private func row(_ name: String, lines: Int, fillers: Double, unclear: Double, delay: Double?) -> some View {
+    private func row(_ name: String, lines: Int, fillers: Double, unclear: Double, delay: Double?, hardLineErrors: Double?) -> some View {
         GridRow {
             Text(name)
             Text(lines.formatted())
             Text(fillers.formatted(.percent.precision(.fractionLength(0))))
             Text(unclear.formatted(.percent.precision(.fractionLength(1))))
             Text(delay.map { "\($0.formatted(.number.precision(.fractionLength(1)))) s" } ?? "—")
+            Text(hardLineErrors.map { "\(Int(($0 * 100).rounded()))%" } ?? "—")
         }
     }
 }
