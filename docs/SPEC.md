@@ -317,7 +317,11 @@ A fix (`ShowFix`) names the channels, highlights or rules it changes and
 applies to the open show only when it has all of them; otherwise its
 button is disabled. A fix already true shows Done. Keeping a highlight off
 its only channel turns the highlight off, since an empty list means every
-channel. Dismissals are kept in `UserDefaults` (`review.dismissed`) under
+channel. When a session has no show copy and no saved show shares its channels,
+the open show only stands in: the show setup and quiet checks are
+skipped, its show name is "Unknown show", and fixes stay disabled unless
+the open show has one of the session's channels. Dismissals are kept in
+`UserDefaults` (`review.dismissed`) under
 the show name and finding ID (vocabulary also by its words). Under the
 cards, a table puts this session beside up to four earlier sessions of the
 same show: lines, filler share, unclear share, delay p90. No file formats

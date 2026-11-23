@@ -81,11 +81,11 @@ private struct FindingCard: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 if finding.id == "vocabulary" {
-                    VocabularyPicker(review: review)
+                    VocabularyPicker(review: review, model: model)
                 }
                 HStack(spacing: 8) {
                     if finding.id != "vocabulary" {
-                        ForEach(finding.fixes, id: \.self) { FixButton(fix: $0.fix, label: $0.label, model: model) }
+                        ForEach(finding.fixes, id: \.self) { FixButton(fix: $0.fix, label: $0.label, review: review, model: model) }
                     }
                     if !finding.evidence.isEmpty {
                         Button("Show lines") { model.showLines(finding) }
@@ -124,15 +124,16 @@ private struct FixButton: View {
     @Environment(AppModel.self) private var app
     let fix: ShowFix
     let label: String
+    let review: ShowReview
     @Bindable var model: ReportModel
 
     var body: some View {
-        if app.document.isApplied(fix) {
+        if app.document.isApplied(fix) && review.applies(to: app.document) {
             Label("Done", systemImage: "checkmark")
                 .font(.callout)
                 .foregroundStyle(.green)
                 .help(label)
-        } else if !app.document.canApply(fix) {
+        } else if !app.document.canApply(fix) || !review.applies(to: app.document) {
             Button(label) {}
                 .disabled(true)
                 .help("Open the show this session was recorded with")
@@ -150,6 +151,7 @@ private struct FixButton: View {
 private struct VocabularyPicker: View {
     @Environment(AppModel.self) private var app
     let review: ShowReview
+    @Bindable var model: ReportModel
     @State private var chosen: Set<String> = []
     @State private var chosenFor: [String] = []
 
@@ -173,10 +175,12 @@ private struct VocabularyPicker: View {
             let fix = ShowFix.addVocabulary(review.suggestions.map(\.term).filter { chosen.contains($0) })
             Button(chosen.count == 1 ? "Add 1 to vocabulary" : "Add \(chosen.count) to vocabulary") {
                 app.document = app.document.applying(fix)
+                model.show = app.document
                 chosen = []
             }
             .buttonStyle(.borderedProminent)
-            .disabled(chosen.isEmpty || app.document.isApplied(fix))
+            .disabled(chosen.isEmpty || app.document.isApplied(fix) || !review.applies(to: app.document))
+            .help(review.applies(to: app.document) ? "" : "Open the show this session was recorded with")
             .padding(.top, 4)
         }
         .onAppear(perform: resetChoice)

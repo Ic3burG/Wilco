@@ -49,7 +49,8 @@ final class ReportModel {
     /// tab first needs it.
     private(set) var history: [SessionSummary]?
     /// The selected session's lines and the show it was recorded with.
-    private var reviewInput: (url: URL, segments: [TranscriptSegment], show: ShowDocument)?
+    /// `showIsKnown` is false when the open show stood in for one nobody saved.
+    private var reviewInput: (url: URL, segments: [TranscriptSegment], show: ShowDocument, showIsKnown: Bool)?
     private var reviewTask: Task<Void, Never>?
     private var historyTask: Task<Void, Never>?
 
@@ -137,7 +138,11 @@ final class ReportModel {
     }
 
     /// The show name a session's dismissals are kept under.
-    var reviewShowName: String { reviewInput?.show.name ?? "" }
+    var reviewShowName: String {
+        guard let input = reviewInput, input.showIsKnown else { return SessionHistory.unknownShow }
+        let name = input.show.name.trimmingCharacters(in: .whitespaces)
+        return name.isEmpty ? SessionHistory.unknownShow : name
+    }
 
     /// Dismissals belong to the show, so the same finding stays hidden next
     /// time. Vocabulary is keyed by its words, so new names still show.
@@ -181,22 +186,22 @@ final class ReportModel {
         reviewTask?.cancel()
         guard let input = reviewInput else { review = nil; return }
         let started = SessionHistory.started(fromFileName: input.url) ?? .distantFuture
-        let name = input.show.name.trimmingCharacters(in: .whitespaces)
         // Earlier sessions only, so an old session's review doesn't see the future.
-        let earlier = SessionHistory.sameShow(as: name.isEmpty ? SessionHistory.unknownShow : name,
-                                              in: history ?? [], excluding: input.url)
+        let earlier = SessionHistory.sameShow(as: reviewShowName, in: history ?? [], excluding: input.url)
             .filter { $0.started < started }
         reviewTask = Task {
             let built = await Task.detached(priority: .userInitiated) {
-                ShowReview.make(segments: input.segments, show: input.show, history: earlier)
+                ShowReview.make(segments: input.segments, show: input.show, history: earlier, showIsKnown: input.showIsKnown)
             }.value
-            guard !Task.isCancelled else { return }
+            // A review finished after the selection moved on belongs to another session.
+            guard !Task.isCancelled, reviewInput?.url == input.url else { return }
             review = built
         }
     }
 
     private func load() {
         loadTask?.cancel()
+        reviewTask?.cancel()
         report = nil
         review = nil
         reviewInput = nil
@@ -206,24 +211,24 @@ final class ReportModel {
         let show = show
         loadTask = Task {
             let built = await Task.detached(priority: .userInitiated) {
-                () -> Result<(ShowReport, [TranscriptSegment], ShowDocument), Error> in
+                () -> Result<(ShowReport, [TranscriptSegment], ShowDocument, Bool), Error> in
                 Result {
                     let segments = TranscriptFile.segments(in: try Data(contentsOf: url))
-                    let recordedWith = SessionShow.load(forTranscript: url)
+                    let found = SessionShow.load(forTranscript: url)
                         ?? SessionShow.bestMatch(for: segments, among: [show] + Self.savedShows())
-                        ?? show
+                    let recordedWith = found ?? show
                     let report = ShowReportBuilder.build(segments: segments, show: recordedWith, sourceName: url.lastPathComponent, generated: .now)
-                    return (report, segments, recordedWith)
+                    return (report, segments, recordedWith, found != nil)
                 }
             }.value
             guard !Task.isCancelled else { return }
             isLoading = false
             switch built {
-            case .success(let (report, _, _)) where report.totalMessages == 0:
+            case .success(let (report, _, _, _)) where report.totalMessages == 0:
                 error = "This session has no transcribed lines."
-            case .success(let (report, segments, recordedWith)):
+            case .success(let (report, segments, recordedWith, showIsKnown)):
                 self.report = report
-                reviewInput = (url, segments, recordedWith)
+                reviewInput = (url, segments, recordedWith, showIsKnown)
                 rebuildReview()
             case .failure(let failure):
                 error = "Could not read the session: \(failure.localizedDescription)"

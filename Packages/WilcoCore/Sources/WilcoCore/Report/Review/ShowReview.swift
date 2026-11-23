@@ -35,20 +35,30 @@ public struct ShowReview: Sendable {
     /// Up to four earlier sessions of the same show, newest first.
     public var trend: [SessionSummary]
 
+    /// Whether fixes from this review belong in `show`: it must have at
+    /// least one of the channels the session heard. Fixes that name no
+    /// channel (vocabulary) would otherwise land in any open show.
+    public func applies(to show: ShowDocument) -> Bool {
+        show.channels.contains { stats.channels[$0.id] != nil }
+    }
+
     /// `history` is earlier sessions of the same show; their names count
-    /// towards vocabulary suggestions.
-    public static func make(segments: [TranscriptSegment], show: ShowDocument, history: [SessionSummary] = []) -> ShowReview {
+    /// towards vocabulary suggestions. `showIsKnown` is false when `show` is
+    /// only a stand-in (no copy beside the session and no saved show shares
+    /// its channels): checks that judge the show itself are skipped.
+    public static func make(segments: [TranscriptSegment], show: ShowDocument, history: [SessionSummary] = [],
+                            showIsKnown: Bool = true) -> ShowReview {
         let stats = SessionStats.make(segments)
         var names = NameCounts.make(segments)
         for summary in history { names.add(summary.names) }
         let suggestions = stats.lines >= ReviewThresholds.minimumLines
             ? VocabularySuggestions.suggest(counts: names, show: show) : []
         var builder = Builder(segments: segments, show: show, stats: stats)
-        builder.checkSetup()
+        if showIsKnown { builder.checkSetup() }
         if stats.lines >= ReviewThresholds.minimumLines {
             builder.checkBusy()
             builder.checkUnclear()
-            builder.checkQuiet()
+            if showIsKnown { builder.checkQuiet() }
             builder.checkCut()
             builder.checkBehind()
             builder.checkCommonPhrases()

@@ -441,3 +441,27 @@ struct RealSessionReviewTests {
         #expect(lastNight.suggestions.contains { $0.term == "Tea Time" })
     }
 }
+
+/// Regressions from the branch review: a session whose show is only a guess.
+@Suite("Review against a guessed show")
+struct GuessedShowReviewTests {
+    let sm = ChannelConfig(name: "ShowCall PL")
+    let other = ChannelConfig(name: "Lasers")
+
+    @Test func guessedShowSkipsChecksThatDependOnIt() {
+        let rule = AutomationRule(name: "Holds", actions: [.notify(title: "New Rule", bodyTemplate: "{text}")])
+        let show = ShowDocument(channels: [sm, other], rules: [rule])
+        let lines = (0..<900).map { reviewLine("Standby.", channel: sm.id, at: Double($0) * 12) }
+        let known = ShowReview.make(segments: lines, show: show)
+        #expect(known.findings.contains { $0.id == "quiet" })
+        let guessed = ShowReview.make(segments: lines, show: show, showIsKnown: false)
+        #expect(!guessed.findings.contains { $0.id == "quiet" || $0.id.hasPrefix("setup:") })
+    }
+
+    @Test func reviewAppliesOnlyToAShowSharingItsChannels() {
+        let lines = [reviewLine("Standby.", channel: sm.id, at: 0)]
+        let review = ShowReview.make(segments: lines, show: ShowDocument(channels: [sm]))
+        #expect(review.applies(to: ShowDocument(channels: [sm, other])))
+        #expect(!review.applies(to: ShowDocument(channels: [other])))
+    }
+}
