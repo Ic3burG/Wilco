@@ -183,9 +183,9 @@ final class VoiceAnnotationQueue: Sendable {
 
 /// Sends a final line. With voice changes off it goes out whole, exactly as
 /// before. With them on, it goes to rules at once as `.recognized`, and its
-/// annotated form follows from the channel's voice queue; `audio` is only
-/// fetched in that case. `words` (session offsets) let the annotation split
-/// the line where the voice changes.
+/// annotated form follows from the channel's voice queue. `audio` is fetched
+/// only when voice changes or clips need it. `words` (session offsets) let
+/// the annotation split the line where the voice changes.
 ///
 /// With `clips` set, the line's audio is fetched once (even without voice
 /// changes) and offered to the clip tap as well.

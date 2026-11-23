@@ -103,12 +103,18 @@ public actor ClipKeeper {
         saveIfChanged(evenAfterFailure: true)
     }
 
+    /// Offers held in memory and not yet written. For tests.
+    var heldCount: Int { held.count }
+    /// Offers taken off the queue so far. For tests.
+    private(set) var handledCount = 0
+
     /// The manifest as it stands. For tests.
     var manifest: ClipManifest {
         ClipManifest(clips: records, dropped: drops.count.withLock { $0 })
     }
 
     private func accept(_ offer: ClipOffer) {
+        handledCount += 1
         let changes = selector.offer(offer.candidate, samplesEmpty: offer.samples.isEmpty)
         apply(changes, current: offer)
     }
@@ -117,7 +123,8 @@ public actor ClipKeeper {
         for change in changes {
             switch change {
             case .hold(let id):
-                if !written.contains(id), let current, current.candidate.id == id {
+                // After a failed write nothing new is kept, so nothing is held.
+                if !writeFailed, !written.contains(id), let current, current.candidate.id == id {
                     held[id] = current
                 }
             case .keep(let id, let kind, let exchange):
@@ -135,14 +142,17 @@ public actor ClipKeeper {
             changed = true
             return
         }
-        guard !writeFailed else { return }
+        guard !writeFailed else {
+            held[id] = nil
+            return
+        }
         let source = held[id] ?? (current?.candidate.id == id ? current : nil)
         guard let offer = source else { return }
         do {
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             try WAV.encode(offer.samples).write(to: ClipsFolder.audioURL(for: id, in: folder), options: .atomic)
         } catch {
-            writeFailed = true
+            failWrites()
             return
         }
         // Written: the record carries everything later changes need.
@@ -183,7 +193,14 @@ public actor ClipKeeper {
             changed = false
             savedDropped = current.dropped
         } catch {
-            writeFailed = true
+            failWrites()
         }
+    }
+
+    /// Stops new clips for the session and lets go of held audio, so memory
+    /// doesn't grow for the rest of a show after the disk fills.
+    private func failWrites() {
+        writeFailed = true
+        held.removeAll()
     }
 }

@@ -36,7 +36,8 @@ public struct ClipRecord: Codable, Equatable, Sendable, Identifiable {
 public struct ClipManifest: Codable, Equatable, Sendable {
     public var version = 1
     public var clips: [ClipRecord] = []
-    /// Clips not kept because a cap or the queue limit was reached.
+    /// Lines dropped because the keeper's queue was full. Lines the caps
+    /// turn away aren't counted.
     public var dropped = 0
 
     public init(clips: [ClipRecord] = [], dropped: Int = 0) {

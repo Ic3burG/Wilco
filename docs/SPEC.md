@@ -183,7 +183,7 @@ added to the capture callback.
 | `clips[].engine` | `SpeechEngine` raw value of the channel's engine |
 | `clips[].whisperModel` | `WhisperModel` raw value; Whisper channels only |
 | `clips[].exchange` | Exchange number, from 1 per session; omitted for `unclear` |
-| `dropped` | Clips not kept because a cap or the queue limit was reached |
+| `dropped` | Lines dropped because the keeper's queue was full (lines turned away by the caps aren't counted) |
 
 A clip has no link to a transcript line. The transcript's `id` is not the
 engine's, and one utterance can become two lines when voices are told apart. The live text for a

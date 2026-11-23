@@ -95,7 +95,7 @@ struct LearningSettingsView: View {
         } header: {
             Text("Voters")
         } footer: {
-            Text("Labelling needs at least two.")
+            Text("Labelling needs at least two. A channel's own engine doesn't vote on its clips.")
         }
     }
 

@@ -20,7 +20,8 @@ actor AppleChannelTranscriber: ChannelTranscriber {
     private var clips: ChannelClips?
     /// Recent 16 kHz audio on the analyzer's timeline (seconds since the first
     /// sample fed), so a final line's audio can be found by its range. Only
-    /// with voice changes on, and only filled while the voice model is usable.
+    /// with voice changes or clip keeping on; filled while the voice model is
+    /// usable or clips are being kept.
     private var history: AudioHistory?
 
     private var analyzer: SpeechAnalyzer?
@@ -141,8 +142,9 @@ actor AppleChannelTranscriber: ChannelTranscriber {
                 if history != nil {
                     // The history's clock moves on by what the analyzer was
                     // fed, even when this resampler fails (silence is kept
-                    // instead) or the voice model isn't usable (nothing is
-                    // kept), so later lines still find their own audio.
+                    // instead) or nothing needs the audio (the voice model
+                    // isn't usable and clips are off, so nothing is kept),
+                    // so later lines still find their own audio.
                     let rate = source.sampleRate()
                     let seconds = Double(samples.count) / rate
                     if annotator?.isUsable == true || clips != nil {

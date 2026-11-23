@@ -21,7 +21,8 @@ final class LearningController {
     @ObservationIgnored private var run = 0
     @ObservationIgnored private var tick: Timer?
     @ObservationIgnored private var afterStop: Timer?
-    /// Sessions that failed this run, so a broken file isn't retried every minute.
+    /// Sessions that failed to label since the app started, so a broken file
+    /// isn't retried every minute. Cleared only by relaunching.
     @ObservationIgnored private var skipped: Set<URL> = []
 
     init(

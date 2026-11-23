@@ -120,8 +120,23 @@ import WilcoCore
 
         let keeper = ClipKeeper(folder: folder, saveInterval: nil)
         for i in 0..<5 { keeper.tap.offer(offer(at: Double(i) * 30, confidence: nil)) }
+        // Clear lines back to back on one channel would be held as an
+        // exchange; after the failure none of their audio stays in memory.
+        let channel = UUID()
+        for i in 0..<6 { keeper.tap.offer(offer(channel: channel, at: 200 + Double(i) * 2, confidence: 0.95)) }
+        while await keeper.handledCount < 11 { try await Task.sleep(for: .milliseconds(5)) }
+        #expect(await keeper.heldCount == 0)
         await keeper.finish()
         #expect(ClipsFolder.loadManifest(in: folder) == nil)
+    }
+
+    @Test(.timeLimit(.minutes(1))) func anOfferWithNoSamplesKeepsNothing() async throws {
+        let folder = tempFolder()
+        let keeper = ClipKeeper(folder: folder, saveInterval: nil)
+        keeper.tap.offer(offer(at: 12.5, confidence: nil, samples: 0))
+        await keeper.finish()
+        #expect(await keeper.manifest.clips.isEmpty)
+        #expect(!FileManager.default.fileExists(atPath: folder.path))
     }
 
     /// Ids of the clip WAVs on disk (regular files only).

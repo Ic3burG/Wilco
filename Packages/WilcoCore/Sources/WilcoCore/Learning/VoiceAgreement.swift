@@ -20,8 +20,12 @@ public struct SpeakerSpan: Equatable, Sendable {
     }
 }
 
-/// Groups a channel's kept clips by voice, keeping only the groupings two
-/// different speaker-grouping models agree on.
+/// Groups a channel's kept clips by voice using two different
+/// speaker-grouping models. Speakers are matched one to one between the
+/// models; a clip is agreed when its speakers match, so the agreed clips are
+/// grouped the same way by both. A matched speaker's other clips (the ones
+/// the second model puts elsewhere) aren't agreed, so an agreed group need
+/// not be everything either model heard from that voice.
 public enum VoiceAgreement {
     /// Where each clip sits when a channel's clips are joined with `gap` seconds of silence between.
     public static func layout(durations: [Double], gap: Double = 1) -> [ClosedRange<Double>] {
