@@ -55,10 +55,10 @@ public struct SessionDiagnostics: Sendable {
         let sound = rows.filter { $0.sound >= ReviewThresholds.soundMinuteSeconds }
         let clipped = sound.filter { $0.clipped > 0 }.count
         let classified = sound.filter { $0.classified != nil }
-        let speech = classified.filter { ($0.speech ?? 0) >= 0.5 }.count
+        let speech = classified.filter { ($0.classified?.speech ?? 0) >= 0.5 }.count
         let music = classified.filter { row in
             guard let shares = row.classified else { return false }
-            return max(shares.music, shares.singing) > (row.speech ?? 0)
+            return max(shares.music, shares.singing) > shares.speech
         }.count
         let cuts = rows.compactMap(\.cuts)
         return ChannelDiagnostics(

@@ -50,18 +50,21 @@ import Testing
     }
 
     @Test func unsortedAndDuplicateRowsAreNormalised() {
-        let d = SessionDiagnostics.make([row(2, audio: 30, partial: true), row(0, partial: true), row(1, audio: 30), row(1, audio: 30)]).channels[channel]
+        let d = SessionDiagnostics.make([row(2, audio: 30, partial: true), row(0, partial: true), row(1, audio: 30, sound: 2), row(1, audio: 30, sound: 3)]).channels[channel]
         #expect(d?.minutes == 3)
+        #expect(d?.soundSeconds == 5)
+        #expect(d?.soundMinutes == 1)
         #expect(d?.lostMinutes == [])
     }
 
     @Test func musicAndSpeechMinutes() {
+        // The row's own `speech` (seconds sent to the model) must not matter.
         let d = SessionDiagnostics.make([
-            row(0, sound: 30, speech: 0.9, classified: SoundShares(speech: 0.9, music: 0.1, singing: 0)),
-            row(1, sound: 30, speech: 0.2, classified: SoundShares(speech: 0.2, music: 0, singing: 0.7)),
-            row(2, sound: 30, speech: 0.1, classified: SoundShares(speech: 0.1, music: 0.3, singing: 0)),
+            row(0, sound: 30, speech: 0, classified: SoundShares(speech: 0.9, music: 0.1, singing: 0)),
+            row(1, sound: 30, speech: 40, classified: SoundShares(speech: 0.2, music: 0, singing: 0.7)),
+            row(2, sound: 30, speech: 40, classified: SoundShares(speech: 0.1, music: 0.3, singing: 0)),
             row(3, sound: 0, classified: SoundShares(speech: 0, music: 1, singing: 0)),
-            row(4, sound: 30),
+            row(4, sound: 30, speech: 40),
         ]).channels[channel]
         #expect(d?.classifiedSoundMinutes == 3)
         #expect(d?.speechMinutes == 1)
