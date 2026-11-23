@@ -25,12 +25,17 @@ public enum ClipAccuracy {
     /// the audio that line's speech began in).
     static let leadSeconds = 0.5
 
-    /// Final lines on the clip's channel with sessionOffset in [start − 0.5, start + duration], in order, joined by spaces.
+    /// A line starting this close to the clip's end belongs to what follows.
+    static let endSlackSeconds = 0.1
+
+    /// Final lines on the clip's channel with sessionOffset in [start − 0.5, start + duration − 0.1), in order, joined by spaces.
+    /// The end is exclusive with slack: in an exchange the next line often starts at (or within rounding of)
+    /// this clip's end, and pulling it in would count the neighbour's words as errors.
     public static func liveText(for clip: ClipRecord, in segments: [TranscriptSegment]) -> String {
         let from = clip.sessionOffset - leadSeconds
-        let to = clip.sessionOffset + clip.duration
+        let to = clip.sessionOffset + clip.duration - endSlackSeconds
         return segments
-            .filter { $0.isFinal && $0.channelID == clip.channel && $0.sessionOffset >= from && $0.sessionOffset <= to }
+            .filter { $0.isFinal && $0.channelID == clip.channel && $0.sessionOffset >= from && $0.sessionOffset < to }
             .sorted { $0.sessionOffset < $1.sessionOffset }
             .map(\.text)
             .joined(separator: " ")

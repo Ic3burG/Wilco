@@ -39,6 +39,14 @@ struct ClipAccuracyTests {
         #expect(ClipAccuracy.liveText(for: clip, in: segments) == "one two three")
     }
 
+    @Test func backToBackClipsDoNotShareLines() {
+        let segments = [line("first", at: 10), line("split piece", at: 11.5), line("noise edge", at: 12.95), line("next", at: 13)]
+        let a = ClipRecord(channel: channel.id, kind: .exchange, sessionOffset: 10, duration: 3, engine: "apple")
+        #expect(ClipAccuracy.liveText(for: a, in: segments) == "first split piece")
+        let b = ClipRecord(channel: channel.id, kind: .exchange, sessionOffset: 13, duration: 3, engine: "apple")
+        #expect(ClipAccuracy.liveText(for: b, in: [line("next", at: 13)]) == "next")
+    }
+
     @Test func perChannelScoresOnlyAnsweredClips() {
         let clips = (0..<3).map { ClipRecord(channel: channel.id, kind: .unclear, sessionOffset: Double($0) * 20, duration: 3, engine: "apple") }
         let labels = ClipLabels(clips: [
