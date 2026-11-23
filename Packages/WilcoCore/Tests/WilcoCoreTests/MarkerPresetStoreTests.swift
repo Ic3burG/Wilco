@@ -134,6 +134,14 @@ struct BuiltInPresetTests {
         #expect(names("Please welcome to the stage our keynote", corporate) == ["Keynote"])
     }
 
+    @Test func theatreCallsGetTheirOwnLabels() {
+        let theatre = MarkerPreset.builtIn[2].markers
+        #expect(names("Top of act two", theatre) == ["Act up"])
+        #expect(names("Follow spot go", theatre) == ["Follow spot go"])
+        #expect(names("Flies 3 go", theatre) == ["Flies 3 go"])
+        #expect(names("Top of show", theatre) == ["Top of show"])
+    }
+
     @Test func removedLabelsAreGone() {
         #expect(names("Intermission", MarkerPreset.builtIn[0].markers) == [])
         #expect(names("Encore", MarkerPreset.builtIn[1].markers) == [])

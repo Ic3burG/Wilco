@@ -64,7 +64,8 @@ public extension MarkerPreset {
     private static let theatre = MarkerPreset(
         id: UUID(uuidString: "6F1C2E0A-1C44-4B7E-9C0D-0C0A0C0E0C03")!,
         name: "Theatre",
-        markers: MarkerSettings.standard.changing(
+        markers: {
+            var markers = MarkerSettings.standard.changing(
             adding: [
                 MarkerLabel(category: .phase, name: "Half", phrases: ["the half", "this is your half", "half hour call"]),
                 MarkerLabel(category: .phase, name: "Quarter", phrases: ["the quarter", "this is your quarter"]),
@@ -76,8 +77,14 @@ public extension MarkerPreset {
                 MarkerLabel(category: .cue, name: "Warning", phrases: ["warning lx", "warning sound", "warning fly", "warning automation"]),
             ],
             removing: [],
-            departments: ["automation", "flys", "rail", "revolve", "follow spots", "SM"]
-        )
+            departments: ["automation", "flys", "flies", "rail", "revolve", "follow spot", "follow spots", "SM"]
+            )
+            // "Top of act" belongs to Act up here, not the earlier Top of show.
+            for index in markers.labels.indices where markers.labels[index].name == "Top of show" {
+                markers.labels[index].phrases.removeAll { $0 == "top of act" }
+            }
+            return markers
+        }()
     )
 }
 
