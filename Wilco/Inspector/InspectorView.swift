@@ -27,9 +27,9 @@ private struct ShowInspector: View {
                 LabeledContent("Channels", value: model.document.channels.count, format: .number)
             }
             Section {
-                TokenListEditor(tokens: $model.document.globalVocabulary, prompt: "Add a term used across the whole show")
+                VocabularySummaryRow(terms: $model.document.globalVocabulary)
             } header: {
-                Text("Show Vocabulary")
+                Text("Global Vocabulary")
             } footer: {
                 Text("Applied to every channel. Rule phrases are biased in automatically, so there is no need to repeat them here.")
             }

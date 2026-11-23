@@ -21,7 +21,7 @@ struct LanguagesSettingsView: View {
         @Bindable var model = model
         Form {
             Section {
-                TokenListEditor(tokens: $model.document.globalVocabulary, prompt: "Add a term used across the whole show")
+                VocabularySummaryRow(terms: $model.document.globalVocabulary)
             } header: {
                 Text("Global Vocabulary")
             } footer: {
