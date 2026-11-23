@@ -288,6 +288,41 @@ unknown or the line was never analysed, render exactly as before: the app's
 is added to the page only when some line has a letter, so reports of older
 sessions are byte-identical to before.
 
+**Review tab** (new in the rebuild; `ShowReview` in `Report/Review/`). A
+fourth report tab lists what went wrong in the session, worked out from
+its `.jsonl` lines and show copy alone, so it works on older sessions too.
+A line's delay is `timestamp − (session start + sessionOffset)`, the
+session start being the minimum of `timestamp − sessionOffset`. Checks
+(`ReviewThresholds`; all but show setup need ≥50 lines):
+
+| Check | Fires when | Fix |
+|---|---|---|
+| Show setup (problem) | a notify title is empty or "New Rule" | title `{rule}` |
+| Unclear (warning) | ≥30 lines, median confidence < 0.8 and ≥0.08 below the session median | — |
+| Common phrase (warning) | a highlight or rule phrase with ≥20 hits and ≥10 an hour | remove it (highlights) |
+| Busy (info) | ≥300 lines, ≥25% of the session, ≥4 other channels with ≥30 lines | keep highlights with ≥10 hits off it; mute |
+| Cut long talk (info) | ≥10 lines that settled ≥19 s after starting | — |
+| Falling behind (info) | delay p90 of the last third ≥5 s above the first (≥50 lines each) | — |
+| Quiet (info, one finding) | session ≥2 h at ≥200 lines/hour; unmuted channels under 4 lines/hour | — |
+| Vocabulary (info) | see below | add the ticked words |
+
+Vocabulary suggestions count capitalised words and pairs that don't start
+a sentence (not fillers, stop words, "I" or exclamations) across this
+session and earlier sessions of the same show (same show name). A channel
+name of 5+ letters heard as a phrase within edit distance ≤ a third of its
+length, ≥3 times and more often than right, comes first, ticked ("Tea
+Time" heard as "T Time"); then names seen ≥3 times; at most 8.
+
+A fix (`ShowFix`) names the channels, highlights or rules it changes and
+applies to the open show only when it has all of them; otherwise its
+button is disabled. A fix already true shows Done. Keeping a highlight off
+its only channel turns the highlight off, since an empty list means every
+channel. Dismissals are kept in `UserDefaults` (`review.dismissed`) under
+the show name and finding ID (vocabulary also by its words). Under the
+cards, a table puts this session beside up to four earlier sessions of the
+same show: lines, filler share, unclear share, delay p90. No file formats
+change.
+
 ## 9. User interface
 
 Single main window (`MainWindowView`) — `NavigationSplitView`:
