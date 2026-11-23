@@ -86,3 +86,64 @@ struct MarkerPresetStoreTests {
         #expect(preset.markers.departments == ["pyro"])
     }
 }
+
+@Suite("Built-in marker presets")
+struct BuiltInPresetTests {
+    private func names(_ text: String, _ settings: MarkerSettings) -> [String] {
+        MarkerDetector.detect(in: text, settings: settings).map(\.label)
+    }
+
+    @Test func builtInsAreConcertCorporateTheatreWithFixedIDs() {
+        #expect(MarkerPreset.builtIn.map(\.name) == ["Concert", "Corporate", "Theatre"])
+        #expect(Set(MarkerPreset.builtIn.map(\.id)).count == 3)
+        #expect(MarkerPreset.builtIn[0].id == UUID(uuidString: "6F1C2E0A-1C44-4B7E-9C0D-0C0A0C0E0C01"))
+    }
+
+    @Test func builtInListsHaveNoDuplicates() {
+        for preset in MarkerPreset.builtIn {
+            let labelNames = preset.markers.labels.map { "\($0.category.rawValue)|\($0.name.lowercased())" }
+            #expect(Set(labelNames).count == labelNames.count, "\(preset.name) label names")
+            for label in preset.markers.labels {
+                let phrases = label.phrases.map { $0.lowercased() }
+                #expect(Set(phrases).count == phrases.count, "\(preset.name) \(label.name)")
+            }
+            let departments = preset.markers.departments.map { $0.lowercased() }
+            #expect(Set(departments).count == departments.count, "\(preset.name) departments")
+        }
+    }
+
+    @Test func builtInsRoundTrip() throws {
+        for preset in MarkerPreset.builtIn {
+            let data = try WilcoJSON.encoder().encode(preset.markers)
+            #expect(try WilcoJSON.decoder().decode(MarkerSettings.self, from: data) == preset.markers)
+        }
+    }
+
+    @Test func eachPresetHearsItsKindOfShow() {
+        let concert = MarkerPreset.builtIn[0].markers
+        let corporate = MarkerPreset.builtIn[1].markers
+        let theatre = MarkerPreset.builtIn[2].markers
+        #expect(names("Can I get more vocal in my wedge", concert) == ["Monitor request"])
+        #expect(names("Check one two, check check", concert) == ["Soundcheck"])
+        #expect(names("Changeover, ten minutes", concert) == ["Changeover"])
+        #expect(names("Haze go", concert) == ["Haze go"])
+        #expect(names("Ladies and gentlemen, this is your half", theatre) == ["Half"])
+        #expect(names("Warning LX 47", theatre) == ["Warning"])
+        #expect(names("Automation 12 go", theatre) == ["Automation 12 go"])
+        #expect(names("Standby VT 2", corporate) == ["Standby"])
+        #expect(names("Please welcome to the stage our keynote", corporate) == ["Keynote"])
+    }
+
+    @Test func removedLabelsAreGone() {
+        #expect(names("Intermission", MarkerPreset.builtIn[0].markers) == [])
+        #expect(names("Encore", MarkerPreset.builtIn[1].markers) == [])
+        #expect(names("Going into the next song", MarkerPreset.builtIn[1].markers) == [])
+    }
+
+    @Test func newLabelsSitWithTheirCategory() {
+        let phases = MarkerPreset.builtIn[2].markers.labels(in: .phase).map(\.name)
+        #expect(phases.prefix(2) == ["Doors", "Walk-in"])
+        #expect(phases.contains("Half"))
+        #expect(MarkerPreset.builtIn[0].markers.labels(in: .talkback).map(\.name) == ["Monitor request", "Soundcheck", "Run it again", "Problem"])
+    }
+}
