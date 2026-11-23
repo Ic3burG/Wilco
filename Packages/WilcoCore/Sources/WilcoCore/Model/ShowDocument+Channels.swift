@@ -32,6 +32,13 @@ extension ShowDocument {
         for index in highlights.indices { highlights[index].channelIDs.remove(id) }
     }
 
+    /// Ignores a name that is blank once trimmed, and a channel that's gone.
+    public mutating func renameChannel(id: ChannelConfig.ID, to name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        updateChannel(id: id) { $0.name = trimmed }
+    }
+
     /// Applies `change` to the channel if it still exists; otherwise does nothing.
     public mutating func updateChannel(id: ChannelConfig.ID, _ change: (inout ChannelConfig) -> Void) {
         guard let index = channels.firstIndex(where: { $0.id == id }) else { return }

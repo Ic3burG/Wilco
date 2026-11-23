@@ -64,7 +64,10 @@ struct SidebarRowContent: View {
                     channel: channel,
                     ownDeviceName: channel.deviceUID.map { model.device(withUID: $0)?.name ?? "not connected" },
                     level: model.meters[channel.id],
-                    status: model.transcriberStatus[channel.id]
+                    status: model.transcriberStatus[channel.id],
+                    isRenaming: model.itemBeingRenamed == item,
+                    onRename: { model.document.renameChannel(id: id, to: $0) },
+                    onEndRename: { model.itemBeingRenamed = nil }
                 )
             }
         case .group(let id):
@@ -74,9 +77,9 @@ struct SidebarRowContent: View {
                     group: group,
                     channelCount: members.count,
                     level: look.collapsedGroups.contains(id) ? members.compactMap { model.meters[$0.id] }.max() : nil,
-                    isRenaming: model.groupBeingRenamed == id,
+                    isRenaming: model.itemBeingRenamed == item,
                     onRename: { model.document.renameGroup(id: id, to: $0) },
-                    onEndRename: { model.groupBeingRenamed = nil }
+                    onEndRename: { model.itemBeingRenamed = nil }
                 )
             }
         }
@@ -90,12 +93,19 @@ struct ChannelRow: View {
     /// Meter position while capturing; nil when not captured.
     let level: Float?
     let status: TranscriberStatus?
+    var isRenaming = false
+    var onRename: (String) -> Void = { _ in }
+    var onEndRename: () -> Void = {}
 
     var body: some View {
         Label {
             HStack {
-                Text(channel.name)
-                if let ownDeviceName {
+                if isRenaming {
+                    InlineNameField(prompt: "Channel Name", name: channel.name, onRename: onRename, onEndRename: onEndRename)
+                } else {
+                    Text(channel.name)
+                }
+                if let ownDeviceName, !isRenaming {
                     Text("(\(ownDeviceName))")
                         .foregroundStyle(.secondary)
                         .lineLimit(1)

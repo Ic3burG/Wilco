@@ -25,7 +25,7 @@ struct ChannelInspector: View {
                 onNewGroup: {
                     let group = model.document.addGroup()
                     model.document.assignChannel(channelID, toGroup: group.id)
-                    model.groupBeingRenamed = group.id
+                    model.itemBeingRenamed = .group(group.id)
                 },
                 onClear: { model.clearTranscript(channelID: channelID) },
                 onDelete: { model.requestDeletion(of: channelID) }

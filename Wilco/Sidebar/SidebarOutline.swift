@@ -57,6 +57,9 @@ struct SidebarOutline: NSViewRepresentable {
         menu.delegate = coordinator
         outline.menu = menu
         outline.onDelete = { [weak coordinator] in coordinator?.deleteSelection() }
+        outline.onRename = { [weak coordinator] in coordinator?.renameSelection() }
+        outline.target = coordinator
+        outline.doubleAction = #selector(Coordinator.renameClickedRow)
         coordinator.outline = outline
 
         let scroll = NSScrollView()
@@ -306,7 +309,7 @@ struct SidebarOutline: NSViewRepresentable {
         }
 
         private func groupMenu(_ menu: NSMenu, _ id: UUID) {
-            menu.addItem(ActionItem("Rename") { [model] in model?.groupBeingRenamed = id })
+            menu.addItem(ActionItem("Rename") { [model] in model?.beginRenaming(.group(id)) })
             let icons = NSMenu()
             for symbol in GroupSymbols.all {
                 let item = ActionItem("") { [model] in model?.document.setGroupSymbol(id: id, symbol) }
@@ -322,6 +325,7 @@ struct SidebarOutline: NSViewRepresentable {
 
         private func channelMenu(_ menu: NSMenu, _ id: UUID) {
             guard let channel = model.document.channel(id: id) else { return }
+            menu.addItem(ActionItem("Rename") { [model] in model?.beginRenaming(.channel(id)) })
             let current = model.document.effectiveGroupID(of: channel)
             let groups = NSMenu()
             let none = ActionItem("None") { [model] in model?.document.assignChannel(id, toGroup: nil) }
@@ -344,6 +348,18 @@ struct SidebarOutline: NSViewRepresentable {
             menu.addItem(ActionItem("Delete Channel…") { [model] in model?.requestDeletion(of: id) })
         }
 
+        /// Return on the selected folder or channel, as in Finder.
+        func renameSelection() {
+            model.beginRenaming(model.selection)
+        }
+
+        /// Double-clicking a folder or channel edits its name.
+        @objc func renameClickedRow() {
+            guard let outline, outline.clickedRow >= 0,
+                  let item = (outline.item(atRow: outline.clickedRow) as? Node)?.item else { return }
+            model.beginRenaming(item)
+        }
+
         func deleteSelection() {
             switch model.selection {
             case .channel(let id): model.requestDeletion(of: id)
@@ -354,13 +370,17 @@ struct SidebarOutline: NSViewRepresentable {
     }
 }
 
-/// Delete and Forward Delete remove the selected folder or channel.
+/// Delete and Forward Delete remove the selected folder or channel;
+/// Return (or Enter) starts renaming it.
 final class SidebarOutlineView: NSOutlineView {
     var onDelete: (() -> Void)?
+    var onRename: (() -> Void)?
 
     override func keyDown(with event: NSEvent) {
         if event.keyCode == 51 || event.keyCode == 117 {
             onDelete?()
+        } else if event.keyCode == 36 || event.keyCode == 76 {
+            onRename?()
         } else {
             super.keyDown(with: event)
         }

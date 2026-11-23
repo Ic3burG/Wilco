@@ -18,6 +18,18 @@ struct ChannelEditingTests {
         #expect(show.channels.last == added)
     }
 
+    @Test func renameTrimsAndIgnoresBlankNames() {
+        var show = ShowDocument()
+        let channel = show.addChannel()
+        show.renameChannel(id: channel.id, to: "   ")
+        #expect(show.channel(id: channel.id)?.name == channel.name)
+        show.renameChannel(id: channel.id, to: "  Stage Manager \n")
+        #expect(show.channel(id: channel.id)?.name == "Stage Manager")
+        // A channel deleted mid-edit is ignored rather than crashing.
+        show.renameChannel(id: UUID(), to: "Ghost")
+        #expect(show.channels.count == 1)
+    }
+
     @Test func newChannelDetectsVoiceChanges() throws {
         // On for channels added now (it keeps up at 32 channels in
         // wilco-bench); channels in existing shows decode with it off.

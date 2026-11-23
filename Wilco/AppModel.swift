@@ -156,20 +156,31 @@ final class AppModel {
 
     // MARK: Groups
 
-    /// The group whose name the sidebar is editing inline.
-    var groupBeingRenamed: ChannelGroup.ID?
+    /// The folder or channel whose name the sidebar is editing inline.
+    var itemBeingRenamed: SidebarItem?
+
+    /// Starts editing a folder's or channel's name in the sidebar.
+    func beginRenaming(_ item: SidebarItem) {
+        switch item {
+        case .channel, .group:
+            selection = item
+            itemBeingRenamed = item
+        default:
+            break  // Combined, Matrix, Activity have fixed names
+        }
+    }
 
     /// Makes "New Group", selects it and starts renaming it, as Finder does.
     func addGroup() {
         let group = document.addGroup()
         selection = .group(group.id)
-        groupBeingRenamed = group.id
+        itemBeingRenamed = .group(group.id)
     }
 
     /// No confirmation: the group's channels are kept, just ungrouped.
     func deleteGroup(_ id: ChannelGroup.ID) {
         if selection == .group(id) { selection = .combined }
-        if groupBeingRenamed == id { groupBeingRenamed = nil }
+        if itemBeingRenamed == .group(id) { itemBeingRenamed = nil }
         document.deleteGroup(id: id)
     }
 
@@ -183,6 +194,7 @@ final class AppModel {
         guard let id = channelPendingDeletion else { return }
         channelPendingDeletion = nil
         if selection == .channel(id) { selection = .combined }
+        if itemBeingRenamed == .channel(id) { itemBeingRenamed = nil }
         document.deleteChannel(id: id)
     }
 
