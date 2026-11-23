@@ -106,6 +106,7 @@ versions can add fields:
 | `floor` | 10th-percentile frame level in dBFS: the hiss of an open ring |
 | `clipped` | Samples at or above 0.999 |
 | `dropped` | Frames the ring dropped this minute because the engine fell behind |
+| `droppedSeconds` | The same in seconds, at the rate the frames were captured |
 | `utterances`, `speech`, `cuts`, `recognize` | Utterance engines only (nil for Apple): utterances sent to the model, their seconds, how many were cut at the 20 s limit, seconds the model spent on them |
 | `partial` | True when the channel's transcriber started, stopped or restarted this minute; absent otherwise |
 | `classified` | The classifier's confidence for speech, music and singing on one clip from this minute; nil if the minute had no clip or the classifier was busy |
