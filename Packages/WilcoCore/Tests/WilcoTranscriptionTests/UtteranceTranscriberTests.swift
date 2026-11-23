@@ -156,6 +156,40 @@ struct UtteranceTranscriberTests {
         return log.events.withLock { $0 }
     }
 
+    @Test(.timeLimit(.minutes(1))) func offersEachFinalLineToTheClipTap() async throws {
+        let rate = 48_000.0
+        let ring = AudioRingBuffer(capacity: Int(rate) * 30)
+        let channel = UUID()
+        let offers = Mutex<[ClipOffer]>([])
+        let tap = ClipTap { offer in offers.withLock { $0.append(offer) } }
+        let log = Log()
+        let transcriber = UtteranceChannelTranscriber(
+            channelID: channel, source: AudioSource(ring: ring, sampleRate: { rate }, clips: tap),
+            sessionOffset: 0, recognizer: FakeRecognizer(),
+            onEvent: { event in log.events.withLock { $0.append(event) } }, onStatus: { _ in }
+        )
+        await transcriber.start()
+        for _ in 0..<2 {
+            try await play(talk(seconds: 1, rate: rate) + quiet(seconds: 1.5, rate: rate), into: ring, rate: rate)
+        }
+        for _ in 0..<50 where log.events.withLock({ $0.filter(\.isFinal).count }) < 2 {
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        await transcriber.stop()
+
+        let finals = log.events.withLock { $0 }.filter(\.isFinal)
+        let got = offers.withLock { $0 }
+        try #require(finals.count == 2 && got.count == 2)
+        for (offer, final) in zip(got, finals) {
+            #expect(abs(offer.samples.count - Int(offer.candidate.duration * 16_000)) <= 1_600)
+            #expect(offer.samples.count >= 14_400)
+            #expect(offer.engine == "parakeet")
+            #expect(offer.whisperModel == nil)
+            #expect(offer.candidate.channel == channel)
+            #expect(offer.candidate.sessionOffset == final.sessionOffset)
+        }
+    }
+
     @Test(.timeLimit(.minutes(1))) func meteredChannelReportsUtterances() async throws {
         let rate = 48_000.0
         let ring = AudioRingBuffer(capacity: Int(rate) * 30)

@@ -56,6 +56,7 @@ public actor UtteranceChannelTranscriber: ChannelTranscriber {
     /// Nil when the channel doesn't detect voice changes.
     private let annotator: VoiceAnnotator?
     private var voices: VoiceAnnotationQueue?
+    private var clips: ChannelClips?
     private var pump: Task<Void, Never>?
     private var meter: ChannelMeter?
     /// How often to preview an utterance in progress; nil for no previews.
@@ -108,6 +109,9 @@ public actor UtteranceChannelTranscriber: ChannelTranscriber {
         }
         onStatus(.listening)
         voices = annotator.map { VoiceAnnotationQueue(annotator: $0, onEvent: onEvent) }
+        clips = source.clips.map {
+            ChannelClips(tap: $0, channel: channelID, engine: SpeechEngine.parakeet.rawValue, whisperModel: nil)
+        }
         pump = Task { await self.run() }
     }
 
@@ -206,7 +210,8 @@ public actor UtteranceChannelTranscriber: ChannelTranscriber {
             line, voices: voices, onEvent: onEvent,
             lineStart: start, lineEnd: start + Double(utterance.samples.count) / 16_000,
             words: recognition.words.map { TimedWord(text: $0.text, start: start + $0.start, end: start + $0.end) },
-            audio: { utterance.samples }
+            audio: { utterance.samples },
+            clips: clips
         )
     }
 }

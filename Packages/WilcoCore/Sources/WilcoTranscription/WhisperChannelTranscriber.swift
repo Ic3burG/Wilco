@@ -134,6 +134,7 @@ actor WhisperChannelTranscriber: ChannelTranscriber {
     /// Nil when the channel doesn't detect voice changes.
     private let annotator: VoiceAnnotator?
     private var voices: VoiceAnnotationQueue?
+    private var clips: ChannelClips?
     private var pump: Task<Void, Never>?
     private var meter: ChannelMeter?
 
@@ -168,6 +169,12 @@ actor WhisperChannelTranscriber: ChannelTranscriber {
         }
         onStatus(.listening)
         voices = annotator.map { VoiceAnnotationQueue(annotator: $0, onEvent: onEvent) }
+        clips = source.clips.map {
+            ChannelClips(
+                tap: $0, channel: configuration.channelID, engine: SpeechEngine.whisper.rawValue,
+                whisperModel: configuration.whisperModel.rawValue
+            )
+        }
         pump = Task { await self.run() }
     }
 
@@ -240,7 +247,8 @@ actor WhisperChannelTranscriber: ChannelTranscriber {
             line, voices: voices, onEvent: onEvent,
             lineStart: start, lineEnd: start + Double(utterance.samples.count) / 16_000,
             words: Self.words(in: segments, from: start),
-            audio: { utterance.samples }
+            audio: { utterance.samples },
+            clips: clips
         )
     }
 
