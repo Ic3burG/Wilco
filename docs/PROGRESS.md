@@ -1118,3 +1118,81 @@ the app through Accessibility.
   the requested load (deferred since 2026-11-12).
 - The items from earlier today still stand: try Settings › Markers in the
   app and tighten noisy built-in phrases.
+
+## 2026-11-22 — Post-show Review tab; long talk cut between words; alert titles
+
+The user recorded a 6-hour show (2026-11-21, 16 Parakeet channels) to
+gather data. Reading it back by hand turned up the problems below, and
+the Review tab now finds the same things after every session.
+
+What the session showed: transcription kept up all night (9 in 10 lines
+appeared within 7.5 s, flat from 2 to 14 talking channels; the long
+delays were long sentences); one channel carried 30% of the lines; the
+"hear" highlight fired 12 times an hour on every channel; radios were
+recognised worse than wired comms (median confidence 0.64–0.77 against
+0.86–0.90); the channel "Tea Time" was heard as "T Time" every time; and
+three channels barely spoke. A first read that half the lines were
+chatter or lyrics was wrong: the band talkback had 9% fillers, like other
+channels.
+
+### Fixes
+
+- **Long talk is cut between words.** At the 20 s limit an utterance used
+  to end on whatever frame reached it, splitting words across two lines;
+  46 of 56 capped lines in that session ran straight on. The cut now goes
+  in the latest 100 ms of the last 3 s that is within 25% of the quietest,
+  and the rest carries into the next utterance with nothing lost
+  (`UtteranceSegmenter`).
+- **Notification titles follow the rule's name.** A Notify action copied
+  the rule's name when it was added, so a renamed rule kept alerting as
+  "New Rule". New ones use the new `{rule}` placeholder; a title that
+  expands to nothing shows the rule's name. Existing shows keep their
+  title until edited (the Review offers the fix).
+
+### Features
+
+- **Review tab in the post-show report** (`Report/Review/` in WilcoCore,
+  `ReviewView` in the app). Worked out from the `.jsonl` and show copy
+  alone, so it works on every past session. Checks: show setup (leftover
+  alert titles), unclear channels (relative to the session, since engines
+  differ in confidence scale), common highlight or rule phrases, busy
+  channel, lines cut at the limit, falling behind, quiet channels (one
+  finding), and vocabulary suggestions: channel names heard wrong, then
+  names heard often across earlier sessions of the same show.
+- **One-click fixes** to the open show: mute a channel, keep a highlight
+  off a channel, remove a phrase, add vocabulary, use the rule's name as
+  the title. A fix shows Done once true, is disabled when the open show
+  lacks what it names or isn't the session's show, and is off while
+  capturing, because changing the show then restarts transcription on
+  the channels it touches. Dismissals are kept per show.
+- **Trend table:** this session beside up to four earlier sessions of the
+  same show (lines, fillers, unclear, delay).
+- Thresholds were tuned by running every saved session (41) through the
+  review; four checks that cried wolf were changed (see the design doc's
+  calls). Design and plan:
+  `docs/superpowers/specs/2026-11-22-show-review-design.md`,
+  `docs/superpowers/plans/2026-11-22-show-review.md`.
+
+Tested: 55 new package tests, including a locally gated one that reviews
+every saved session; 506 package tests in all; app builds without
+warnings. A fresh whole-branch review found two important issues (a
+stale review under a newly selected session; a guessed show getting
+show checks and fixes), both fixed. Not yet verified in the app.
+
+### Next steps / where we left off
+
+- Try the Review tab in the app on the 2026-11-21 17:20 session. Check
+  that switching sessions quickly never shows another session's cards,
+  and that fixes are disabled during capture (no app tests cover these).
+- Update the "Omar Notifications" rule's title in the real show (the
+  Review offers it).
+- Deferred from the review: the cut check counts lag of 19 s or more as
+  cuts when transcription falls behind, and newer cuts can come up to 3 s
+  early; a transcript not named "Session …" can see later sessions in
+  its trend; the keep-off label doesn't say a channel added later starts
+  excluded; a highlight listing only deleted channels stays on; history
+  loads once per report window.
+- Stage 2 of the design: a per-minute diagnostics file (input level,
+  speech time, dropouts) so quiet channels can be told from low levels,
+  and music/lyrics detection from audio. Stage 3: opt-in clips of
+  unclear lines as a real-show test set for `wilco-bench`.
