@@ -25,7 +25,7 @@ The core app works and is in testing; it is not yet released. See
 | Multichannel transcription benchmark, `wilco-bench` (see `docs/BENCHMARK.md`) | |
 | Voice letters: who's speaking within an exchange, in the transcript and reports (new) | |
 | Report markers editable per show, with presets (built-in Concert, Corporate, Theatre) and a Talkback category (new) | |
-| Post-show Review: findings, one-click fixes, vocabulary suggestions and trends across shows (new) | |
+| Post-show Review: findings, one-click fixes, vocabulary suggestions and trends across shows; per-minute session diagnostics (levels, dropouts, music/singing) behind its quiet, music, level and lost-audio checks (new) | |
 
 ## Files
 

@@ -1382,3 +1382,67 @@ warnings. Verified: the user renamed channels in the app.
 
 Tested: label cases for offsets, named zones in winter and summer; full
 package suite passes; app builds. Not yet verified in the app.
+
+## 2026-11-23 — Session diagnostics (show review stage 2)
+
+Design: `docs/superpowers/specs/2026-11-22-session-diagnostics-design.md`.
+Plan: `docs/superpowers/plans/2026-11-22-session-diagnostics.md`.
+
+### Features
+
+- **Diagnostics file per session.** Capture now writes
+  `Session yyyy-MM-dd HHmm-ss.diagnostics` beside the transcript (JSON
+  lines; not `.jsonl`, so the report doesn't list it as a session). One row
+  per channel per minute: audio read, seconds of sound, RMS, peak, noise
+  floor, clipped samples, dropped audio, utterances, speech seconds, cuts at
+  the 20 s limit, model time, and the built-in sound classifier's speech,
+  music and singing confidence for one 3 s clip. Format in `docs/SPEC.md`.
+- **Where it's measured.** A `ChannelMeter` runs in each engine's read loop
+  (`AudioSource.read(metering:)`), never in the capture callback. A
+  `DiagnosticsRecorder` per session merges partial rows (start, stop,
+  restart), waits up to 30 s past each minute for its classification, and
+  appends. One `SoundClassifierQueue` for the app runs one clip at a time
+  and drops clips when 64 are waiting.
+- **Review checks that use it** (skipped for sessions without the file):
+  - Quiet channels get a reason: no input, too faint, low level, not
+    speech, not captured, or input fine and nobody talked.
+  - Music channel (music or singing beats speech in ≥60% of ≥30 classified
+    minutes): offers mute and keeping busy highlights off it.
+  - Level too hot (clipping in ≥3 minutes and ≥5% of sound minutes).
+  - Level low (median below −40 dBFS over ≥30 sound minutes); the unclear
+    finding says when a low level may be why.
+  - Lost audio (≥5 s dropped, or short or missing minutes while the
+    channel was running), with clock times.
+  - The 20 s cut count is exact where the engine reports it.
+- **Benchmark:** `wilco-bench --diagnostics`. At 32 channels on Parakeet
+  (M1 Max): kept up, no measurable CPU added, about +80 MB, 0 clips dropped,
+  64 of 96 rows classified (`docs/benchmarks/2026-11-23-m1-max-diagnostics.md`).
+
+### Fixes found in review
+
+- Clipping was counted twice at block edges; speech/music minutes read the
+  utterance field instead of the classifier; stopping could wait 30 s on a
+  hung classification; a restart within 30 s of stopping lost the old
+  session's show copy; one pop raised "level too hot"; a voice below the
+  speech floor was called "input fine".
+
+Tested: about 60 new package tests (every suite passes); app builds
+without warnings; merged with the time-zone work from the same day. The
+new checks' thresholds are **untuned guesses**: no saved session has a
+diagnostics file yet. Not yet verified in the app.
+
+### Next steps / where we left off
+
+- Try it in the app: capture 2–3 minutes, check the `.diagnostics` file
+  appears beside the `.jsonl`, isn't listed as a session, and the Review
+  still opens.
+- After the next real show, run the gated `reviewsSessionsWithDiagnostics`
+  test and tune the thresholds; consider using the noise floor in the
+  low-level check (hiss above −46 dBFS counts as sound today).
+- Lost-audio clock times use the Mac's current zone, not the session's
+  recorded zone (from today's time-zone work).
+- Quitting while capturing loses the last 1–2 minutes of diagnostics rows
+  (the session show copy has the same gap).
+- Stage 3 (opt-in real-audio clips for `wilco-bench`), then a voice-change
+  redesign: it over-splits on real comms (letters up to K for two people;
+  one steady voice taken for another), tuned only on `say` voices.
