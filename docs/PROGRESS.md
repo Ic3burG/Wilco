@@ -1087,3 +1087,34 @@ Tested only (303 package tests, app builds). Not yet tried in the app.
 - Cue markers from "Mark Cue Point" are still memory-only and don't reach
   reports.
 - The items from 2026-11-21 still stand.
+
+## 2026-11-22 (late) — Loading a configuration with unsaved changes
+
+### Fixes
+
+- **Loading a configuration did nothing when the show had unsaved
+  changes.** The "Save changes before loading?" alert only showed while
+  its window appeared active, but an open alert stops its window
+  appearing active. So the alert closed itself as it opened, which also
+  cleared the load request. Found by the user ("old configs are not
+  loading"). Every saved show on disk still decoded; this was the prompt,
+  not the files. Logging in a debug build confirmed it.
+- New `WindowPrompt` in WilcoCore: the window that was active when the
+  load was asked for shows the prompt and keeps it until it's answered.
+  Three regression tests (306 package tests in all). Save As New's name
+  sheet uses the same kind of check but stays open, so it's unchanged.
+
+Verified: loading from the title menu with unsaved changes now asks,
+and Don't Save loads the chosen show (user). Cancel, asking again and
+Don't Save from the Configurations window were also checked by driving
+the app through Accessibility.
+
+### Next steps / where we left off
+
+- The Configurations window's error alert (`lastMessage`) has the same
+  "only while active" check, so an error raised there may close itself
+  too. Check it and use `WindowPrompt` if so.
+- Save in the unsaved-changes prompt for a "Not Saved" show still drops
+  the requested load (deferred since 2026-11-12).
+- The items from earlier today still stand: try Settings › Markers in the
+  app and tighten noisy built-in phrases.

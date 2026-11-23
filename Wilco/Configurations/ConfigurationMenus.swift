@@ -123,14 +123,22 @@ enum ConfigurationPanels {
 struct ConfigurationDialogs: ViewModifier {
     @Environment(AppModel.self) private var model
     @Environment(\.appearsActive) private var appearsActive
+    /// Chosen when the load is asked for, not on every redraw: the open alert
+    /// makes this window stop appearing active, which would close it again.
+    @State private var loadPrompt = WindowPrompt()
 
     func body(content: Content) -> some View {
         content
             .alert(
                 pendingLoadTitle,
                 isPresented: Binding(
-                    get: { appearsActive && model.configurationPendingLoad != nil },
-                    set: { if !$0 { model.configurationPendingLoad = nil } }
+                    get: { loadPrompt.isPresented },
+                    set: {
+                        if !$0 {
+                            loadPrompt.dismissed()
+                            model.configurationPendingLoad = nil
+                        }
+                    }
                 )
             ) {
                 Button("Save") { model.resolvePendingLoad(saveFirst: true) }
@@ -138,6 +146,9 @@ struct ConfigurationDialogs: ViewModifier {
                 Button("Cancel", role: .cancel) { model.configurationPendingLoad = nil }
             } message: {
                 Text("Your changes will be lost if you don't save them.")
+            }
+            .onChange(of: model.configurationPendingLoad) { _, pending in
+                loadPrompt.requestChanged(isRequested: pending != nil, appearsActive: appearsActive)
             }
             .sheet(isPresented: Binding(
                 get: { appearsActive && model.isNamingNewConfiguration },
