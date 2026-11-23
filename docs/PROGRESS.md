@@ -1346,3 +1346,24 @@ warnings. Verified: the user tried the sheet in the app.
   summary row and sheet if they grow long.
 - The sheet could offer the Review's vocabulary suggestions as one-click
   chips.
+
+## 2026-11-23 — Rename channels in the sidebar
+
+- **Channels can be renamed in place in the sidebar**, as folders already
+  could. Three ways in, for folders and channels alike: Rename in the
+  context menu, Return on the selected row (as in Finder), or a
+  double-click. Return or clicking away saves; Escape keeps the old name.
+  Blank names are ignored and surrounding spaces trimmed.
+- `ShowDocument.renameChannel(id:to:)` in `WilcoCore` does the trimming.
+  The inline field moved out of `GroupRow` into a shared
+  `Wilco/Sidebar/InlineNameField.swift`, and `AppModel.groupBeingRenamed`
+  became `itemBeingRenamed`, so only one row edits at a time. Deleting a
+  channel mid-rename ends the edit.
+
+Tested: 1 new package test; full package suite passes; app builds with no
+warnings. Verified: the user renamed channels in the app.
+
+### Next steps / where we left off
+
+- Combined, Matrix and Activity keep fixed names; Return and double-click
+  do nothing on them.
