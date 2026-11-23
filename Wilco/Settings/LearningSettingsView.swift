@@ -13,6 +13,7 @@ struct LearningSettingsView: View {
     @State private var ultraSize: Int64?
     @State private var appleStatus: SpeechAssetStatus?
     @State private var whisperLargeSize: Int64?
+    @State private var sortformerSize: Int64?
 
     private var installer: ModelInstaller { model.installer }
 
@@ -74,6 +75,13 @@ struct LearningSettingsView: View {
                 Text("Whisper large-v3")
                 Text(whisperLargeSize.map { $0.formatted(.byteCount(style: .file)) } ?? "(optional, about 3 GB)")
             }
+            LabeledContent {
+                downloadStatus(for: .sortformer, size: sortformerSize)
+            } label: {
+                Text("Voice grouping")
+                Text(sortformerSize.map { $0.formatted(.byteCount(style: .file)) } ?? "Sortformer, about 240 MB")
+                Text("Groups voices after a show. The voice-change model (Languages) is needed too.")
+            }
         } header: {
             Text("Voters")
         } footer: {
@@ -121,9 +129,13 @@ struct LearningSettingsView: View {
     private func refreshVoters() async {
         let ultra = installer.parakeetUltraStore
         let whisper = installer.whisperStore
-        let sizes = await Task.detached { (ultra.sizeOnDisk(), whisper.sizeOnDisk(of: .large)) }.value
+        let sortformer = installer.sortformer
+        let sizes = await Task.detached {
+            (ultra.sizeOnDisk(), whisper.sizeOnDisk(of: .large), sortformer.sizeOnDisk())
+        }.value
         ultraSize = sizes.0
         whisperLargeSize = sizes.1
+        sortformerSize = sizes.2
         // Clips are labelled with the English model.
         appleStatus = await SpeechAssets.status(engine: .longForm, localeIdentifier: "en-US")
     }

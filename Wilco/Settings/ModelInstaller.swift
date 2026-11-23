@@ -18,6 +18,8 @@ final class ModelInstaller {
         case apple(SpeechEngine, localeIdentifier: String)
         /// The speaker-embedding model that tells voices apart; shared by every channel.
         case voiceModel
+        /// Sortformer, which groups kept clips by voice after a show.
+        case sortformer
     }
 
     /// Progress from 0 to 1 for each download in flight.
@@ -33,6 +35,7 @@ final class ModelInstaller {
     let parakeetStore: ParakeetModelStore
     let parakeetUltraStore: ParakeetModelStore
     let voiceprints: WeSpeakerVoiceprints
+    let sortformer = SortformerClipDiarizer()
     /// Whether the voice model is on disk. Kept here so the transcript and
     /// inspector, which can't poll, update the moment it's installed or removed.
     private(set) var voiceModelInstalled: Bool
@@ -74,6 +77,8 @@ final class ModelInstaller {
                     try await SpeechAssets.install(engine: engine, localeIdentifier: locale, progress: report)
                 case .voiceModel:
                     try await voiceprints.install(progress: report)
+                case .sortformer:
+                    try await sortformer.install(progress: report)
                 }
             } catch {
                 errors[item] = error.localizedDescription
@@ -100,6 +105,9 @@ final class ModelInstaller {
         case .voiceModel:
             do { try voiceprints.remove() } catch { errors[item] = error.localizedDescription }
             voiceModelInstalled = voiceprints.isInstalled()
+            generation += 1
+        case .sortformer:
+            do { try sortformer.remove() } catch { errors[item] = error.localizedDescription }
             generation += 1
         case .apple(_, let locale):
             Task {
