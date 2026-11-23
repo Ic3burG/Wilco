@@ -120,6 +120,17 @@ speech when it isn't.
 
 ### Real shows
 
+Real shows are the test `say` speech can't be. To get clips, turn on
+**Keep audio clips to learn from shows** in Wilco's Learning settings and run
+a show; the app keeps the unclear lines and the exchanges, and labels them in
+the background once capture has stopped (formats: `docs/SPEC.md`, "Session
+clips folder"). Then run:
+
+```sh
+swift run -c release wilco-bench --real-show --channels 1,16
+swift run -c release wilco-bench --real-show --conversation --transcripts ~/path/to/Transcripts
+```
+
 `--real-show` plays the clips the app kept beside each session (with
 **Keep clips** on) and labelled after the show. Only clips with an answer
 are used: the voters agreed, or someone checked it by hand. By default
@@ -138,6 +149,12 @@ that is partly their own flatters them), beside their rate on every call.
 Both are scored per call, against the lines attributed to each call, so
 they can be compared with each other; the table's WER is over each
 channel's whole transcript and is counted differently.
+
+The report opens with a line of counts: sessions, clips, and how many were
+agreed, checked, disputed or dropped. Clips with no answer are left out of
+every score. Run `--real-show` after a show, once labelling has finished
+(**Settings › Learning** shows its progress); sessions still being labelled
+add fewer clips.
 
 The clips are real voices, so a real-show run prints and saves numbers
 only: no clip text, answers, candidates or channel names, and no
