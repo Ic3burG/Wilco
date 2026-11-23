@@ -89,6 +89,7 @@ private struct ReportDetail: View {
                 case .runOfShow: RunOfShowView(model: model)
                 case .log: ChatLogView(model: model)
                 case .channels: ChannelsBreakdown(model: model, report: report)
+                case .review: ReviewView(model: model)
                 }
             }
         } else if model.isLoading {
@@ -589,7 +590,7 @@ extension ShowReport.MarkerCategory {
     var color: Color { tint.color }
 }
 
-private func elapsedText(_ seconds: Double) -> String {
+func elapsedText(_ seconds: Double) -> String {
     let total = max(0, Int(seconds))
     return String(format: "%d:%02d:%02d", total / 3600, total / 60 % 60, total % 60)
 }

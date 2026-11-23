@@ -28,6 +28,7 @@ final class ReportModel {
         case runOfShow = "Run of show"
         case log = "Chat log"
         case channels = "Channels"
+        case review = "Review"
     }
 
     private(set) var sessions: [SessionFile] = []
@@ -38,7 +39,23 @@ final class ReportModel {
     private(set) var isLoading = false
     private(set) var error: String?
 
-    var tab: Tab = .runOfShow
+    var tab: Tab = .runOfShow {
+        didSet { if tab == .review { loadHistoryIfNeeded() } }
+    }
+
+    /// What went wrong in the selected session, against its own show.
+    private(set) var review: ShowReview?
+    /// Every saved session in summary, newest first; nil until the Review
+    /// tab first needs it.
+    private(set) var history: [SessionSummary]?
+    /// The selected session's lines and the show it was recorded with.
+    private var reviewInput: (url: URL, segments: [TranscriptSegment], show: ShowDocument)?
+    private var reviewTask: Task<Void, Never>?
+    private var historyTask: Task<Void, Never>?
+
+    /// Findings hidden with Dismiss, as `review.dismissed` keys.
+    private(set) var dismissed: Set<String> = Set(UserDefaults.standard.stringArray(forKey: ReportModel.dismissedKey) ?? [])
+    static let dismissedKey = "review.dismissed"
     var searchText = ""
     /// Channels shown in the run of show and chat log; empty shows all.
     var channelFilter: Set<UUID> = []
@@ -119,30 +136,95 @@ final class ReportModel {
         return store.list().compactMap { try? store.document($0.id) }
     }
 
+    /// The show name a session's dismissals are kept under.
+    var reviewShowName: String { reviewInput?.show.name ?? "" }
+
+    /// Dismissals belong to the show, so the same finding stays hidden next
+    /// time. Vocabulary is keyed by its words, so new names still show.
+    func dismissKey(_ finding: Finding) -> String {
+        var key = "\(reviewShowName)|\(finding.id)"
+        if finding.id == "vocabulary", let review { key += "|" + review.suggestions.map(\.term).sorted().joined(separator: ",") }
+        return key
+    }
+
+    func dismiss(_ finding: Finding) { setDismissed(dismissed.union([dismissKey(finding)])) }
+
+    func restoreDismissed(_ findings: [Finding]) { setDismissed(dismissed.subtracting(findings.map(dismissKey))) }
+
+    private func setDismissed(_ keys: Set<String>) {
+        dismissed = keys
+        UserDefaults.standard.set(Array(keys).sorted(), forKey: Self.dismissedKey)
+    }
+
+    /// Jumps from a finding to its lines in the chat log.
+    func showLines(_ finding: Finding) {
+        searchText = ""
+        channelFilter = finding.channelID.map { [$0] } ?? []
+        tab = .log
+        focusedMessage = finding.evidence.first
+    }
+
+    private func loadHistoryIfNeeded() {
+        guard history == nil, historyTask == nil else { return }
+        let show = show
+        historyTask = Task {
+            let all = await Task.detached(priority: .utility) {
+                (try? SessionHistory.summaries(in: DataLocations.transcripts, candidates: [show] + Self.savedShows())) ?? []
+            }.value
+            history = all
+            rebuildReview()
+        }
+    }
+
+    /// Reviews the selected session against its show and earlier sessions of it.
+    private func rebuildReview() {
+        reviewTask?.cancel()
+        guard let input = reviewInput else { review = nil; return }
+        let started = SessionHistory.started(fromFileName: input.url) ?? .distantFuture
+        let name = input.show.name.trimmingCharacters(in: .whitespaces)
+        // Earlier sessions only, so an old session's review doesn't see the future.
+        let earlier = SessionHistory.sameShow(as: name.isEmpty ? SessionHistory.unknownShow : name,
+                                              in: history ?? [], excluding: input.url)
+            .filter { $0.started < started }
+        reviewTask = Task {
+            let built = await Task.detached(priority: .userInitiated) {
+                ShowReview.make(segments: input.segments, show: input.show, history: earlier)
+            }.value
+            guard !Task.isCancelled else { return }
+            review = built
+        }
+    }
+
     private func load() {
         loadTask?.cancel()
         report = nil
+        review = nil
+        reviewInput = nil
         error = nil
         guard let url = selection else { return }
         isLoading = true
         let show = show
         loadTask = Task {
-            let built = await Task.detached(priority: .userInitiated) { () -> Result<ShowReport, Error> in
+            let built = await Task.detached(priority: .userInitiated) {
+                () -> Result<(ShowReport, [TranscriptSegment], ShowDocument), Error> in
                 Result {
                     let segments = TranscriptFile.segments(in: try Data(contentsOf: url))
                     let recordedWith = SessionShow.load(forTranscript: url)
                         ?? SessionShow.bestMatch(for: segments, among: [show] + Self.savedShows())
                         ?? show
-                    return ShowReportBuilder.build(segments: segments, show: recordedWith, sourceName: url.lastPathComponent, generated: .now)
+                    let report = ShowReportBuilder.build(segments: segments, show: recordedWith, sourceName: url.lastPathComponent, generated: .now)
+                    return (report, segments, recordedWith)
                 }
             }.value
             guard !Task.isCancelled else { return }
             isLoading = false
             switch built {
-            case .success(let report) where report.totalMessages == 0:
+            case .success(let (report, _, _)) where report.totalMessages == 0:
                 error = "This session has no transcribed lines."
-            case .success(let report):
+            case .success(let (report, segments, recordedWith)):
                 self.report = report
+                reviewInput = (url, segments, recordedWith)
+                rebuildReview()
             case .failure(let failure):
                 error = "Could not read the session: \(failure.localizedDescription)"
             }
