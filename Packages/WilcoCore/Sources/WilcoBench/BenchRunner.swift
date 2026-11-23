@@ -40,6 +40,11 @@ public struct BenchRunner: Sendable {
     /// with at least 3 s of sound, so runs shorter than a minute exercise only
     /// the meter's per-block work, not the classifier.
     public var diagnostics = false
+    /// Real-show runs: per clip, the voters whose text matched the answer.
+    /// Engines that are voters are also scored on the clips they didn't agree on.
+    public var agreeingVoters: [Set<String>]?
+    /// False keeps words out of the result (no samples), for real-show runs.
+    public var keepsTexts = true
 
     public init(clips: [BenchClip], sampleRate: Double = 48_000) {
         self.clips = clips
@@ -163,7 +168,17 @@ public struct BenchRunner: Sendable {
                 .map { Scorer.scoreVoices(utterances: $1, events: recorder.events(channel: $0)) }
                 .reduce(VoiceScore(), +)
             : nil
-        return RunResult(
+        var nonVoter: (errors: WordErrors, calls: Int)?
+        if let agreeingVoters, let voter = RealShowSet.voter(forEngine: engine.id) {
+            let fair = Set(agreeingVoters.indices.filter { !agreeingVoters[$0].contains(voter) })
+            nonVoter = scenario.channels.enumerated().reduce((WordErrors(), 0)) { sum, channel in
+                let errors = Scorer.wordErrors(
+                    utterances: channel.element, texts: texts, events: recorder.events(channel: channel.offset), clips: fair
+                )
+                return (sum.0 + errors, sum.1 + channel.element.filter { fair.contains($0.clip) }.count)
+            }
+        }
+        let result = RunResult(
             engine: engine.id,
             channels: count,
             duration: scenario.duration,
@@ -190,8 +205,11 @@ public struct BenchRunner: Sendable {
             longTalk: scenario.longTalk ? true : nil,
             droppedClips: droppedClips,
             diagnosticsRows: diagnosticsRows,
-            classifiedRows: classifiedRows
+            classifiedRows: classifiedRows,
+            nonVoterWordErrors: nonVoter?.errors,
+            nonVoterCalls: nonVoter?.calls
         )
+        return keepsTexts ? result : result.numbersOnly()
     }
 
     /// Share of all cores busy while nothing is being transcribed, so a

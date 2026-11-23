@@ -262,7 +262,7 @@ public enum ClipLibrary {
         return try resample(mono, from: format.sampleRate, to: sampleRate)
     }
 
-    private static func resample(_ samples: [Float], from source: Double, to target: Double) throws -> [Float] {
+    static func resample(_ samples: [Float], from source: Double, to target: Double) throws -> [Float] {
         guard let input = AVAudioFormat(standardFormatWithSampleRate: source, channels: 1),
               let output = AVAudioFormat(standardFormatWithSampleRate: target, channels: 1),
               let converter = AVAudioConverter(from: input, to: output),

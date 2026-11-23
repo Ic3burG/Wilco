@@ -144,6 +144,51 @@ public struct Scenario: Equatable, Sendable {
         return Scenario(duration: duration, dutyCycle: share, channels: channels)
     }
 
+    /// Exchanges from real shows, each placed whole on one channel with its
+    /// clips in their original order and gaps (capped at
+    /// `RealShowSet.maximumGap`). Exchanges go to the channels in turn, in
+    /// order, starting again from the first once all are used, until no
+    /// channel has room for its next one. Each placed exchange has its own
+    /// number, and `exchangeQuiet` separates exchanges on a channel.
+    public static func generateRealExchanges(
+        channels channelCount: Int, duration: Double, seed: UInt64, exchanges: [RealExchange], clips: [ConversationClip]
+    ) -> Scenario {
+        precondition(!exchanges.isEmpty && channelCount > 0)
+        var randoms = (0..<channelCount).map { SplitMix64(seed: seed &+ UInt64($0) &* 0x9E37_79B9_7F4A_7C15) }
+        var times = randoms.indices.map { randoms[$0].unit() * min(3, duration / 4) }
+        var channels = [[ScheduledUtterance]](repeating: [], count: channelCount)
+        var full = [Bool](repeating: false, count: channelCount)
+        var next = 0
+        while full.contains(false) {
+            let channel = next % channelCount
+            let exchange = exchanges[next % exchanges.count]
+            next += 1
+            guard !full[channel] else { continue }
+            var placed: [ScheduledUtterance] = []
+            var at = times[channel]
+            for (turn, clip) in exchange.clips.enumerated() {
+                if turn > 0 {
+                    let gap = turn - 1 < exchange.gaps.count ? exchange.gaps[turn - 1] : 0
+                    at += min(RealShowSet.maximumGap, max(0, gap))
+                }
+                placed.append(ScheduledUtterance(
+                    clip: clip, start: at, duration: clips[clip].duration, voice: clips[clip].voice, exchange: next
+                ))
+                at += clips[clip].duration
+            }
+            guard at <= duration - minimumGap else {
+                full[channel] = true
+                continue
+            }
+            channels[channel] += placed
+            times[channel] = at + exchangeQuiet.lowerBound
+                + randoms[channel].unit() * (exchangeQuiet.upperBound - exchangeQuiet.lowerBound)
+        }
+        let speech = channels.joined().map(\.duration).reduce(0, +)
+        let share = duration > 0 ? speech / (duration * Double(channelCount)) : 0
+        return Scenario(duration: duration, dutyCycle: share, channels: channels)
+    }
+
     /// Quiet between long talks: well over the pause that closes an
     /// utterance, short enough that a channel is mostly talking.
     public static let talkGap = 3.0...8.0
