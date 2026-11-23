@@ -30,7 +30,9 @@ With `--diagnostics` every channel runs the per-minute meter in its read loop an
 
 The first with-diagnostics run could not show that clips were classified, because "clips dropped: 0" also holds when none were taken. This run reads the diagnostics file back after the run and counts its rows and the ones carrying a classification (`Rows (classified)`). Only 32 channels was re-run.
 
-| Engine | Ch | WER | Missed | Final delay p50 / p95 / max | Display p95 | First words p50 | Backlog | Start | CPU (us) | CPU (Mac) | Memory | Dropped | Clips dropped | Rows (classified) | Keeps up |\n|---|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---:|\n| parakeet-v3 | 32 | 2.9% | 0/537 | 0.69 / 0.78 / 1.13 s | 0.78 s | 2.90 s | 0.00 s | 0.19 s | 41% | 35% | 296 MB | 0 | 0 | 96 (64) | yes |
+| Engine | Ch | WER | Missed | Final delay p50 / p95 / max | Display p95 | First words p50 | Backlog | Start | CPU (us) | CPU (Mac) | Memory | Dropped | Clips dropped | Rows (classified) | Keeps up |
+|---|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---:|
+| parakeet-v3 | 32 | 2.9% | 0/537 | 0.69 / 0.78 / 1.13 s | 0.78 s | 2.90 s | 0.00 s | 0.19 s | 41% | 35% | 296 MB | 0 | 0 | 96 (64) | yes |
 
 96 rows is 3 per channel (minutes 0 and 1, plus the last, partial minute written when the run stopped). 64 are classified: 2 per channel, the two full minutes. None were dropped.
 
