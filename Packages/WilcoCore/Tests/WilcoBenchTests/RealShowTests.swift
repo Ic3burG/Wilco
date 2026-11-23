@@ -76,6 +76,26 @@ struct RealShowTests {
         #expect(set.agreeingVoters[1].isEmpty)
     }
 
+    @Test func anUnreadableAnsweredClipCountsOnlyAsDropped() throws {
+        let show = try FakeShow()
+        let a = show.record(at: 10), b = show.record(at: 20), c = show.record(at: 30)
+        try show.session(clips: [
+            (a, agreed(a, "Standby lighting cue five")),
+            (b, agreed(b, "Sound seven go")),
+            (c, ClipLabel(clip: c.id, words: .disputed, candidates: [ClipVoterID.parakeetUltra: "go"],
+                          checked: "Fly cue two go")),
+        ], lines: [])
+        let folder = ClipsFolder.url(forTranscript: show.folder.appending(path: "Session 2026-11-20 1930-00.jsonl"))
+        try FileManager.default.removeItem(at: ClipsFolder.audioURL(for: b.id, in: folder))
+        try Data("not a wav".utf8).write(to: ClipsFolder.audioURL(for: c.id, in: folder))
+
+        let set = try RealShowSet.load(transcripts: show.folder, sampleRate: 16_000)
+        let counts = set.counts
+        let found: [Int] = [counts.sessions, counts.agreed, counts.checked, counts.disputed, counts.dropped]
+        #expect(found == [1, 1, 0, 0, 2])
+        #expect(set.clips.count == counts.agreed + counts.checked)
+    }
+
     @Test func liveErrorsComeFromTheTranscript() throws {
         let show = try FakeShow()
         let a = show.record(at: 10), b = show.record(at: 20)
@@ -191,6 +211,49 @@ struct RealShowTests {
             clips: clips)
         #expect(scenario.channels[0].first?.clip == 0)
         #expect(scenario.channels[1].first?.clip == 2)
+    }
+
+    /// The first clip of each exchange placed on each channel, in order.
+    private func exchangeStarts(_ scenario: Scenario) -> [[Int]] {
+        scenario.channels.map { placed in
+            var seen: [Int?] = []
+            var starts: [Int] = []
+            for u in placed where !seen.contains(u.exchange) {
+                seen.append(u.exchange)
+                starts.append(u.clip)
+            }
+            return starts
+        }
+    }
+
+    @Test func realExchangesTwoChannelsTwoExchangesAlternate() {
+        let clips = (0..<4).map { ConversationClip(duration: 2, voice: $0 % 2) }
+        let scenario = Scenario.generateRealExchanges(
+            channels: 2, duration: 200, seed: 1,
+            exchanges: [RealExchange(clips: [0, 1], gaps: [0.5]), RealExchange(clips: [2, 3], gaps: [0.5])],
+            clips: clips)
+        let starts = exchangeStarts(scenario)
+        for channel in starts {
+            #expect(channel.count >= 2)
+            for (a, b) in zip(channel, channel.dropFirst()) { #expect(a != b) }
+        }
+        #expect(starts[0].first == 0 && starts[1].first == 2)
+        let numbers = scenario.channels.joined().map(\.exchange)
+        #expect(Set(numbers).count == numbers.count / 2)
+    }
+
+    @Test func realExchangesThreeChannelsTwoExchangesUseBoth() {
+        let clips = (0..<4).map { ConversationClip(duration: 2, voice: $0 % 2) }
+        let scenario = Scenario.generateRealExchanges(
+            channels: 3, duration: 200, seed: 1,
+            exchanges: [RealExchange(clips: [0, 1], gaps: [0.5]), RealExchange(clips: [2, 3], gaps: [0.5])],
+            clips: clips)
+        let starts = exchangeStarts(scenario)
+        #expect(starts.map(\.first) == [0, 2, 0])
+        for channel in starts {
+            #expect(channel.count >= 2)
+            for (a, b) in zip(channel, channel.dropFirst()) { #expect(a != b) }
+        }
     }
 
     @Test func scorerCountsOnlyTheChosenClips() {

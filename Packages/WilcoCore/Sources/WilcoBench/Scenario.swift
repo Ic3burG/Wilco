@@ -148,7 +148,8 @@ public struct Scenario: Equatable, Sendable {
     /// clips in their original order and gaps (capped at
     /// `RealShowSet.maximumGap`). Exchanges go to the channels in turn, in
     /// order, starting again from the first once all are used, until no
-    /// channel has room for its next one. Each placed exchange has its own
+    /// channel has room for its next one; a channel's next exchange is never
+    /// the one it just had while there are two or more. Each placed exchange has its own
     /// number, and `exchangeQuiet` separates exchanges on a channel.
     public static func generateRealExchanges(
         channels channelCount: Int, duration: Double, seed: UInt64, exchanges: [RealExchange], clips: [ConversationClip]
@@ -158,12 +159,21 @@ public struct Scenario: Equatable, Sendable {
         var times = randoms.indices.map { randoms[$0].unit() * min(3, duration / 4) }
         var channels = [[ScheduledUtterance]](repeating: [], count: channelCount)
         var full = [Bool](repeating: false, count: channelCount)
-        var next = 0
+        // Channels and exchanges have their own cursors: the exchange cursor
+        // moves only when an exchange is placed, so the next channel gets the
+        // next exchange and every exchange is used once before any repeats.
+        // When the channel count is a multiple of the exchange count, each
+        // pass over the channels starts one exchange later, so a channel
+        // doesn't get the same exchange again and again.
+        let rotate = channelCount % exchanges.count == 0
+        var nextChannel = 0
+        var placedCount = 0
         while full.contains(false) {
-            let channel = next % channelCount
-            let exchange = exchanges[next % exchanges.count]
-            next += 1
+            let channel = nextChannel % channelCount
+            let pass = nextChannel / channelCount
+            nextChannel += 1
             guard !full[channel] else { continue }
+            let exchange = exchanges[(placedCount + (rotate ? pass : 0)) % exchanges.count]
             var placed: [ScheduledUtterance] = []
             var at = times[channel]
             for (turn, clip) in exchange.clips.enumerated() {
@@ -172,7 +182,7 @@ public struct Scenario: Equatable, Sendable {
                     at += min(RealShowSet.maximumGap, max(0, gap))
                 }
                 placed.append(ScheduledUtterance(
-                    clip: clip, start: at, duration: clips[clip].duration, voice: clips[clip].voice, exchange: next
+                    clip: clip, start: at, duration: clips[clip].duration, voice: clips[clip].voice, exchange: placedCount + 1
                 ))
                 at += clips[clip].duration
             }
@@ -181,6 +191,7 @@ public struct Scenario: Equatable, Sendable {
                 continue
             }
             channels[channel] += placed
+            placedCount += 1
             times[channel] = at + exchangeQuiet.lowerBound
                 + randoms[channel].unit() * (exchangeQuiet.upperBound - exchangeQuiet.lowerBound)
         }

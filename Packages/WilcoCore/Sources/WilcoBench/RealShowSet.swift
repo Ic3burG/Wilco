@@ -33,9 +33,10 @@ public struct RealShowSet: Sendable {
     public var exchanges: [RealExchange]
     /// What the live transcript said on the night, against the answers.
     public var live: WordErrors
-    /// Sessions with labelled clips; labels agreed by the voters, checked by
-    /// hand, and without an answer; clips not kept (a cap or full queue) or
-    /// whose audio couldn't be read.
+    /// Sessions with labelled clips; usable clips agreed by the voters and
+    /// checked by hand; labels without an answer; clips the keeper dropped
+    /// because its queue was full, plus answered clips whose audio couldn't
+    /// be read. `agreed + checked` is `clips.count`.
     public var counts: (sessions: Int, agreed: Int, checked: Int, disputed: Int, dropped: Int)
 
     /// Longest quiet kept between an exchange's clips. Longer pauses on the
@@ -104,18 +105,17 @@ public struct RealShowSet: Sendable {
             var placed: [UUID: (index: Int, voiceAgreed: Bool)] = [:]
             for record in session.manifest.clips {
                 guard let label = labels[record.id] else { continue }
-                if label.checked != nil {
-                    counts.checked += 1
-                } else if label.words == .agreed, label.answer != nil {
-                    counts.agreed += 1
-                } else {
+                guard let answer = label.answer else {
                     counts.disputed += 1
+                    continue
                 }
-                guard let answer = label.answer else { continue }
+                // An answered clip whose audio can't be read counts only as dropped.
                 guard let samples = try? audio(for: record, in: folder, sampleRate: sampleRate) else {
                     counts.dropped += 1
                     continue
                 }
+                // An answer is a hand check or the voters' agreed words.
+                if label.checked != nil { counts.checked += 1 } else { counts.agreed += 1 }
                 let voiceAgreed = label.voice == .agreed && label.speaker != nil
                 let voice: Int
                 if voiceAgreed, let speaker = label.speaker {
