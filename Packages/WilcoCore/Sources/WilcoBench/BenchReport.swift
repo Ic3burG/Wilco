@@ -1,4 +1,5 @@
 import Foundation
+import WilcoCore
 
 /// One engine at one channel count.
 public struct RunResult: Codable, Equatable, Sendable {
@@ -53,6 +54,15 @@ public struct RunResult: Codable, Equatable, Sendable {
     /// them carry a sound classification. Nil without diagnostics.
     public var diagnosticsRows: Int?
     public var classifiedRows: Int?
+    /// Real-show runs, engines that are also voters: word errors on the
+    /// clips this engine's voter wasn't one of the agreeing voters for, and
+    /// how many calls that covers. Nil otherwise (and in older reports).
+    public var nonVoterWordErrors: WordErrors?
+    public var nonVoterCalls: Int?
+    /// The same run scored the same way (per call) on every call, so the
+    /// fair rate above has a like-for-like number to compare with.
+    public var voterAllWordErrors: WordErrors?
+    public var voterAllCalls: Int?
 
     public struct Sample: Codable, Equatable, Sendable {
         public var reference: String
@@ -60,6 +70,14 @@ public struct RunResult: Codable, Equatable, Sendable {
     }
 
     public var wordErrorRate: Double { wordErrors.rate }
+
+    /// The result without any words: no reference or transcript samples.
+    /// Real-show runs keep only numbers, since their clips are real voices.
+    public func numbersOnly() -> RunResult {
+        var result = self
+        result.samples = []
+        return result
+    }
 
     /// Share of the spoken words with nothing in the transcript where they
     /// belong. Wrong words don't count, only missing ones: it's what a
@@ -102,11 +120,16 @@ public struct BenchReport: Codable, Equatable, Sendable {
     public var date: Date
     public var machine: String
     public var osVersion: String
-    /// Where the speech came from: "say" or a folder of recordings.
+    /// Where the speech came from: "say", a folder of recordings, or the
+    /// real-show counts (numbers only).
     public var corpus: String
     /// Share of all cores busy before any engine ran.
     public var idleSystemCPU: Double?
     public var results: [RunResult]
+    /// Real-show runs: the live transcript on the night against the same
+    /// answers, and how many clips that covers. Nil otherwise.
+    public var live: WordErrors?
+    public var liveClips: Int?
 
     public init(
         date: Date, machine: String, osVersion: String, corpus: String, idleSystemCPU: Double? = nil,
@@ -137,7 +160,7 @@ public struct BenchReport: Codable, Equatable, Sendable {
         func s(_ value: Double?) -> String { value.map { String(format: "%.2f s", $0) } ?? "–" }
         let delay = r.finalLatency.map { String(format: "%.2f / %.2f / %.2f s", $0.p50, $0.p95, $0.max) } ?? "–"
         var cells: [String] = [
-            r.engine,
+            r.engine + (r.nonVoterWordErrors != nil ? " (voter)" : ""),
             "\(r.channels)",
             String(format: "%.1f%%", r.wordErrorRate * 100),
         ]
@@ -187,6 +210,25 @@ public struct BenchReport: Codable, Equatable, Sendable {
         return "| " + cells.joined(separator: " | ") + " |"
     }
 
+    /// What the app heard on the night, against the answers.
+    public static func liveLine(_ live: WordErrors, clips: Int) -> String {
+        String(format: "Live on the night: %.1f%% WER over %d clips.", live.rate * 100, clips)
+    }
+
+    /// A voter engine's word error rate on the calls whose clip it didn't
+    /// help label (where the answer isn't partly its own), beside its rate
+    /// on every call. Both are scored per call, against the lines
+    /// attributed to each, so they differ by bias rather than by method.
+    public static func voterLine(_ r: RunResult) -> String {
+        func rate(_ errors: WordErrors?, calls: Int?) -> String {
+            guard let errors, let calls, calls > 0 else { return "–" }
+            return String(format: "%.1f%% WER on %d calls", errors.rate * 100, calls)
+        }
+        return "\(r.engine) (voter) × \(r.channels) ch: "
+            + rate(r.nonVoterWordErrors, calls: r.nonVoterCalls) + " it didn't agree on, vs "
+            + rate(r.voterAllWordErrors, calls: r.voterAllCalls) + " in all (both scored per call)."
+    }
+
     public func markdown() -> String {
         let formatter = ISO8601DateFormatter()
         let longTalk = results.contains { $0.longTalk == true }
@@ -200,6 +242,13 @@ public struct BenchReport: Codable, Equatable, Sendable {
             Self.tableHeader(longTalk: longTalk, diagnostics: diagnostics),
         ]
         lines += results.map { Self.tableRow($0, diagnostics: diagnostics) }
+        if let live {
+            lines += ["", Self.liveLine(live, clips: liveClips ?? 0)]
+        }
+        let voters = results.filter { $0.nonVoterWordErrors != nil }
+        if !voters.isEmpty {
+            lines += [""] + voters.map(Self.voterLine)
+        }
         let limit = Int(RunResult.acceptableDelay)
         lines += [
             "",

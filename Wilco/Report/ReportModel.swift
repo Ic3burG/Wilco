@@ -55,6 +55,7 @@ final class ReportModel {
         var show: ShowDocument
         var showIsKnown: Bool
         var diagnostics: SessionDiagnostics?
+        var clips: SessionClips?
     }
 
     /// A session read off disk, ready to show.
@@ -211,7 +212,8 @@ final class ReportModel {
             .filter { $0.started < started }
         reviewTask = Task {
             let built = await Task.detached(priority: .userInitiated) {
-                ShowReview.make(segments: input.segments, show: input.show, history: earlier, showIsKnown: input.showIsKnown, diagnostics: input.diagnostics)
+                ShowReview.make(segments: input.segments, show: input.show, history: earlier, showIsKnown: input.showIsKnown, diagnostics: input.diagnostics,
+                                  clips: input.clips)
             }.value
             // A review finished after the selection moved on belongs to another session.
             guard !Task.isCancelled, reviewInput?.url == input.url else { return }
@@ -240,7 +242,8 @@ final class ReportModel {
                     let report = ShowReportBuilder.build(segments: segments, show: recordedWith, sourceName: url.lastPathComponent, generated: .now, transcript: url)
                     return LoadedSession(report: report, reviewInput: ReviewInput(
                         url: url, segments: segments, show: recordedWith, showIsKnown: found != nil,
-                        diagnostics: SessionDiagnostics.load(forTranscript: url)))
+                        diagnostics: SessionDiagnostics.load(forTranscript: url),
+                        clips: SessionClips.load(forTranscript: url)))
                 }
             }.value
             guard !Task.isCancelled else { return }

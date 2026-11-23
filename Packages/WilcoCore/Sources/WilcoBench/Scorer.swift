@@ -201,6 +201,29 @@ public enum Scorer {
         )
     }
 
+    /// Word errors on just the calls that play one of `clips` (indexes into
+    /// the run's clips), from a run already scored: each such call against
+    /// the final lines attributed to it (as delays are). Used to score a
+    /// voter engine only on clips it didn't help label.
+    public static func wordErrors(
+        utterances: [ScheduledUtterance], texts: [String], events: [ObservedEvent], clips: Set<Int>
+    ) -> WordErrors {
+        var lines = [[ObservedEvent]](repeating: [], count: utterances.count)
+        for event in events where event.isRuleLine {
+            if let index = utterance(for: event.sessionOffset, in: utterances) { lines[index].append(event) }
+        }
+        var total = WordErrors()
+        for (index, utterance) in utterances.enumerated() where clips.contains(utterance.clip) {
+            let hypothesis = lines[index].sorted { ($0.sessionOffset, $0.arrival) < ($1.sessionOffset, $1.arrival) }
+                .map(\.text).joined(separator: " ")
+            total = total + WordErrorRate.compare(
+                reference: TranscriptNormalizer.words(texts[utterance.clip]),
+                hypothesis: TranscriptNormalizer.words(hypothesis)
+            )
+        }
+        return total
+    }
+
     /// Recognised lines with no annotated piece.
     static func unannotated(_ events: [ObservedEvent]) -> Set<UUID> {
         let annotated = Set(events.filter { $0.annotation != nil }.map(\.lineID))

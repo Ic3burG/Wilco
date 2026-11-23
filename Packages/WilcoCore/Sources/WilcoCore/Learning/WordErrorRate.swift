@@ -13,8 +13,21 @@ public enum TranscriptNormalizer {
             guard !token.isEmpty else { continue }
             words.append(contentsOf: expand(token))
         }
-        return joiningStandBy(words)
+        return readingLoneQAsCue(joiningStandBy(words))
     }
+
+    /// Some engines write "cue 42" as "Q 42": a lone "q" directly before a
+    /// number is "cue". Anywhere else it stays a letter.
+    private static func readingLoneQAsCue(_ words: [String]) -> [String] {
+        var result = words
+        for index in result.indices.dropLast() where result[index] == "q" && numberWords.contains(result[index + 1]) {
+            result[index] = "cue"
+        }
+        return result
+    }
+
+    /// Every word `spelled` can start a number with.
+    private static let numberWords = Set(ones + tens.filter { !$0.isEmpty } + ["minus"])
 
     private static func expand(_ token: String) -> [String] {
         switch token {

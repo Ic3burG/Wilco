@@ -21,6 +21,14 @@ let usage = """
       --duty FRACTION        Share of time each channel talks, 0–1 (default: 0.3).
       --seed N               Seed for who talks when (default: 1).
       --corpus FOLDER        Use recordings (name.wav + name.txt) instead of `say`.
+      --real-show            Use the clips Wilco kept and labelled after real
+                             shows (agreed and checked clips only) instead of
+                             `say`. Adds a "Live on the night" line, and scores
+                             engines that are also voters on the clips they
+                             didn't agree on. Reports hold numbers only.
+                             Can't be combined with --corpus.
+      --transcripts FOLDER   Where --real-show finds sessions and their clips
+                             (default: Wilco's transcripts folder).
       --voices N             Number of `say` voices (default: 4).
       --out FOLDER           Where to write the JSON and Markdown report
                              (default: ./bench-results).
@@ -29,6 +37,8 @@ let usage = """
       --conversation         Channels hold exchanges between voices (2–5 turns,
                              some back to back) instead of lone calls, and
                              `-voices` engines are scored on voice changes.
+                             With --real-show, the show's exchanges play whole,
+                             in order, with their own gaps (at most 3 s).
                              --duty doesn't apply.
       --long-talk            Channels hold about 15 s of unbroken talking in room
                              sound (echo and hiss), some dropping to a quiet
@@ -51,6 +61,8 @@ struct Options {
     var duty = 0.3
     var seed: UInt64 = 1
     var corpus: URL?
+    var realShow = false
+    var transcripts: URL?
     var voices = 4
     var out = URL(fileURLWithPath: "bench-results", isDirectory: true)
     var stopWhenBehind = false
@@ -87,6 +99,8 @@ func parse(_ arguments: [String]) -> Options {
         case "--duty": options.duty = number(argument) { $0 > 0 && $0 < 1 }
         case "--seed": options.seed = number(argument)
         case "--corpus": options.corpus = URL(fileURLWithPath: value(argument), isDirectory: true)
+        case "--real-show": options.realShow = true
+        case "--transcripts": options.transcripts = URL(fileURLWithPath: value(argument), isDirectory: true)
         case "--voices": options.voices = number(argument) { $0 > 0 }
         case "--out": options.out = URL(fileURLWithPath: value(argument), isDirectory: true)
         case "--stop-when-behind": options.stopWhenBehind = true
@@ -99,6 +113,8 @@ func parse(_ arguments: [String]) -> Options {
         }
     }
     if options.longTalk, options.conversation { fail("--long-talk and --conversation can't be combined") }
+    if options.realShow, options.corpus != nil { fail("--real-show and --corpus can't be combined") }
+    if options.transcripts != nil, !options.realShow { fail("--transcripts needs --real-show") }
     return options
 }
 
@@ -171,8 +187,16 @@ guard !engines.isEmpty else { fail("no engines can run on this Mac; see --list")
 let sampleRate = 48_000.0
 let clips: [BenchClip]
 let corpusName: String
+// Real-show clips are real voices: only numbers from them are printed or saved.
+var realShow: RealShowSet?
 do {
-    if let folder = options.corpus {
+    if options.realShow {
+        let set = try RealShowSet.load(transcripts: options.transcripts ?? DataLocations.transcripts, sampleRate: sampleRate)
+        guard !set.clips.isEmpty else { fail("no agreed or checked clips yet (\(set.summary))") }
+        realShow = set
+        clips = set.clips
+        corpusName = set.summary + (options.longTalk ? ", long talks" : "")
+    } else if let folder = options.corpus {
         // Recordings carry their own room, so long talks play them as they are.
         clips = try ClipLibrary.load(folder: folder, sampleRate: sampleRate)
         corpusName = "\(clips.count) recordings from \(folder.lastPathComponent)" + (options.longTalk ? ", long talks" : "")
@@ -202,8 +226,15 @@ do {
 var runner = BenchRunner(clips: clips, sampleRate: sampleRate)
 runner.voiceChanges.threshold = options.voiceThreshold
 runner.diagnostics = options.diagnostics
+if let realShow {
+    runner.agreeingVoters = realShow.agreeingVoters
+    runner.keepsTexts = false
+}
 let durations = clips.map { $0.duration(sampleRate: sampleRate) }
-if options.conversation, Set(clips.map(\.voice)).count < 2 {
+if options.conversation, let realShow, realShow.exchanges.isEmpty {
+    fail("--conversation needs exchanges whose clips all have agreed words and voices (\(realShow.summary))")
+}
+if options.conversation, realShow == nil, Set(clips.map(\.voice)).count < 2 {
     fail("--conversation needs at least two voices (more `say` voices, or speaker marks in the corpus)")
 }
 if options.longTalk {
@@ -226,6 +257,12 @@ var report = BenchReport(
     date: started, machine: machineDescription(),
     osVersion: ProcessInfo.processInfo.operatingSystemVersionString, corpus: corpusName, results: []
 )
+if let realShow {
+    report.live = realShow.live
+    report.liveClips = realShow.clips.count
+    log(corpusName)
+    log(BenchReport.liveLine(realShow.live, clips: realShow.clips.count))
+}
 
 @MainActor func save() {
     do {
@@ -250,7 +287,12 @@ log("\(report.machine) · \(engines.count) engine(s) × channels \(options.chann
 print(BenchReport.tableHeader(longTalk: options.longTalk, diagnostics: options.diagnostics))
 for engine in engines {
     for channels in options.channels {
-        let scenario = options.conversation
+        let scenario = options.conversation && realShow != nil
+            ? Scenario.generateRealExchanges(
+                channels: channels, duration: options.duration, seed: options.seed,
+                exchanges: realShow?.exchanges ?? [], clips: clips.map { $0.conversationClip(sampleRate: sampleRate) }
+            )
+            : options.conversation
             ? Scenario.generateConversations(
                 channels: channels, duration: options.duration, seed: options.seed,
                 clips: clips.map { $0.conversationClip(sampleRate: sampleRate) }
@@ -268,6 +310,7 @@ for engine in engines {
         report.results.append(result)
         print(BenchReport.tableRow(result, diagnostics: options.diagnostics))
         if result.voices != nil { log("  voices: " + BenchReport.voiceRow(result)) }
+        if result.nonVoterWordErrors != nil { log("  " + BenchReport.voterLine(result)) }
         save()
         if options.stopWhenBehind, !result.keepsUp {
             log("  \(engine.id) fell behind at \(channels) channels; skipping larger counts.")

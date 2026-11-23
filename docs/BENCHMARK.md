@@ -28,6 +28,8 @@ share the speech hardware, and keep the Mac otherwise quiet.
 | `--duty F` | `0.3` | Share of time each channel talks. Comms is mostly quiet; `0.6` is a busy ring. |
 | `--seed N` | `1` | Who talks when. The same seed gives every engine the same show. |
 | `--corpus DIR` | `say` speech | Real recordings: `name.wav` (or `.aif`, `.caf`, `.m4a`, `.mp3`, `.flac`) with `name.txt` holding what was said, one call per file. Lines may start with a speaker mark, `A: `, for voice scoring (see below). |
+| `--real-show` | off | The clips Wilco kept and labelled after real shows, agreed and checked clips only (see below). Can't be combined with `--corpus`. |
+| `--transcripts DIR` | Wilco's transcripts folder | Where `--real-show` finds sessions and their `.clips` folders. |
 | `--voices N` | `4` | How many `say` voices to use. |
 | `--out DIR` | `./bench-results` | JSON and Markdown report, saved after every run (gitignored). |
 | `--stop-when-behind` | off | Skip an engine's larger counts once it falls behind. |
@@ -115,6 +117,48 @@ applied, so use recordings of long talking, not single calls. The quiet
 half plays at 6% of the recorded level: a recording that isn't close to
 full level can fall under the segmenter's minimum there and look like lost
 speech when it isn't.
+
+### Real shows
+
+Real shows are the test `say` speech can't be. To get clips, turn on
+**Keep audio clips to learn from shows** in Wilco's Learning settings and run
+a show; the app keeps the unclear lines and the exchanges, and labels them in
+the background once capture has stopped (formats: `docs/SPEC.md`, "Session
+clips folder"). Then run:
+
+```sh
+swift run -c release wilco-bench --real-show --channels 1,16
+swift run -c release wilco-bench --real-show --conversation --transcripts ~/path/to/Transcripts
+```
+
+`--real-show` plays the clips the app kept beside each session (with
+**Keep clips** on) and labelled after the show. Only clips with an answer
+are used: the voters agreed, or someone checked it by hand. By default
+(and with `--long-talk`) the clips play as calls, as `--corpus` does. With
+`--conversation`, each exchange whose clips all have answers and agreed
+voices plays whole on one channel, in order, with its own gaps capped at
+3 s; exchanges go to the channels in turn. Voice numbers come from the
+labels, one per session, channel and speaker.
+
+The report gains a **Live on the night** line: the live transcript's word
+error rate on the same clips, against the same answers. Engines that are
+also voters (`parakeet-ultra`, `apple-longform*`, `whisper-large*`) are
+marked "(voter)" and get a line of their own with their word error rate on
+just the calls whose clip they weren't an agreeing voter for (an answer
+that is partly their own flatters them), beside their rate on every call.
+Both are scored per call, against the lines attributed to each call, so
+they can be compared with each other; the table's WER is over each
+channel's whole transcript and is counted differently.
+
+The report opens with a line of counts: sessions, clips, and how many were
+agreed, checked, disputed or dropped. Clips with no answer are left out of
+every score. Run `--real-show` after a show, once labelling has finished
+(**Settings › Learning** shows its progress); sessions still being labelled
+add fewer clips.
+
+The clips are real voices, so a real-show run prints and saves numbers
+only: no clip text, answers, candidates or channel names, and no
+reference/transcript samples in the JSON.
 
 ## What a run does
 

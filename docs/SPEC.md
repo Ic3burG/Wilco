@@ -61,6 +61,7 @@ All under `~/Library/Application Support/Wilco/` [file]:
 | `Transcripts/Session yyyy-MM-dd HHmm-ss.jsonl` | One `TranscriptSegment` JSON object per line, appended as each line is finalised (`TranscriptWriter`). *"Every finalised line is written to disk as it happens, so clearing the on-screen log does not discard the record."* The name is the start in the Mac's time zone at capture. **Capture time zone (new in the rebuild):** each line Wilco writes carries `timeZone`, the Mac's zone identifier when capture started (`"America/Phoenix"`), fixed for the session. The report, its HTML export, the session list and Review trends show times in that zone, with its abbreviation ("5:23:06 PM MST") and a header note ("Times are Phoenix time (MST), when it was recorded: 2 h behind this Mac.") only when its offset on the night differs from this Mac's. Older lines have no zone: `CaptureTimeZone` takes the offset from the gap between the file name and the earliest `timestamp − sessionOffset`, rounded to a quarter hour and dropped if more than 2 min off one. Labels are letters: the system's where it has them ("MST"), else from `TimeZone.abbreviationDictionary`, a zone with the same offset at that moment, preferring the same region, then common North American and European zones, then matching daylight saving (`ZoneAbbreviation`). So an older UTC−7 session reads "MST" and Berlin reads "CET"; with no match (Sydney) it stays "GMT+11". With neither, times use this Mac's zone, unlabelled, as before. Subtitles are timed from the session start and don't change. |
 | `Transcripts/Session yyyy-MM-dd HHmm-ss.wilco` | Wilco addition. A copy of the show (`ShowDocument`) the session was recorded with, written with the first line and updated when capture stops. The post-show report takes its title, channel names and colours from it. Older sessions have no copy: the report uses whichever saved show or open show shares the most channel IDs with the lines (the open show wins a tie), else the open show. |
 | `Transcripts/Session yyyy-MM-dd HHmm-ss.diagnostics` | Wilco addition. Per-minute level and speech figures for each channel, one JSON object per line. See "Session diagnostics file" below. |
+| `Transcripts/Session yyyy-MM-dd HHmm-ss.clips/` | Wilco addition. A folder of short audio clips kept from the session, with `clips.json` and `labels.json`. Only written when **Keep audio clips to learn from shows** is on. See "Session clips folder" below. |
 | `WhisperModels/models/argmaxinc/whisperkit-coreml/openai_whisper-<variant>/` | WhisperKit's standard download layout. **Reuse this path** so existing downloads (3 GB here) carry over. |
 | `ParakeetModels/‹model repository›/` | Parakeet speech and vocabulary models, one folder per repository (~600 MB). New in the rebuild. |
 
@@ -117,6 +118,142 @@ Later versions add fields and raise `v`.
 A clip is taken once a minute per channel, only from minutes with at least
 3 s of sound, and classified one at a time at low priority. A clip that
 finds 64 others waiting is dropped.
+
+### Session clips folder
+
+Wilco addition (design: `docs/superpowers/specs/2026-11-23-real-show-clips-design.md`).
+With **Settings › Learning › Keep audio clips to learn from shows** on
+(`UserDefaults` `learning.keepClips`, Bool, default false, read once when
+capture starts), Wilco saves short clips of the lines that matter for testing
+speech engines, and labels them by itself after the show. Everything stays on
+this Mac. The show, the transcript and the diagnostics file are unchanged.
+
+```
+Session 2026-11-21 1720-04.jsonl
+Session 2026-11-21 1720-04.clips/
+    clips.json          what was kept and why
+    labels.json         written by labelling
+    <clip-id>.wav       one per kept line
+```
+
+The folder name does not end in `.jsonl`, so it is never listed as a session.
+A `.clips` folder with no `.jsonl` beside it is ignored by labelling and the
+Review. Both JSON files are written atomically with sorted keys.
+Decoding ignores unknown fields.
+
+**Audio.** `<clip-id>.wav` (the clip's UUID, upper case) is mono 16-bit PCM at
+16 kHz, the audio the engine heard for one final line. It comes from the
+engine's hand-over of each final line, off the real-time thread; nothing is
+added to the capture callback.
+
+**What is kept.**
+
+- *Unclear lines* (`kind` `unclear`): confidence below the channel's running
+  25th percentile once it has 20 lines, below 0.75 before that. A line with no
+  confidence is unclear. Each channel is judged on its own scale.
+- *Exchanges* (`kind` `exchange`): a run of 3 to 12 back-to-back final lines
+  on one channel, each starting within 10 s of the previous line's end. Every
+  line of the run is kept, sharing one `exchange` number.
+- A line that is both counts once. Lines under 0.5 s, and lines of 19.5 s or
+  more (cut at the 20 s limit), are skipped.
+- At most 100 unclear lines and 20 exchanges a session. Each kind keeps a
+  uniform sample of the whole session (reservoir sampling); a clip that loses
+  its slot is deleted at once, and an exchange is kept or dropped whole.
+- Clips wait in a queue of at most 32 for the writer. A clip that finds it
+  full is dropped and counted in `dropped`; transcription never waits.
+
+**`clips.json`**, rewritten at most every 5 s and when capture stops:
+
+```json
+{"version":1,
+ "clips":[{"id":"<uuid>","channel":"<uuid>","kind":"unclear",
+           "sessionOffset":812.4,"duration":3.1,"confidence":0.58,
+           "engine":"parakeet"}],
+ "dropped":0}
+```
+
+| Field | Meaning |
+|---|---|
+| `version` | 1 |
+| `clips[].id` | Clip UUID; names the WAV file |
+| `clips[].channel` | The channel's UUID, as in the transcript |
+| `clips[].kind` | `unclear` or `exchange` |
+| `clips[].sessionOffset`, `duration` | Start (seconds from the session start) and length, in seconds |
+| `clips[].confidence` | The line's confidence; omitted when the engine gave none |
+| `clips[].engine` | `SpeechEngine` raw value of the channel's engine |
+| `clips[].whisperModel` | `WhisperModel` raw value; Whisper channels only |
+| `clips[].exchange` | Exchange number, from 1 per session; omitted for `unclear` |
+| `dropped` | Lines dropped because the keeper's queue was full (lines turned away by the caps aren't counted) |
+
+A clip has no link to a transcript line. The transcript's `id` is not the
+engine's, and one utterance can become two lines when voices are told apart. The live text for a
+clip is the final lines on its channel with `sessionOffset` in
+[`start` − 0.5 s, `start` + `duration` − 0.1 s), in order, joined with spaces.
+The 0.1 s keeps the next line of an exchange out.
+
+**`labels.json`**, written by labelling:
+
+```json
+{"version":1,
+ "voters":{"parakeet-ultra":"…","apple-longform":"…"},
+ "clips":[{"clip":"<uuid>","words":"agreed","text":"…",
+           "candidates":{"parakeet-ultra":"…","apple-longform":"…"},
+           "voice":"agreed","speaker":2}],
+ "finished":true}
+```
+
+| Field | Meaning |
+|---|---|
+| `version` | 1 |
+| `voters` | Voter ID to the model's version string. IDs: `parakeet-ultra`, `apple-longform`, `whisper-large-v3` |
+| `clips[].clip` | Clip UUID |
+| `clips[].words` | `agreed`, `disputed`, `checked` or `notEnoughVoters` |
+| `clips[].text` | The agreed text (the first matching voter's, casing kept); omitted unless `agreed` |
+| `clips[].candidates` | Voter ID to what that voter heard |
+| `clips[].voice` | `agreed` or `disputed`; omitted when voices weren't grouped |
+| `clips[].speaker` | Speaker number within the channel, from 0; set only when `voice` is `agreed` |
+| `clips[].checked` | A person's answer. Nothing in the app writes it yet. It overrides `text` |
+| `finished` | True when every clip has been labelled with the current voters |
+| `voiceError` | Optional. Why voices couldn't be grouped on some channel; those clips have no `voice` |
+
+A clip's **answer** is `checked`, else `text` when `words` is `agreed`.
+Disputed and `notEnoughVoters` clips have none and are left out of every score.
+
+**Voters.** The live engine is never a voter. Three are possible: Parakeet
+Ultra (`parakeet-ultra`, a download in Settings › Learning), Apple long-form
+(`apple-longform`, macOS 26 and later, with its English assets installed) and
+Whisper large-v3 (`whisper-large-v3`, optional, about 3 GB, installed as
+other Whisper models are). Before macOS 26 no third voter exists, so labelling
+needs Ultra and Whisper large. At least two must be installed. A voter that is
+also a channel's live engine sits out that channel's clips.
+
+**Words.** Each voter transcribes each clip whole, given the show's
+vocabulary. Texts are compared after normalising (`TranscriptNormalizer`):
+lower case, no punctuation, numbers and spelled numbers made the same, "queue"
+and a "Q5" prefix read as "cue", and a lone "Q" directly before a number
+read as "cue". With two voters both must match; with three, any two. Otherwise the clip is
+`disputed`. Nothing is guessed.
+
+**Voices.** Per channel, the clips are joined in session order with 1 s of
+silence between, and two offline diarizers run over the result: the offline
+pipeline (WeSpeaker and VBx) and offline Sortformer (a different model family;
+about 240 MB, a download in Settings › Learning). A clip's voice is `agreed`
+only for groupings both diarizers share, found by matching their speakers
+one-to-one; anything else is `disputed`. Live voice letters are not used. This
+is weaker than the words, since both can make the same mistake. If either
+diarizer fails, `voiceError` is set and that channel's clips have no `voice`.
+
+**When labelling runs.** In the background at low priority: at launch for
+every session with clips and no labels finished with the current voters, and
+every minute after that, but only 120 s or more after capture stops. Never
+during capture. When capture starts it stops between model calls; the work done is saved per
+clip, so it picks up where it left off. A change of installed voters
+relabels clips that are not `checked`.
+
+**Deleting.** Clips go with their session. **Delete All Clips** (Settings ›
+Learning, with the size used) removes every `.clips` folder, labels included,
+and leaves transcripts and diagnostics. Wilco has no in-app session delete; one
+would have to remove the `.clips` folder too.
 
 `.wilco` is also a document type (`ShowFile: FileDocument`) for
 import/export of shows, and `SubtitleFile: FileDocument` exports **SRT / VTT**.
@@ -401,6 +538,16 @@ session start being the minimum of `timestamp − sessionOffset`. Checks
 | Falling behind (info) | delay p90 of the last third ≥5 s above the first (≥50 lines each) | — |
 | Quiet (info, one finding) | session ≥2 h at ≥200 lines/hour; unmuted channels under 4 lines/hour | — |
 | Vocabulary (info) | see below | add the ticked words |
+| Accuracy on the hardest lines (info, one finding) | per channel with at least 10 clips that have an answer (see "Session clips folder"): the share of words the live text got wrong against the answers, with last show's figure when an earlier session of the show has one. Skipped for sessions with no `labels.json` | — |
+
+The accuracy figure is word error rate over the kept clips only, which lean
+towards unclear lines, so it reads as "on its hardest lines", not overall
+accuracy. Both sides go through `TranscriptNormalizer`. Per-channel figures
+and clip counts are stored in each `SessionSummary` for the comparison.
+The trend table also has a **Hard-line errors** column: the word error rate
+pooled over every clip with an answer in that session, all channels together.
+No minimum applies to it (unlike the finding's 10 clips per channel). It reads
+"—" when the session has no scored clips.
 
 Vocabulary suggestions count capitalised words and pairs that don't start
 a sentence (not fillers, stop words, "I" or exclamations) across this
@@ -449,7 +596,7 @@ Single main window (`MainWindowView`) — `NavigationSplitView`:
 
 **Settings** (`SettingsTab`, persisted `settings.selectedTab`): Look & Feel,
 Audio, Languages (engine models, Whisper model picker, global vocabulary),
-Automation (rules + highlights editors, test button), Destinations (OSC),
+Learning (keep-clips switch, voter models, Delete All Clips; see "Session clips folder"), Automation (rules + highlights editors, test button), Destinations (OSC),
 Integrations (Vor), Network (peers), MOS, MCP, License (→ remove).
 
 All user-facing copy is in `reference/strings.txt`; reuse it where it reads well.

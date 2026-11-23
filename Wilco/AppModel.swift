@@ -103,6 +103,10 @@ final class AppModel {
     /// One sound classifier for the app's lifetime; each session's recorder shares it.
     @ObservationIgnored private let soundClassifier = SoundClassifierQueue()
     @ObservationIgnored private var diagnostics: DiagnosticsRecorder?
+    /// Keeps short audio clips beside the session when the preference was on at capture start.
+    @ObservationIgnored private var clipKeeper: ClipKeeper?
+    /// When capture last stopped; labelling waits a while after this.
+    private(set) var lastCaptureStop: Date?
     @ObservationIgnored private var reportedWriteFailure = false
     @ObservationIgnored private var evaluator = AutomationEvaluator()
     /// Keywords of recognised lines, kept until their annotated pieces arrive.
@@ -110,13 +114,22 @@ final class AppModel {
     @ObservationIgnored private let performer = ActionPerformer()
     /// Speech model downloads started from Settings.
     let installer: ModelInstaller
+    /// Labels kept clips after shows, when nothing is capturing.
+    @ObservationIgnored private(set) var learning: LearningController!
 
     init(store: ShowStore = ShowStore(), configurationStore: ConfigurationStore = ConfigurationStore()) {
         // One Parakeet store for Settings and running channels, so a removed model is seen by both.
         let parakeetModels = ParakeetModelStore()
         // Likewise one voice model, so Settings and channels agree on whether it is installed.
         let voiceprints = WeSpeakerVoiceprints()
-        installer = ModelInstaller(parakeetStore: parakeetModels, voiceprints: voiceprints)
+        // Parakeet Ultra labels kept clips; it shares the live model's vocabulary model.
+        let parakeetUltraModels = ParakeetModelStore(
+            directory: DataLocations.parakeetUltraModels, version: .ultra,
+            vocabularyDirectory: DataLocations.parakeetModels
+        )
+        installer = ModelInstaller(
+            parakeetStore: parakeetModels, parakeetUltraStore: parakeetUltraModels, voiceprints: voiceprints
+        )
         transcription = TranscriptionController(parakeetModels: parakeetModels, voiceprints: voiceprints)
         self.store = store
         self.configurationStore = configurationStore
@@ -138,7 +151,10 @@ final class AppModel {
 
         restoreLoadedConfiguration()
 
-        installer.onInstalled = { [weak self] in self?.modelsInstalled() }
+        installer.onInstalled = { [weak self] in
+            self?.modelsInstalled()
+            self?.learning.check()
+        }
         performer.log = { [weak self] entry in self?.log(entry) }
         performer.mark = { [weak self] marker in self?.markers.append(marker) }
 
@@ -148,6 +164,13 @@ final class AppModel {
                 self?.apply(update)
             }
         }
+
+        learning = LearningController(
+            ultra: installer.parakeetUltraStore, whisper: installer.whisperStore,
+            isCapturing: { [weak self] in self?.isCapturing ?? true },
+            lastCaptureStop: { [weak self] in self?.lastCaptureStop }
+        )
+        learning.start()
     }
 
     // MARK: Channels
@@ -223,12 +246,16 @@ final class AppModel {
     }
 
     func startCapture() async {
+        learning.captureStarted()
         guard await hasMicrophoneAccess() else {
             lastMessage = "Wilco can't use audio input. Allow it in System Settings › Privacy & Security › Microphone, then start capture again."
             return
         }
         // A second press while the access check was pending.
         guard !isCapturing else { return }
+        // The microphone prompt may have let labelling start meanwhile; stop it,
+        // with no await before capture state is set.
+        learning.captureStarted()
         let start = Date()
         sessionStart = start
         // One zone for the file name and every line, so the session reads
@@ -241,6 +268,11 @@ final class AppModel {
             sessionStart: start, classifier: soundClassifier)
         diagnostics = recorder
         transcription.diagnostics = recorder.tap
+        if UserDefaults.standard.bool(forKey: "learning.keepClips") {
+            let keeper = ClipKeeper(folder: ClipsFolder.url(forTranscript: transcriptURL))
+            clipKeeper = keeper
+            transcription.clips = keeper.tap
+        }
         reportedWriteFailure = false
         evaluator.reset()
         pendingLines = PendingLines()
@@ -256,6 +288,8 @@ final class AppModel {
     /// hearing, and it still reaches the session file.
     func stopCapture() {
         sessionStart = nil
+        lastCaptureStop = Date()
+        learning.captureStopped()
         capture.stop()
         meterTimer?.invalidate()
         meterTimer = nil
@@ -265,10 +299,14 @@ final class AppModel {
         let recorder = diagnostics
         diagnostics = nil
         transcription.diagnostics = nil
+        let keeper = clipKeeper
+        clipKeeper = nil
+        transcription.clips = nil
         // Likewise the writer: a restart during the recorder's wait must not skip this one's end copy.
         let finishing = writer
         Task {
             await transcription.stopAll()
+            await keeper?.finish()
             if sessionStart == nil, let finishing {
                 finishing.finish(show: document)
                 if writer === finishing { writer = nil }

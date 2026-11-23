@@ -183,21 +183,42 @@ final class VoiceAnnotationQueue: Sendable {
 
 /// Sends a final line. With voice changes off it goes out whole, exactly as
 /// before. With them on, it goes to rules at once as `.recognized`, and its
-/// annotated form follows from the channel's voice queue; `audio` is only
-/// fetched in that case. `words` (session offsets) let the annotation split
-/// the line where the voice changes.
+/// annotated form follows from the channel's voice queue. `audio` is fetched
+/// only when voice changes or clips need it. `words` (session offsets) let
+/// the annotation split the line where the voice changes.
+///
+/// With `clips` set, the line's audio is fetched once (even without voice
+/// changes) and offered to the clip tap as well.
 func deliverFinalLine(
     _ line: TranscriptionEvent, voices: VoiceAnnotationQueue?, onEvent: TranscriptionHandler,
-    lineStart: Double, lineEnd: Double, words: [TimedWord] = [], audio: () -> [Float]
+    lineStart: Double, lineEnd: Double, words: [TimedWord] = [], audio: () -> [Float],
+    clips: ChannelClips? = nil
 ) {
-    guard let voices, !line.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+    let hasText = !line.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    var fetched: [Float]?
+    if let clips, hasText {
+        let samples = audio()
+        fetched = samples
+        clips.tap.offer(ClipOffer(
+            candidate: ClipCandidate(
+                id: UUID(), channel: clips.channel, sessionOffset: lineStart,
+                duration: lineEnd - lineStart, confidence: line.confidence
+            ),
+            engine: clips.engine, whisperModel: clips.whisperModel, samples: samples
+        ))
+    }
+    guard let voices, hasText else {
         onEvent(line)
         return
     }
     var recognised = line
     recognised.stage = .recognized
     onEvent(recognised)
-    voices.submit(recognised, audio: audio, lineStart: lineStart, lineEnd: lineEnd, words: words)
+    if let fetched {
+        voices.submit(recognised, audio: { fetched }, lineStart: lineStart, lineEnd: lineEnd, words: words)
+    } else {
+        voices.submit(recognised, audio: audio, lineStart: lineStart, lineEnd: lineEnd, words: words)
+    }
 }
 
 /// Stands in when voice changes are on but no voice model was given: every
@@ -207,4 +228,14 @@ struct UnavailableVoiceprints: VoiceprintExtractor {
     func voiceprints(of samples: [Float], startingAt offset: Double) async throws -> [Voiceprint] {
         throw VoiceprintError.notInstalled
     }
+}
+
+/// Where and as what a channel's final lines are offered as clips.
+struct ChannelClips: Sendable {
+    var tap: ClipTap
+    var channel: UUID
+    /// `SpeechEngine` raw value.
+    var engine: String
+    /// `WhisperModel` raw value, Whisper channels only.
+    var whisperModel: String?
 }

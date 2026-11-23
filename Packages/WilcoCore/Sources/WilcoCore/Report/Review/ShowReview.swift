@@ -4,6 +4,8 @@ import Foundation
 public enum ReviewThresholds {
     /// Sessions shorter than this have too little to judge; only show setup is checked.
     public static let minimumLines = 50
+    /// A channel needs this many labelled clips before its accuracy is reported.
+    public static let accuracyMinimumClips = 10
     public static let busyMinimumLines = 300
     public static let busyShare = 0.25
     /// A highlight this busy on a busy channel gets a "keep it off" fix.
@@ -62,6 +64,8 @@ public struct ShowReview: Sendable {
     public var suggestions: [VocabularySuggestion]
     /// Up to four earlier sessions of the same show, newest first.
     public var trend: [SessionSummary]
+    /// Word error rate over this session's labelled clips; nil when it has none.
+    public var clipErrorRate: Double? = nil
 
     /// Whether fixes from this review belong in `show`: it must have at
     /// least one of the channels the session heard. Fixes that name no
@@ -75,7 +79,8 @@ public struct ShowReview: Sendable {
     /// only a stand-in (no copy beside the session and no saved show shares
     /// its channels): checks that judge the show itself are skipped.
     public static func make(segments: [TranscriptSegment], show: ShowDocument, history: [SessionSummary] = [],
-                            showIsKnown: Bool = true, diagnostics: SessionDiagnostics? = nil) -> ShowReview {
+                            showIsKnown: Bool = true, diagnostics: SessionDiagnostics? = nil,
+                            clips: SessionClips? = nil) -> ShowReview {
         let stats = SessionStats.make(segments)
         var names = NameCounts.make(segments)
         for summary in history { names.add(summary.names) }
@@ -98,10 +103,14 @@ public struct ShowReview: Sendable {
         builder.checkHot()
         builder.checkLowLevel(excluding: Set(quiet.map(\.channel.id)))
         builder.checkLost()
+        builder.checkAccuracy(clips: clips, history: history)
         let findings = builder.found
             .sorted { ($0.finding.severity, -$0.weight) < ($1.finding.severity, -$1.weight) }
             .map(\.finding)
-        return ShowReview(stats: stats, findings: findings, suggestions: suggestions, trend: Array(history.prefix(4)))
+        let scored = clips.map { ClipAccuracy.perChannel(segments: segments, clips: $0) } ?? [:]
+        let clipErrorRate = scored.isEmpty ? nil : scored.values.reduce(WordErrors()) { $0 + $1.errors }.rate
+        return ShowReview(stats: stats, findings: findings, suggestions: suggestions, trend: Array(history.prefix(4)),
+                          clipErrorRate: clipErrorRate)
     }
 }
 
@@ -423,6 +432,29 @@ private struct Builder {
                 channelID: id, evidence: [], fixes: []
             ), weight: max(d.lostMinutes.count, 1))
         }
+    }
+
+    /// How often the live text got the labelled hard lines wrong, per channel.
+    mutating func checkAccuracy(clips: SessionClips?, history: [SessionSummary]) {
+        guard let clips else { return }
+        let minimum = ReviewThresholds.accuracyMinimumClips
+        let scored = ClipAccuracy.perChannel(segments: segments, clips: clips)
+            .filter { $0.value.clips >= minimum }
+            .sorted { ($0.value.errors.rate, $1.key.uuidString) > ($1.value.errors.rate, $0.key.uuidString) }
+        guard !scored.isEmpty else { return }
+        let lines = scored.map { id, result -> String in
+            var line = "\(name(id)): \(percent(result.errors.rate)) of words wrong on \(result.clips) clips"
+            // history is newest first; the last show is the newest one with enough clips on this channel.
+            if let before = history.first(where: { ($0.clipCounts[id] ?? 0) >= minimum }),
+               let errors = before.clipErrors[id] {
+                line += " (was \(percent(errors.rate)) last show)"
+            }
+            return line
+        }
+        add(Finding(
+            id: "accuracy", severity: .info, title: "Accuracy on the hardest lines",
+            detail: lines.joined(separator: "\n"), channelID: nil, evidence: [], fixes: []
+        ), weight: scored.count)
     }
 
     mutating func checkCommonPhrases() {

@@ -17,9 +17,11 @@ actor AppleChannelTranscriber: ChannelTranscriber {
     /// Nil when the channel doesn't detect voice changes.
     private let annotator: VoiceAnnotator?
     private var voices: VoiceAnnotationQueue?
+    private var clips: ChannelClips?
     /// Recent 16 kHz audio on the analyzer's timeline (seconds since the first
     /// sample fed), so a final line's audio can be found by its range. Only
-    /// with voice changes on, and only filled while the voice model is usable.
+    /// with voice changes or clip keeping on; filled while the voice model is
+    /// usable or clips are being kept.
     private var history: AudioHistory?
 
     private var analyzer: SpeechAnalyzer?
@@ -103,10 +105,13 @@ actor AppleChannelTranscriber: ChannelTranscriber {
         self.analyzer = analyzer
         input = continuation
 
-        if let annotator {
-            history = AudioHistory()
-            voices = VoiceAnnotationQueue(annotator: annotator, onEvent: onEvent)
+        clips = source.clips.map {
+            ChannelClips(
+                tap: $0, channel: configuration.channelID, engine: configuration.engine.rawValue, whisperModel: nil
+            )
         }
+        if annotator != nil || clips != nil { history = AudioHistory() }
+        if let annotator { voices = VoiceAnnotationQueue(annotator: annotator, onEvent: onEvent) }
         results = Task { await self.forwardResults(of: module) }
         _ = source.ring.read(maxCount: source.ring.availableToRead)
         meter = source.diagnostics.map {
@@ -137,11 +142,12 @@ actor AppleChannelTranscriber: ChannelTranscriber {
                 if history != nil {
                     // The history's clock moves on by what the analyzer was
                     // fed, even when this resampler fails (silence is kept
-                    // instead) or the voice model isn't usable (nothing is
-                    // kept), so later lines still find their own audio.
+                    // instead) or nothing needs the audio (the voice model
+                    // isn't usable and clips are off, so nothing is kept),
+                    // so later lines still find their own audio.
                     let rate = source.sampleRate()
                     let seconds = Double(samples.count) / rate
-                    if annotator?.isUsable == true {
+                    if annotator?.isUsable == true || clips != nil {
                         if voiceConverter == nil { voiceConverter = SampleRateConverter.whisper() }
                         history?.append(try? voiceConverter?.convertToSamples(samples, sampleRate: rate), lasting: seconds)
                     } else {
@@ -189,7 +195,8 @@ actor AppleChannelTranscriber: ChannelTranscriber {
             event, voices: voices, onEvent: onEvent,
             lineStart: sessionOffset + start, lineEnd: sessionOffset + end,
             words: annotator?.isUsable == true ? Self.words(in: text, sessionOffset: sessionOffset) : [],
-            audio: { history?.samples(from: start, to: end) ?? [] }
+            audio: { history?.samples(from: start, to: end) ?? [] },
+            clips: clips
         )
     }
 

@@ -15,6 +15,10 @@ struct SettingsView: View {
                 LanguagesSettingsView()
                     .frame(width: 600, height: 560)
             }
+            Tab("Learning", systemImage: "graduationcap") {
+                LearningSettingsView()
+                    .frame(width: 540)
+            }
             Tab("Automation", systemImage: "bolt") {
                 AutomationSettingsView()
             }
