@@ -1367,3 +1367,18 @@ warnings. Verified: the user renamed channels in the app.
 
 - Combined, Matrix and Activity keep fixed names; Return and double-click
   do nothing on them.
+
+## 2026-11-23 — Three-letter zone labels
+
+- Zone labels are now letters wherever possible: older sessions known only
+  by their offset read "MST", "CST", "EST" instead of "GMT-7", and zones
+  the system spells as offsets on a US Mac get letters from its
+  abbreviation table ("CET", "BST", "JST", "IST"). `ZoneAbbreviation`
+  picks a zone with the same offset at that moment, preferring the same
+  region, then common North American and European zones, then matching
+  daylight saving. With no match (Sydney) it stays "GMT+11".
+- An offset alone can't tell MST from PDT in summer; the label is the
+  likelier one, and the times are right either way.
+
+Tested: label cases for offsets, named zones in winter and summer; full
+package suite passes; app builds. Not yet verified in the app.

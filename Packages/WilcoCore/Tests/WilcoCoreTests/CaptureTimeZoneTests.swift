@@ -104,8 +104,32 @@ struct CaptureTimeZoneTests {
 
     @Test func clockNotesAZoneKnownOnlyByItsOffset() {
         let india = CaptureClock(capture: TimeZone(secondsFromGMT: 19_800), local: eastern, at: start)
-        #expect(india.label == "GMT+5:30")
-        #expect(india.note == "Times are GMT+5:30, when it was recorded: 10 h 30 min ahead of this Mac.")
+        #expect(india.label == "IST")
+        #expect(india.note == "Times are IST, when it was recorded: 10 h 30 min ahead of this Mac.")
+    }
+
+    @Test func labelsAreLettersWhereverThereAreSome() {
+        let summer = Date(timeIntervalSince1970: 1_784_000_000)  // July 2026
+        func label(_ zone: TimeZone, at date: Date? = nil) -> String {
+            CaptureClock(capture: zone, local: TimeZone(identifier: "Pacific/Kiritimati")!, at: date ?? start).label
+        }
+        func named(_ id: String) -> TimeZone { TimeZone(identifier: id)! }
+        // Older sessions know only the offset.
+        #expect(label(TimeZone(secondsFromGMT: -7 * 3600)!) == "MST")
+        #expect(label(TimeZone(secondsFromGMT: -6 * 3600)!) == "CST")
+        #expect(label(TimeZone(secondsFromGMT: -5 * 3600)!) == "EST")
+        #expect(label(TimeZone(secondsFromGMT: -4 * 3600)!, at: summer) == "EDT")
+        #expect(label(TimeZone(secondsFromGMT: 0)!) == "GMT")
+        // Named zones the system spells as offsets.
+        #expect(label(named("Europe/London")) == "GMT")
+        #expect(label(named("Europe/London"), at: summer) == "BST")
+        #expect(label(named("Europe/Berlin")) == "CET")
+        #expect(label(named("Europe/Berlin"), at: summer) == "CEST")
+        #expect(label(named("Asia/Tokyo")) == "JST")
+        #expect(label(named("America/Denver"), at: summer) == "MDT")
+        #expect(label(named("America/Phoenix"), at: summer) == "MST")
+        // No letters to be had.
+        #expect(label(named("Australia/Sydney")) == "GMT+11")
     }
 
     @Test func reportExportUsesTheCaptureZone() {

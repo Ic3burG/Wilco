@@ -66,10 +66,9 @@ public struct CaptureClock: Sendable, Equatable {
         isLabelled = timeZone.secondsFromGMT(for: date) != local.secondsFromGMT(for: date)
     }
 
-    /// "MST", or "GMT+5:30" for a zone known only by its offset.
-    public var label: String {
-        timeZone.abbreviation(for: date) ?? timeZone.identifier
-    }
+    /// Letters where there are any ("MST", "CET", "IST"), else the offset
+    /// ("GMT+11"). See ``ZoneAbbreviation``.
+    public var label: String { ZoneAbbreviation.letters(for: timeZone, at: date) }
 
     /// " MST" to append to a time, or "" when the zones agree.
     public var suffix: String { isLabelled ? " " + label : "" }
@@ -92,4 +91,49 @@ public struct CaptureClock: Sendable, Equatable {
         let gap = abs(minutes) % 60 == 0 ? "\(abs(minutes) / 60) h" : "\(abs(minutes) / 60) h \(abs(minutes) % 60) min"
         return "Times are \(place), when it was recorded: \(gap) \(minutes < 0 ? "behind" : "ahead of") this Mac."
     }
+}
+
+/// A zone's letters at a moment. The system gives them only for zones
+/// common in the reader's region (on a US Mac, "MST" but "GMT+1" for Paris),
+/// and none for a zone known only by its offset. Those are looked up in the
+/// system's abbreviation table: a zone with the same offset at that moment,
+/// preferring the same region, then the commonest, then matching daylight
+/// saving.
+enum ZoneAbbreviation {
+    static func letters(for zone: TimeZone, at date: Date) -> String {
+        let system = zone.abbreviation(for: date) ?? zone.identifier
+        if system.allSatisfy(\.isLetter) { return system }
+        let offset = zone.secondsFromGMT(for: date)
+        // A fixed offset is taken as standard time; daylight is tried if
+        // nothing standard fits (UTC−4 in July is EDT).
+        let daylight = zone.isDaylightSavingTime(for: date)
+        if offset == 0, !daylight { return "GMT" }
+        let fitting = TimeZone.abbreviationDictionary.compactMap { letters, id -> (letters: String, id: String, daylight: Bool)? in
+            guard letters.count >= 3, letters.allSatisfy(\.isUppercase),
+                  let other = TimeZone(identifier: id), other.secondsFromGMT(for: date) == offset else { return nil }
+            let isDaylight = daylightLetters.contains(letters)
+            // The letters must be the ones in use there at that moment.
+            guard isDaylight == other.isDaylightSavingTime(for: date) else { return nil }
+            return (letters, id, isDaylight)
+        }
+        let region = zone.identifier.split(separator: "/").first.map(String.init)
+        func rank(_ entry: (letters: String, id: String, daylight: Bool)) -> (Int, Int, Int, String) {
+            (entry.id == zone.identifier ? 0 : entry.id.hasPrefix((region ?? "") + "/") ? 1 : 2,
+             preferred.firstIndex(of: entry.id) ?? preferred.count,
+             entry.daylight == daylight ? 0 : 1,
+             entry.letters)
+        }
+        return fitting.min { rank($0) < rank($1) }?.letters ?? system
+    }
+
+    /// Daylight-saving letters in the system table.
+    static let daylightLetters: Set<String> = [
+        "ADT", "AKDT", "BRST", "BST", "CDT", "CEST", "CLST", "EDT", "EEST", "MDT", "MSD", "NDT", "NZDT", "PDT", "WEST",
+    ]
+
+    /// Ties between regions go to the commonest: UTC−5 is EST, not Bogotá's COT.
+    static let preferred = [
+        "America/New_York", "America/Chicago", "America/Denver", "America/Phoenix", "America/Los_Angeles",
+        "America/Juneau", "Pacific/Honolulu", "America/Halifax", "Europe/London", "Europe/Paris", "Europe/Athens",
+    ]
 }
