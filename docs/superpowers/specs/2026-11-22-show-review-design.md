@@ -1,6 +1,7 @@
-# Show review: learn from each session (draft design)
+# Show review: learn from each session
 
-Status: draft, waiting for the user to pick an approach and approve.
+Status: approved 2026-11-22. The user picked approach A (Review tab); stage 1
+is built first.
 
 ## Why
 
@@ -113,14 +114,25 @@ timestamps, so ±1 s).
 `channelIDs` to every other channel (empty means all channels), so a
 channel added later starts excluded; the fix says so.
 
-Fixes apply to the open show when it's the session's show (same ID);
-otherwise the tab offers to open that show first. Dismissed keys are
-stored in the show (`reviewDismissed: [String]`, default empty, so older
-files still open).
+Shows have no ID, so a fix is offered against the **open show** (the
+app's `document`) when every channel, rule or highlight it names exists
+there; otherwise its button is disabled with "Open the show this session
+was recorded with". A fix whose result is already true (channel already
+muted, word already in the vocabulary) shows as done. Applying sets
+`app.document`, which already saves and updates live capture.
+[builder's call]
 
-Trends: a small table of the last five sessions of this show (lines,
-chatter share, unclear share, delay p90). Summaries are computed when the
-report list loads and cached in memory; no new files.
+Dismissed finding keys are kept in `UserDefaults` (`review.dismissed`), not
+in the show, so dismissing works whichever show is open and doesn't mark
+the show edited. [builder's call; the draft said the show file]
+
+Trends: a table of the last five sessions of the same show, newest first:
+lines, chatter share, unclear share, delay p90. "Same show" means the same
+show name (session copy, else best match), so YE Phoenix and YE Dallas
+stay apart even though they share channel IDs. Summaries are worked out
+in the background when the Review tab first opens and kept in memory; no
+new files. The same pass gathers name counts for vocabulary suggestions.
+[builder's call]
 
 ### Stage 2: diagnostics file
 
@@ -137,6 +149,13 @@ Off by default. Keeps short clips of low-confidence lines (capped per
 session) beside the session, deleted with it. Corrections typed in the
 report become ground truth, and `wilco-bench` gains a "real show" set so
 models and settings are scored on real comms audio.
+
+## Calls made while building (check these)
+
+- Fix availability by target IDs in the open show, not by show identity.
+- Dismissals in `UserDefaults`.
+- "Same show" by name.
+- Stage 2 (diagnostics) and 3 (audio clips) are separate designs later.
 
 ## Left to the builder
 
