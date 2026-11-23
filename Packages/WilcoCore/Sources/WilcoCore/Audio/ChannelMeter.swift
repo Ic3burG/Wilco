@@ -38,10 +38,6 @@ public struct DiagnosticsTap: Sendable {
 /// engine reads; it sends a ``MeterReport`` to the tap when a minute ends.
 /// It runs in a transcriber's read loop, never in the capture callback.
 public struct ChannelMeter: Sendable {
-    /// Frames above this level (linear, about -46 dBFS) count as sound.
-    static let soundFloor: Float = 0.005
-    /// Samples at or above this magnitude count as clipped.
-    static let clipLevel: Float = 0.999
     private static let histogramLow = -120
     private static let binCount = 120
     private static let frameSeconds = 0.02
@@ -56,7 +52,6 @@ public struct ChannelMeter: Sendable {
         var clipped = 0
         var histogram = [Int](repeating: 0, count: ChannelMeter.binCount)
         var frames = 0
-        var silentFrames = 0
         var droppedStart: Int
         var droppedLast: Int
         var droppedRate = 0.0
@@ -117,7 +112,8 @@ public struct ChannelMeter: Sendable {
     }
 
     /// Records one recognised utterance: the model's time, the seconds of
-    /// audio it covered, and whether it was cut at the length limit.
+    /// audio it covered, and whether it was cut at the length limit. Ignored
+    /// before the first `add`.
     public mutating func recognized(modelSeconds: Double, audioSeconds: Double, cut: Bool) {
         guard minute != nil else { return }
         minute?.utterances += 1
@@ -127,7 +123,10 @@ public struct ChannelMeter: Sendable {
     }
 
     /// Emits the minute in progress, marked partial, when capture stops.
+    /// The date is not used; the minute is the one in progress. A meter used
+    /// again afterwards starts with a partial minute.
     public mutating func finish(at now: Date) {
+        defer { emittedAny = false }
         guard let current = minute else { return }
         minute = nil
         carry = []
@@ -159,10 +158,10 @@ public struct ChannelMeter: Sendable {
         tap.sink(MeterReport(row: row, clip: m.clip))
     }
 
-    /// The 10th-percentile frame level, from the histogram. Nil when there
-    /// were no frames or every one was digital silence.
+    /// The 10th-percentile level of non-silent frames, from the histogram.
+    /// Nil when there were none (every frame digital silence).
     private func floorLevel(_ m: Minute) -> Double? {
-        guard m.frames > m.silentFrames else { return nil }
+        guard m.frames > 0 else { return nil }
         let target = Int((Double(m.frames) * 0.1).rounded(.up))
         var seen = 0
         for (bin, count) in m.histogram.enumerated() {
@@ -178,14 +177,17 @@ public struct ChannelMeter: Sendable {
         let all = carry.isEmpty ? samples : carry + samples
         let clipTarget = Int(clipSeconds * sampleRate)
 
-        var blockPeak: Float = 0
-        all.withUnsafeBufferPointer { buffer in
-            guard let base = buffer.baseAddress else { return }
-            vDSP_maxmgv(base, 1, &blockPeak, vDSP_Length(buffer.count))
-            if blockPeak >= Self.clipLevel {
-                for sample in buffer where abs(sample) >= Self.clipLevel { m.clipped += 1 }
+        samples.withUnsafeBufferPointer { block in
+            guard let base = block.baseAddress else { return }
+            var blockPeak: Float = 0
+            vDSP_maxmgv(base, 1, &blockPeak, vDSP_Length(block.count))
+            if blockPeak >= ReviewThresholds.clipLevel {
+                for sample in block where abs(sample) >= ReviewThresholds.clipLevel { m.clipped += 1 }
             }
             m.peak = max(m.peak, blockPeak)
+        }
+        all.withUnsafeBufferPointer { buffer in
+            guard let base = buffer.baseAddress else { return }
 
             var offset = 0
             while buffer.count - offset >= frameLength {
@@ -195,15 +197,14 @@ public struct ChannelMeter: Sendable {
                 let level = (squares / Float(frameLength)).squareRoot()
                 offset += frameLength
 
-                m.frames += 1
-                if level > 0 {
-                    let bin = Int((20 * log10(Double(level))).rounded(.down)) - Self.histogramLow
+                // Digital silence stays out of the histogram: the floor is the
+                // quietest level of frames that carried any signal.
+                if let decibels = Self.decibels(Double(level)) {
+                    m.frames += 1
+                    let bin = Int(decibels.rounded(.down)) - Self.histogramLow
                     m.histogram[min(Self.binCount - 1, max(0, bin))] += 1
-                } else {
-                    m.silentFrames += 1
-                    m.histogram[0] += 1
                 }
-                let isSound = level > Self.soundFloor
+                let isSound = level > ReviewThresholds.soundFloor
                 if isSound {
                     m.sound += Self.frameSeconds
                     m.soundSquares += Double(squares)

@@ -24,6 +24,10 @@ public enum ReviewThresholds {
     public static let behindThirdMinimumLines = 50
     public static let commonPhrasePerHour = 10.0
     public static let commonPhraseMinimumHits = 20
+    /// A 20 ms frame above this level (linear, about -46 dBFS) is sound.
+    public static let soundFloor: Float = 0.005
+    /// A sample at or above this magnitude is clipped.
+    public static let clipLevel: Float = 0.999
 }
 
 /// What went wrong in one session, with fixes to offer.

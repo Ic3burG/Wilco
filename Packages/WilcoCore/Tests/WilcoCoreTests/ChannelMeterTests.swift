@@ -74,6 +74,40 @@ struct ChannelMeterTests {
         #expect(collector.all.first?.row.clipped == 10)
     }
 
+    @Test func partialFrameTailIsNotCountedTwice() {
+        var (meter, collector) = makeMeter()
+        var block = [Float](repeating: 0.01, count: 1_000)
+        block[990] = 1.0
+        meter.add(block, sampleRate: 48_000, droppedFrames: 0, at: at(1))
+        meter.add([Float](repeating: 0.01, count: 1_000), sampleRate: 48_000, droppedFrames: 0, at: at(1.1))
+        meter.finish(at: at(2))
+        #expect(collector.all.first?.row.clipped == 1)
+    }
+
+    @Test func floorIgnoresDigitalSilence() throws {
+        var (meter, collector) = makeMeter()
+        let rate = 48_000.0
+        // Half zeros, half hiss at about -60 dBFS (rms 0.001).
+        let hiss = (0..<Int(rate)).map { Float($0 % 2 == 0 ? 0.001 : -0.001) }
+        meter.add([Float](repeating: 0, count: Int(rate)), sampleRate: rate, droppedFrames: 0, at: at(1))
+        meter.add(hiss, sampleRate: rate, droppedFrames: 0, at: at(2))
+        meter.finish(at: at(3))
+        let floor = try #require(collector.all.first?.row.floor)
+        #expect(abs(floor - -60) < 1)
+    }
+
+    @Test func rateChangeInsideAMinuteRestartsTheClip() throws {
+        var (meter, collector) = makeMeter()
+        let quiet = [Float](repeating: 0, count: 4_800)
+        for i in 0..<100 { meter.add(quiet, sampleRate: 48_000, droppedFrames: 0, at: at(Double(i) / 10)) }
+        feed(&meter, seconds: 1, from: 10, rate: 48_000)
+        feed(&meter, seconds: 5, from: 11, rate: 44_100)
+        meter.finish(at: at(20))
+        let clip = try #require(collector.all.first?.clip)
+        #expect(clip.sampleRate == 44_100)
+        #expect(clip.samples.count == 132_300)
+    }
+
     @Test func droppedFramesAreTheMinutesDifference() throws {
         var (meter, collector) = makeMeter()
         let block = sine(4_800, rate: 48_000)
