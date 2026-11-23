@@ -15,6 +15,10 @@ public enum DataLocations {
     public static var whisperModels: URL { root.appending(path: "WhisperModels", directoryHint: .isDirectory) }
     /// Parakeet models, one folder per model repository.
     public static var parakeetModels: URL { root.appending(path: "ParakeetModels", directoryHint: .isDirectory) }
+    /// Parakeet Ultra, which labelling uses as one voter.
+    public static var parakeetUltraModels: URL { root.appending(path: "ParakeetUltraModels", directoryHint: .isDirectory) }
+    /// The speaker-separation model used to label exchanges.
+    public static var sortformerModels: URL { root.appending(path: "SortformerModels", directoryHint: .isDirectory) }
     /// The speaker-embedding model used to tell voices apart.
     public static var voiceModels: URL { root.appending(path: "VoiceModels", directoryHint: .isDirectory) }
 }

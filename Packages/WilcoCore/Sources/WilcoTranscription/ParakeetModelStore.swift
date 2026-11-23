@@ -21,6 +21,10 @@ public enum ParakeetError: Error, Equatable, LocalizedError {
 /// uses it, and the smaller model that boosts a channel's vocabulary.
 public actor ParakeetModelStore {
     private let directory: URL
+    private let version: AsrModelVersion
+    /// Where the vocabulary model lives; the same folder as the speech model
+    /// unless another store's vocabulary model is shared.
+    private let vocabularyDirectory: URL
     private var loaded: AsrManager?
     /// A load in progress, so channels starting together load the model once.
     private var loading: Task<AsrManager, Error>?
@@ -30,26 +34,32 @@ public actor ParakeetModelStore {
     /// being transcribed on the shared model.
     public nonisolated let previewGate = PreviewGate()
 
-    public init(directory: URL = DataLocations.parakeetModels) {
+    public init(
+        directory: URL = DataLocations.parakeetModels,
+        version: AsrModelVersion = .v3,
+        vocabularyDirectory: URL? = nil
+    ) {
         self.directory = directory
+        self.version = version
+        self.vocabularyDirectory = vocabularyDirectory ?? directory
     }
 
     /// FluidAudio keeps a model repository in a folder named for it.
-    private nonisolated var tdtFolder: URL {
-        directory.appending(path: AsrModels.defaultCacheDirectory(for: .v3).lastPathComponent, directoryHint: .isDirectory)
+    nonisolated var speechFolder: URL {
+        directory.appending(path: AsrModels.defaultCacheDirectory(for: version).lastPathComponent, directoryHint: .isDirectory)
     }
 
     /// The vocabulary model (Parakeet CTC 110M) lives under `ctc-110m`, in
     /// the repository folder FluidAudio's downloader names.
     private nonisolated var ctcFolder: URL {
-        directory.appending(path: "ctc-110m", directoryHint: .isDirectory)
+        vocabularyDirectory.appending(path: "ctc-110m", directoryHint: .isDirectory)
             .appending(path: CtcModels.defaultCacheDirectory(for: .ctc110m).lastPathComponent, directoryHint: .isDirectory)
     }
 
     /// Whether the speech model is installed. The vocabulary model is
     /// optional: without it channels transcribe without boosting.
     public nonisolated func isInstalled() -> Bool {
-        AsrModels.modelsExist(at: tdtFolder, version: .v3)
+        AsrModels.modelsExist(at: speechFolder, version: version)
     }
 
     public nonisolated func isVocabularyInstalled() -> Bool {
@@ -75,7 +85,7 @@ public actor ParakeetModelStore {
     public nonisolated func install(progress: @escaping @Sendable (Double) -> Void) async throws {
         // Roughly the share of the download each model takes.
         let speechShare = 0.85
-        _ = try await AsrModels.download(to: tdtFolder, version: .v3) { progress($0.fractionCompleted * speechShare) }
+        _ = try await AsrModels.download(to: speechFolder, version: version) { progress($0.fractionCompleted * speechShare) }
         try await CtcModels.download(to: ctcFolder, variant: .ctc110m) {
             progress(speechShare + $0.fractionCompleted * (1 - speechShare))
         }
@@ -96,13 +106,13 @@ public actor ParakeetModelStore {
             throw ParakeetError.notInstalled
         }
         if let loaded { return loaded }
-        let folder = tdtFolder
+        let folder = speechFolder
         let task: Task<AsrManager, Error>
         if let loading {
             task = loading
         } else {
             task = Task {
-                let models = try await AsrModels.load(from: folder, version: .v3)
+                let models = try await AsrModels.load(from: folder, version: version)
                 let manager = AsrManager(config: .default)
                 try await manager.loadModels(models)
                 return manager

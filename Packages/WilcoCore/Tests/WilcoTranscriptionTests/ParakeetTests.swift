@@ -31,6 +31,31 @@ import WilcoCore
         await #expect(throws: ParakeetError.vocabularyNotInstalled) { _ = try await store.ctcModels() }
     }
 
+    @Test func ultraStoreSharesTheVocabularyModel() throws {
+        let temp = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: temp) }
+        let speech = temp.appending(path: "ultra", directoryHint: .isDirectory)
+        let shared = temp.appending(path: "shared", directoryHint: .isDirectory)
+        // The vocabulary model's folder layout, with empty stand-in files.
+        let ctc = shared.appending(path: "ctc-110m", directoryHint: .isDirectory)
+            .appending(path: CtcModels.defaultCacheDirectory(for: .ctc110m).lastPathComponent, directoryHint: .isDirectory)
+        let fm = FileManager.default
+        for name in ModelNames.CTC.requiredModels {
+            try fm.createDirectory(at: ctc.appending(path: name), withIntermediateDirectories: true)
+        }
+        try Data().write(to: ctc.appending(path: ModelNames.CTC.vocabularyPath))
+        #expect(CtcModels.modelsExist(at: ctc))
+
+        let ultra = ParakeetModelStore(directory: speech, version: .ultra, vocabularyDirectory: shared)
+        #expect(ultra.isVocabularyInstalled())
+        #expect(!ultra.isInstalled())
+        #expect(!ParakeetModelStore(directory: speech).isVocabularyInstalled())
+
+        let standard = ParakeetModelStore(directory: speech)
+        #expect(standard.speechFolder.lastPathComponent == AsrModels.defaultCacheDirectory(for: .v3).lastPathComponent)
+        #expect(ultra.speechFolder.lastPathComponent == AsrModels.defaultCacheDirectory(for: .ultra).lastPathComponent)
+    }
+
     @Test func vocabularyOnlyForEnglish() {
         #expect(ParakeetVocabulary.applies(language: .english, terms: ["Kinesys"]))
         #expect(!ParakeetVocabulary.applies(language: nil, terms: ["Kinesys"]))
