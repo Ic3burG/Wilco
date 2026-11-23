@@ -114,6 +114,8 @@ final class AppModel {
     @ObservationIgnored private let performer = ActionPerformer()
     /// Speech model downloads started from Settings.
     let installer: ModelInstaller
+    /// Labels kept clips after shows, when nothing is capturing.
+    @ObservationIgnored private(set) var learning: LearningController!
 
     init(store: ShowStore = ShowStore(), configurationStore: ConfigurationStore = ConfigurationStore()) {
         // One Parakeet store for Settings and running channels, so a removed model is seen by both.
@@ -149,7 +151,10 @@ final class AppModel {
 
         restoreLoadedConfiguration()
 
-        installer.onInstalled = { [weak self] in self?.modelsInstalled() }
+        installer.onInstalled = { [weak self] in
+            self?.modelsInstalled()
+            self?.learning.check()
+        }
         performer.log = { [weak self] entry in self?.log(entry) }
         performer.mark = { [weak self] marker in self?.markers.append(marker) }
 
@@ -159,6 +164,13 @@ final class AppModel {
                 self?.apply(update)
             }
         }
+
+        learning = LearningController(
+            ultra: installer.parakeetUltraStore, whisper: installer.whisperStore,
+            isCapturing: { [weak self] in self?.isCapturing ?? true },
+            lastCaptureStop: { [weak self] in self?.lastCaptureStop }
+        )
+        learning.start()
     }
 
     // MARK: Channels
@@ -234,6 +246,7 @@ final class AppModel {
     }
 
     func startCapture() async {
+        learning.captureStarted()
         guard await hasMicrophoneAccess() else {
             lastMessage = "Wilco can't use audio input. Allow it in System Settings › Privacy & Security › Microphone, then start capture again."
             return
@@ -273,6 +286,7 @@ final class AppModel {
     func stopCapture() {
         sessionStart = nil
         lastCaptureStop = Date()
+        learning.captureStopped()
         capture.stop()
         meterTimer?.invalidate()
         meterTimer = nil

@@ -32,6 +32,16 @@ struct LearningSettingsView: View {
                 .help(model.isCapturing ? "Stop capture to delete clips" : "Delete every saved clip")
             }
             votersSection
+            if let status = model.learning.status {
+                Section {
+                    HStack {
+                        ProgressView().controlSize(.small)
+                        Text(status)
+                    }
+                } footer: {
+                    Text("Runs in the background when nothing is capturing, and stops when capture starts.")
+                }
+            }
         }
         .formStyle(.grouped)
         .onAppear(perform: refreshSize)
