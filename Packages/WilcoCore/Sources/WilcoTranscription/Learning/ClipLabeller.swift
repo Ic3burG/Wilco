@@ -87,7 +87,20 @@ public struct ClipLabeller: Sendable {
         }
 
         try await stopIfCancelled(save)
-        try await labelVoices(records.filter { kept[$0.id] != nil }, in: folder, labels: &kept)
+        let voices: Voices
+        do {
+            voices = try await labelVoices(records.filter { kept[$0.id] != nil }, in: folder)
+        } catch {
+            // The voice pass only throws when cancelled.
+            try save()
+            throw CancellationError()
+        }
+        for (id, voice) in voices.byClip {
+            kept[id]?.voice = voice.verdict
+            kept[id]?.speaker = voice.speaker
+        }
+        labels.voiceError = voices.error
+        try await stopIfCancelled(save)
         labels.finished = true
         try save()
     }
@@ -104,6 +117,8 @@ public struct ClipLabeller: Sendable {
     ) async -> [String: String] {
         var candidates: [String: String] = [:]
         for voter in voters where !sittingOut.contains(voter.id) && candidates[voter.id] == nil {
+            // Once cancelled the clip is thrown away, so the rest needn't run.
+            if Task.isCancelled { break }
             if let text = try? await voter.transcribe(samples, vocabulary: vocabulary, localeIdentifier: localeIdentifier) {
                 candidates[voter.id] = text
             }
@@ -111,17 +126,23 @@ public struct ClipLabeller: Sendable {
         return candidates
     }
 
+    /// Each labelled clip's voice and speaker, and the first speaker-grouping failure.
+    struct Voices {
+        var byClip: [UUID: (verdict: VoiceVerdict?, speaker: Int?)] = [:]
+        var error: String?
+    }
+
     /// Groups each channel's clips by voice when exactly two speaker-grouping
     /// models are installed and the channel has enough clips; other channels'
-    /// clips get no voice. Channels run one at a time, since a model can hold
-    /// a thread for seconds.
-    private func labelVoices(_ records: [ClipRecord], in folder: URL, labels: inout [UUID: ClipLabel]) async throws {
-        for record in records {
-            labels[record.id]?.voice = nil
-            labels[record.id]?.speaker = nil
-        }
+    /// clips get no voice, as do those of a channel where a model fails (the
+    /// first failure is kept). Channels run one at a time, since a model can
+    /// hold a thread for seconds. Throws `CancellationError` when cancelled,
+    /// including when a model fails because of the cancel.
+    private func labelVoices(_ records: [ClipRecord], in folder: URL) async throws -> Voices {
+        var voices = Voices()
+        for record in records { voices.byClip[record.id] = (nil, nil) }
         let installed = diarizers.filter { $0.isInstalled() }
-        guard installed.count == 2 else { return }
+        guard installed.count == 2 else { return voices }
 
         var channelOrder: [UUID] = []
         var byChannel: [UUID: [ClipRecord]] = [:]
@@ -150,19 +171,27 @@ public struct ClipLabeller: Sendable {
                 if index > 0 { joined += silence }
                 joined += samples
             }
-            // A model that fails leaves this channel's voices unlabelled.
-            guard let first = try? await installed[0].spans(of: joined),
-                  let second = try? await installed[1].spans(of: joined)
-            else { continue }
+            var spans: [[SpeakerSpan]] = []
+            do {
+                for diarizer in installed {
+                    try Task.checkCancellation()
+                    spans.append(try await diarizer.spans(of: joined))
+                }
+                try Task.checkCancellation()
+            } catch {
+                if error is CancellationError || Task.isCancelled { throw CancellationError() }
+                if voices.error == nil { voices.error = error.localizedDescription }
+                continue
+            }
             let speakers = VoiceAgreement.agree(
-                ranges.map { VoiceAgreement.speaker(of: $0, in: first) },
-                ranges.map { VoiceAgreement.speaker(of: $0, in: second) }
+                ranges.map { VoiceAgreement.speaker(of: $0, in: spans[0]) },
+                ranges.map { VoiceAgreement.speaker(of: $0, in: spans[1]) }
             )
             for (record, speaker) in zip(clips, speakers) {
-                labels[record.id]?.voice = speaker == nil ? .disputed : .agreed
-                labels[record.id]?.speaker = speaker
+                voices.byClip[record.id] = (speaker == nil ? .disputed : .agreed, speaker)
             }
         }
+        return voices
     }
 
     /// The clip's audio, or nil when it is missing, unreadable or not 16 kHz.

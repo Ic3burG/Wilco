@@ -81,11 +81,17 @@ public struct ClipLabels: Codable, Equatable, Sendable {
     public var voters: [String: String] = [:]
     public var clips: [ClipLabel] = []
     public var finished = false
+    /// Why voices couldn't be grouped on some channel, when a speaker-grouping
+    /// model failed; those channels' clips have no voice. Missing in older files.
+    public var voiceError: String?
 
-    public init(voters: [String: String] = [:], clips: [ClipLabel] = [], finished: Bool = false) {
+    public init(
+        voters: [String: String] = [:], clips: [ClipLabel] = [], finished: Bool = false, voiceError: String? = nil
+    ) {
         self.voters = voters
         self.clips = clips
         self.finished = finished
+        self.voiceError = voiceError
     }
 }
 

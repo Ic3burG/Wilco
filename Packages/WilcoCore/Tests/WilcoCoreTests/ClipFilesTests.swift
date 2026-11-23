@@ -43,6 +43,17 @@ import Testing
         #expect(label.answer == "x")
     }
 
+    @Test func olderLabelsWithoutVoiceErrorDecode() throws {
+        let json = #"{"version":1,"voters":{"a":"1"},"clips":[],"finished":true}"#
+        let labels = try WilcoJSON.decoder().decode(ClipLabels.self, from: Data(json.utf8))
+        #expect(labels.voiceError == nil)
+        #expect(labels.finished)
+        var withError = labels
+        withError.voiceError = "failed"
+        let data = try WilcoJSON.encoder().encode(withError)
+        #expect(try WilcoJSON.decoder().decode(ClipLabels.self, from: data) == withError)
+    }
+
     @Test func wavRoundTripsWithinOneStep() throws {
         let input: [Float] = [0, 0.5, -0.5, 1, -1, 2]
         let data = WAV.encode(input)

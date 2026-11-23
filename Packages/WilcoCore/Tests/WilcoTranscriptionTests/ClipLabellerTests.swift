@@ -91,6 +91,25 @@ private struct Session {
     var labels: ClipLabels? { ClipsFolder.loadLabels(in: folder) }
 }
 
+private struct FailingDiarizer: ClipDiarizer {
+    var id = "broken"
+    func isInstalled() -> Bool { true }
+    func spans(of samples: [Float]) async throws -> [SpeakerSpan] {
+        throw SayClipError(message: "model broke")
+    }
+}
+
+/// A diarizer that cancels the task running it, then waits to be cancelled.
+private struct CancellingDiarizer: ClipDiarizer {
+    var id = "cancelling"
+    func isInstalled() -> Bool { true }
+    func spans(of samples: [Float]) async throws -> [SpeakerSpan] {
+        withUnsafeCurrentTask { $0?.cancel() }
+        try await Task.sleep(for: .seconds(10))
+        return []
+    }
+}
+
 @Suite("Clip labeller")
 struct ClipLabellerTests {
     @Test func labelsAgreedAndDisputedClips() async throws {
@@ -274,6 +293,67 @@ struct ClipLabellerTests {
         let labels = try #require(session.labels)
         #expect(labels.clips.map(\.voice) == [.agreed, .disputed, .agreed])
         #expect(labels.clips.map(\.speaker) == [0, nil, 1])
+    }
+
+    @Test func failingDiarizerRecordsErrorAndFinishes() async throws {
+        var session = try Session()
+        for index in 1...3 { try session.addClip(index) }
+        let texts = [1: "One", 2: "Two", 3: "Three"]
+        let voters = [FakeVoter(id: "a", texts: texts), FakeVoter(id: "b", texts: texts)]
+        let good = FakeDiarizer(id: "p", speakers: ["x", "x", "y"], durations: [1, 1, 1])
+
+        try await ClipLabeller(voters: voters, diarizers: [good, FailingDiarizer()])
+            .label(transcript: session.transcript, show: nil) { _, _ in }
+        let labels = try #require(session.labels)
+        #expect(labels.finished)
+        #expect(labels.clips.allSatisfy { $0.voice == nil && $0.speaker == nil })
+        #expect(labels.voiceError?.isEmpty == false)
+        #expect(labels.clips.allSatisfy { $0.words == .agreed })
+    }
+
+    @Test func cancelDuringVoicesSavesUnfinished() async throws {
+        var session = try Session()
+        for index in 1...3 { try session.addClip(index) }
+        let texts = [1: "One", 2: "Two", 3: "Three"]
+        let voters = [FakeVoter(id: "a", texts: texts), FakeVoter(id: "b", texts: texts)]
+        let good = FakeDiarizer(id: "p", speakers: ["x", "x", "y"], durations: [1, 1, 1])
+        let labeller = ClipLabeller(voters: voters, diarizers: [good, CancellingDiarizer()])
+        let transcript = session.transcript
+
+        let run = Task { try await labeller.label(transcript: transcript, show: nil) { _, _ in } }
+        await #expect(throws: CancellationError.self) { try await run.value }
+        let labels = try #require(session.labels)
+        #expect(!labels.finished)
+        #expect(labels.voiceError == nil)
+        #expect(labels.clips.count == 3)
+        #expect(labels.clips.allSatisfy { $0.words == .agreed && $0.voice == nil })
+    }
+
+    @Test func votersNotCalledAfterCancel() async throws {
+        var session = try Session()
+        try session.addClip(1)
+        /// Cancels the task running it, as capture starting would.
+        struct CancellingVoter: ClipVoter {
+            var id = "a"
+            var version = "1"
+            func isInstalled() -> Bool { true }
+            func transcribe(_ samples: [Float], vocabulary: [String], localeIdentifier: String) async throws -> String {
+                withUnsafeCurrentTask { $0?.cancel() }
+                return "Cue"
+            }
+        }
+        let b = FakeVoter(id: "b", texts: [1: "Cue"])
+        let c = FakeVoter(id: "c", texts: [1: "Cue"])
+        let labeller = ClipLabeller(voters: [CancellingVoter(), b, c], diarizers: [])
+        let transcript = session.transcript
+
+        let run = Task { try await labeller.label(transcript: transcript, show: nil) { _, _ in } }
+        await #expect(throws: CancellationError.self) { try await run.value }
+        #expect(b.calls.count == 0)
+        #expect(c.calls.count == 0)
+        let labels = try #require(session.labels)
+        #expect(labels.clips.isEmpty)
+        #expect(!labels.finished)
     }
 
     /// Three spoken calls labelled by the voters installed on this Mac.
