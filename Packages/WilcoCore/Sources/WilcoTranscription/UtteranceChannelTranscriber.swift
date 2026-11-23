@@ -57,6 +57,7 @@ public actor UtteranceChannelTranscriber: ChannelTranscriber {
     private let annotator: VoiceAnnotator?
     private var voices: VoiceAnnotationQueue?
     private var pump: Task<Void, Never>?
+    private var meter: ChannelMeter?
     /// How often to preview an utterance in progress; nil for no previews.
     private let previewInterval: Duration?
     private let maximumUtteranceLength: Double
@@ -102,6 +103,9 @@ public actor UtteranceChannelTranscriber: ChannelTranscriber {
         }
         // Discard audio that queued while the model loaded.
         _ = source.ring.read(maxCount: source.ring.availableToRead)
+        meter = source.diagnostics.map {
+            ChannelMeter(channelID: channelID, tap: $0, countsUtterances: true)
+        }
         onStatus(.listening)
         voices = annotator.map { VoiceAnnotationQueue(annotator: $0, onEvent: onEvent) }
         pump = Task { await self.run() }
@@ -111,6 +115,8 @@ public actor UtteranceChannelTranscriber: ChannelTranscriber {
         pump?.cancel()
         await pump?.value
         pump = nil
+        meter?.finish(at: Date())
+        meter = nil
         // Lines already sent to rules still get their voice.
         await voices?.finish()
         voices = nil
@@ -126,7 +132,7 @@ public actor UtteranceChannelTranscriber: ChannelTranscriber {
         segmenter.maximumLength = maximumUtteranceLength
         var lastPreview: (start: Double, at: ContinuousClock.Instant)?
         while !Task.isCancelled {
-            let samples = source.ring.read(maxCount: source.ring.availableToRead)
+            let samples = source.read(metering: &meter)
             if !samples.isEmpty, let resampled = try? converter.convertToSamples(samples, sampleRate: source.sampleRate()) {
                 for utterance in segmenter.append(resampled) {
                     await transcribe(utterance)
@@ -171,7 +177,13 @@ public actor UtteranceChannelTranscriber: ChannelTranscriber {
     private func transcribe(_ utterance: UtteranceSegmenter.Utterance) async {
         let shown = previewOnScreen
         previewOnScreen = false
+        let clock = ContinuousClock()
+        let began = clock.now
         let recognition = try? await recognizer.recognize(utterance.samples)
+        meter?.recognized(
+            modelSeconds: (clock.now - began) / .seconds(1),
+            audioSeconds: Double(utterance.samples.count) / 16_000, cut: utterance.wasCut
+        )
         let text = recognition?.text.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard let recognition, !text.isEmpty else {
             if shown {

@@ -25,6 +25,7 @@ actor AppleChannelTranscriber: ChannelTranscriber {
     private var analyzer: SpeechAnalyzer?
     private var input: AsyncStream<AnalyzerInput>.Continuation?
     private var pump: Task<Void, Never>?
+    private var meter: ChannelMeter?
     private var results: Task<Void, Never>?
     /// Whether any audio reached the analyzer. One that got none never ends
     /// its results when finalized, so it must be cancelled instead.
@@ -58,6 +59,8 @@ actor AppleChannelTranscriber: ChannelTranscriber {
     func stop() async {
         pump?.cancel()
         await pump?.value
+        meter?.finish(at: Date())
+        meter = nil
         input?.finish()
         if receivedAudio {
             try? await analyzer?.finalizeAndFinishThroughEndOfInput()
@@ -106,6 +109,9 @@ actor AppleChannelTranscriber: ChannelTranscriber {
         }
         results = Task { await self.forwardResults(of: module) }
         _ = source.ring.read(maxCount: source.ring.availableToRead)
+        meter = source.diagnostics.map {
+            ChannelMeter(channelID: configuration.channelID, tap: $0, countsUtterances: false)
+        }
         pump = Task { await self.feed(continuation, format: format) }
     }
 
@@ -124,7 +130,7 @@ actor AppleChannelTranscriber: ChannelTranscriber {
         // the voice model is usable.
         var voiceConverter: SampleRateConverter?
         while !Task.isCancelled {
-            let samples = source.ring.read(maxCount: source.ring.availableToRead)
+            let samples = source.read(metering: &meter)
             if !samples.isEmpty, let buffers = try? converter.convert(samples, sampleRate: source.sampleRate()) {
                 for buffer in buffers { continuation.yield(AnalyzerInput(buffer: buffer)) }
                 if !buffers.isEmpty { receivedAudio = true }
