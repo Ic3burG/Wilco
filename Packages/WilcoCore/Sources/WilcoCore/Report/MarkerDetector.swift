@@ -22,6 +22,9 @@ public enum MarkerDetector {
         var labels: [PhraseLabel]
         /// Each department's "X go" and "go X" word runs with their labels.
         var departmentRuns: [(words: [String], label: String)]
+        /// Names matched with a cue number: "LX 47 go", "go sound 12". "Cue"
+        /// is always here, even with no departments listed.
+        var numberedNames: [(name: String, words: [String])]
         var departmentGosEnabled: Bool
         var countdownEnabled: Bool
         var songStartEnabled: Bool
@@ -37,6 +40,11 @@ public enum MarkerDetector {
                 let words = KeywordMatcher.tokens(name)
                 guard !words.isEmpty else { return [] }
                 return [(words + ["go"], MarkerDetector.capitalised(name) + " go"), (["go"] + words, "Go " + name)]
+            }
+            numberedNames = [("cue", ["cue"])] + settings.departments.compactMap { department in
+                let name = department.trimmingCharacters(in: .whitespacesAndNewlines)
+                let words = KeywordMatcher.tokens(name)
+                return words.isEmpty ? nil : (name, words)
             }
             departmentGosEnabled = settings.departmentGosEnabled
             countdownEnabled = settings.countdownEnabled
@@ -60,10 +68,10 @@ public enum MarkerDetector {
             case .song:
                 (prepared.songStartEnabled ? pattern(songStart, label: "Song start", .song, in: text) : nil)
                     ?? phrase(.song, prepared, words)
-            case .houseLights, .cue:
+            case .houseLights, .cue, .talkback:
                 phrase(category, prepared, words)
             case .department:
-                prepared.departmentGosEnabled ? departmentGo(prepared.departmentRuns, words) : nil
+                prepared.departmentGosEnabled ? departmentGo(prepared, words) : nil
             }
         }
     }
@@ -83,12 +91,12 @@ public enum MarkerDetector {
         return Detection(category: category, label: label, matched: String(text[range]))
     }
 
-    /// "<department> go" or "go <department>" as consecutive words, or
-    /// "cue <number> go" / "go cue <number>". Words are matched exactly, not
+    /// "<department> go" or "go <department>" as consecutive words, or with a
+    /// cue number: "LX 47 go", "go sound 12", "cue 47 go". Words are matched exactly, not
     /// joined, so "pyrogo" and "good to go" don't count. The call said first
     /// wins ("go pyro, go lasers" is "Go pyro"), then the longest, so "follow
     /// spot go" beats "spot go" whatever the list order.
-    private static func departmentGo(_ runs: [(words: [String], label: String)], _ words: [String]) -> Detection? {
+    private static func departmentGo(_ prepared: Prepared, _ words: [String]) -> Detection? {
         // Every department call has "go" in it; most lines don't.
         guard words.contains("go") else { return nil }
         var best: (start: Int, length: Int, label: String)?
@@ -97,21 +105,31 @@ public enum MarkerDetector {
             if let current = best, current.start < start || (current.start == start && current.length >= run.count) { return }
             best = (start, run.count, label())
         }
-        for run in runs {
+        for run in prepared.departmentRuns {
             consider(run.words, label: run.label)
         }
-        for index in words.indices where words[index] == "cue" && index + 1 < words.count {
-            let number = words[index + 1]
-            guard number.allSatisfy(\.isNumber) else { continue }
-            consider(["cue", number, "go"], label: "Cue \(number) go")
-            consider(["go", "cue", number], label: "Go cue \(number)")
+        // "<name> <number> go" and "go <name> <number>", wherever the name is said.
+        for (name, tokens) in prepared.numberedNames {
+            var from = 0
+            while let at = firstIndex(of: tokens, in: words, from: from) {
+                from = at + 1
+                let after = at + tokens.count
+                guard after < words.count, words[after].allSatisfy(\.isNumber) else { continue }
+                let number = words[after]
+                if after + 1 < words.count, words[after + 1] == "go" {
+                    consider(tokens + [number, "go"], label: capitalised(name) + " \(number) go")
+                }
+                if at > 0, words[at - 1] == "go" {
+                    consider(["go"] + tokens + [number], label: "Go \(name) \(number)")
+                }
+            }
         }
         return best.map { Detection(category: .department, label: $0.label, matched: $0.label) }
     }
 
-    private static func firstIndex(of run: [String], in words: [String]) -> Int? {
-        guard run.count <= words.count else { return nil }
-        return (0...(words.count - run.count)).first { words[$0..<$0 + run.count].elementsEqual(run) }
+    private static func firstIndex(of run: [String], in words: [String], from: Int = 0) -> Int? {
+        guard run.count <= words.count, from <= words.count - run.count else { return nil }
+        return (from...(words.count - run.count)).first { words[$0..<$0 + run.count].elementsEqual(run) }
     }
 
     fileprivate static func capitalised(_ text: String) -> String {

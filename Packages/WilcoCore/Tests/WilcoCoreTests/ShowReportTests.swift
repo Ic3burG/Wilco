@@ -87,6 +87,24 @@ struct MarkerDetectorTests {
         #expect(labels("Standby", s) == ["cue:Untitled Label"])
     }
 
+    @Test func talkbackLabelsAreDetected() {
+        var s = MarkerSettings.standard
+        s.labels.append(MarkerLabel(category: .talkback, name: "Monitor request", phrases: ["more me"]))
+        #expect(labels("Can I get more me please", s) == ["talkback:Monitor request"])
+    }
+
+    @Test func standardHasNoTalkbackLabels() {
+        #expect(MarkerSettings.standard.labels(in: .talkback).isEmpty)
+    }
+
+    @Test func departmentWithACueNumber() {
+        #expect(labels("LX 47 go") == ["department:LX 47 go"])
+        #expect(labels("go sound 12") == ["department:Go sound 12"])
+        #expect(labels("Cue 47 go") == ["department:Cue 47 go"])
+        #expect(labels("LX go") == ["department:LX go"])
+        #expect(labels("pyro 3") == [])
+    }
+
     @Test func departmentNeedsGoNextToIt() {
         #expect(labels("pyro is good to go") == [])
         #expect(labels("pyrogo") == [])

@@ -3,7 +3,7 @@ import Foundation
 /// A post-show breakdown of one capture session.
 public struct ShowReport: Sendable {
     public enum MarkerCategory: String, CaseIterable, Codable, Sendable {
-        case phase, houseLights, song, cue, department
+        case phase, houseLights, song, cue, department, talkback
 
         public var title: String {
             switch self {
@@ -12,6 +12,7 @@ public struct ShowReport: Sendable {
             case .song: "Songs"
             case .cue: "Cue calls"
             case .department: "Department gos"
+            case .talkback: "Talkback"
             }
         }
 
@@ -23,6 +24,7 @@ public struct ShowReport: Sendable {
             case .song: .pink
             case .cue: .green
             case .department: .teal
+            case .talkback: .purple
             }
         }
     }

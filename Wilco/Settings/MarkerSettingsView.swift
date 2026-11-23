@@ -25,7 +25,7 @@ struct MarkerSettingsView: View {
         )
     }
 
-    private static let labelCategories: [ShowReport.MarkerCategory] = [.phase, .houseLights, .song, .cue]
+    private static let labelCategories: [ShowReport.MarkerCategory] = [.phase, .houseLights, .song, .cue, .talkback]
 
     var body: some View {
         HStack(spacing: 0) {
@@ -104,7 +104,7 @@ struct MarkerSettingsView: View {
             builtInRow("Song start", enabled: settings.wrappedValue.songStartEnabled).tag(MarkerSelection.songStart)
         case .department:
             builtInRow("Departments", enabled: settings.wrappedValue.departmentGosEnabled).tag(MarkerSelection.departments)
-        case .houseLights, .cue:
+        case .houseLights, .cue, .talkback:
             EmptyView()
         }
     }
