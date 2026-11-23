@@ -107,7 +107,8 @@ public struct ClipSelector: Sendable {
 
         var hold: [ClipChange] = [.hold(line.id)]
         if state.run.count >= ClipThresholds.exchangeMaximumLines {
-            close(state.run, removals: &removals, keeps: &keeps)
+            // The line closing the run is never held, so it needs no removal if the run isn't kept.
+            close(state.run, unheld: line.id, removals: &removals, keeps: &keeps)
             state.run = []
             hold = []
         }
@@ -139,6 +140,7 @@ public struct ClipSelector: Sendable {
     }
 
     /// Algorithm R over unclear lines; free slots (left by lines taken into exchanges) fill first.
+    /// Refilling freed slots slightly favours later lines; accepted.
     private mutating func offerUnclear(_ id: UUID, removals: inout [ClipChange]) -> Bool {
         unclearSeen += 1
         if unclearKept.count < unclearCap {
@@ -157,7 +159,9 @@ public struct ClipSelector: Sendable {
         return true
     }
 
-    private mutating func close(_ run: [ClipCandidate], removals: inout [ClipChange], keeps: inout [ClipChange]) {
+    private mutating func close(
+        _ run: [ClipCandidate], unheld: UUID? = nil, removals: inout [ClipChange], keeps: inout [ClipChange]
+    ) {
         let ids = run.map(\.id)
         for id in ids { held.remove(id) }
         defer { for id in ids { removeWhenReleased.remove(id) } }
@@ -170,7 +174,7 @@ public struct ClipSelector: Sendable {
             return
         }
         let unclear = Set(unclearKept)
-        removals += ids.filter { !unclear.contains($0) }.map { .remove($0) }
+        removals += ids.filter { !unclear.contains($0) && $0 != unheld }.map { .remove($0) }
     }
 
     /// Algorithm R over exchanges, counted in runs.

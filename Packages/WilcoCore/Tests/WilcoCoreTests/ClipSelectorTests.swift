@@ -236,6 +236,57 @@ private final class SeededRandom: Sendable {
         #expect(badRemovals == 0)
     }
 
+    @Test func rejectedTwelveLineRunDoesntRemoveItsUnheldLastLine() {
+        var selector = ClipSelector(exchangeCap: 1, random: { $0 - 1 })
+        let channel = UUID()
+        let first = (0..<12).map { line(channel, at: Double($0) * 4, confidence: 0.95) }
+        let second = (0..<12).map { line(channel, at: 200 + Double($0) * 4, confidence: 0.95) }
+        for l in first { _ = selector.offer(l) }
+        for l in second.dropLast() { _ = selector.offer(l) }
+        // The reservoir rejects the second run; its 12th line was never held, so it isn't removed.
+        #expect(selector.offer(second[11]) == second.dropLast().map { .remove($0.id) })
+    }
+
+    @Test func everyRemovalNamesAudioTheKeeperHas() {
+        let generator = SeededRandom(seed: 7)
+        let choices = SeededRandom(seed: 99)
+        var selector = ClipSelector(unclearCap: 3, exchangeCap: 2, random: { generator.next($0) })
+        let channelIDs = (0..<4).map { _ in UUID() }
+        var offsets = [Double](repeating: 0, count: channelIDs.count)
+        var held: Set<UUID> = [], kept: Set<UUID> = [], removed: Set<UUID> = []
+        var problems: [String] = []
+        func apply(_ changes: [ClipChange]) {
+            for change in changes {
+                switch change {
+                case .hold(let id): held.insert(id)
+                case .keep(let id, _, _):
+                    if removed.contains(id) { problems.append("keep after remove") }
+                    kept.insert(id)
+                case .remove(let id):
+                    if removed.contains(id) { problems.append("removed twice") }
+                    if !held.contains(id) && !kept.contains(id) { problems.append("remove of unknown id") }
+                    removed.insert(id)
+                    kept.remove(id)
+                }
+            }
+        }
+        for _ in 0..<5000 {
+            let c = choices.next(channelIDs.count)
+            // Mostly close lines (runs), sometimes a long gap.
+            offsets[c] += choices.next(10) == 0 ? 60 : Double(choices.next(12)) + 2
+            let roll = choices.next(20)
+            let duration = roll == 0 ? 0.3 : (roll == 1 ? 25 : 2)
+            let confidence: Double? = roll == 2 ? nil : 0.5 + Double(choices.next(50)) / 100
+            let l = line(channelIDs[c], at: offsets[c], duration: duration, confidence: confidence)
+            apply(selector.offer(l, samplesEmpty: roll == 3))
+        }
+        apply(selector.finish())
+        #expect(problems.isEmpty, "\(Set(problems))")
+        #expect(held.subtracting(kept).subtracting(removed).isEmpty)
+        #expect(kept.isDisjoint(with: removed))
+        #expect(!kept.isEmpty && !removed.isEmpty)
+    }
+
     @Test func finishClosesOpenRuns() {
         var selector = ClipSelector()
         let channel = UUID()
