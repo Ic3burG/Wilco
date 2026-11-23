@@ -8,8 +8,14 @@ public enum ReviewThresholds {
     public static let busyShare = 0.25
     /// A highlight this busy on a busy channel gets a "keep it off" fix.
     public static let busyHighlightHits = 10
+    /// Busy only means something when this many other channels talked too.
+    public static let busyOtherChannels = 4
+    public static let busyOtherChannelLines = 30
     public static let unclearMinimumLines = 30
     public static let unclearMedian = 0.8
+    /// Engines differ in how confident they sound, so a channel is unclear
+    /// only this far below the whole session's median.
+    public static let unclearBelowSession = 0.08
     public static let quietMinimumHours = 2.0
     public static let quietLinesPerHour = 4.0
     public static let quietSessionLinesPerHour = 200.0
@@ -107,7 +113,7 @@ private struct Builder {
             guard leftover else { continue }
             add(Finding(
                 id: "setup:\(rule.id)", severity: .problem,
-                title: "“\(rule.name)” notifications have no real title",
+                title: "“\(rule.name.trimmingCharacters(in: .whitespaces))” notifications have no real title",
                 detail: "Its alerts are titled “New Rule” or nothing. Use the rule’s name, so renaming the rule renames its alerts.",
                 channelID: nil, evidence: [],
                 fixes: [FindingFix(fix: .useRuleNameAsTitle(rule: rule.id), label: "Use the rule’s name")]
@@ -118,7 +124,9 @@ private struct Builder {
     mutating func checkBusy() {
         for (id, channel) in stats.channels {
             let share = Double(channel.lines) / Double(stats.lines)
-            guard channel.lines >= ReviewThresholds.busyMinimumLines, share >= ReviewThresholds.busyShare else { continue }
+            let othersTalking = stats.channels.filter { $0.key != id && $0.value.lines >= ReviewThresholds.busyOtherChannelLines }.count
+            guard channel.lines >= ReviewThresholds.busyMinimumLines, share >= ReviewThresholds.busyShare,
+                  othersTalking >= ReviewThresholds.busyOtherChannels else { continue }
             let mine = lines(on: id)
             var hits: [UUID: Int] = [:]
             for line in mine {
@@ -137,7 +145,7 @@ private struct Builder {
                 fixes.append(FindingFix(fix: .muteChannel(id), label: "Mute \(name(id))"))
             }
             add(Finding(
-                id: "busy:\(id)", severity: .warning,
+                id: "busy:\(id)", severity: .info,
                 title: "\(name(id)) carried \(percent(share)) of the session",
                 detail: "\(channel.lines.formatted()) lines, more than a quarter of everything heard.\(hitText)",
                 channelID: id, evidence: Self.mostRepeated(mine), fixes: fixes
@@ -146,15 +154,17 @@ private struct Builder {
     }
 
     mutating func checkUnclear() {
+        guard let session = SessionStats.median(segments.compactMap(\.confidence)) else { return }
         for (id, channel) in stats.channels {
             guard channel.lines >= ReviewThresholds.unclearMinimumLines,
-                  let median = channel.medianConfidence, median < ReviewThresholds.unclearMedian else { continue }
+                  let median = channel.medianConfidence, median < ReviewThresholds.unclearMedian,
+                  median <= session - ReviewThresholds.unclearBelowSession else { continue }
             let lowest = lines(on: id).filter { $0.confidence != nil }
                 .sorted { $0.confidence! < $1.confidence! }.prefix(3).map(\.id)
             add(Finding(
                 id: "unclear:\(id)", severity: .warning,
                 title: "\(name(id)) is hard to make out",
-                detail: "Median confidence \(String(format: "%.2f", median)) over \(channel.lines.formatted()) lines. Names and callsigns suffer most; check the input level and the vocabulary suggestions.",
+                detail: "Median confidence \(String(format: "%.2f", median)) over \(channel.lines.formatted()) lines, against \(String(format: "%.2f", session)) for the session. Names and callsigns suffer most; check the input level and the vocabulary suggestions.",
                 channelID: id, evidence: Array(lowest), fixes: []
             ), weight: channel.lines)
         }
@@ -163,18 +173,20 @@ private struct Builder {
     mutating func checkQuiet() {
         guard hours >= ReviewThresholds.quietMinimumHours,
               Double(stats.lines) / hours >= ReviewThresholds.quietSessionLinesPerHour else { return }
-        for channel in show.channels where !channel.isMuted {
-            let count = stats.channels[channel.id]?.lines ?? 0
-            guard Double(count) / hours < ReviewThresholds.quietLinesPerHour else { continue }
-            add(Finding(
-                id: "quiet:\(channel.id)", severity: .info,
-                title: "\(channel.name) barely spoke",
-                detail: count == 0
-                    ? "No lines in \(Self.hoursText(hours)) while the session was busy. Check its patch and input level."
-                    : "\(count) lines in \(Self.hoursText(hours)) while the session was busy. Check its patch and input level.",
-                channelID: channel.id, evidence: lines(on: channel.id).prefix(3).map(\.id), fixes: []
-            ), weight: -count)
-        }
+        let quiet = show.channels
+            .filter { !$0.isMuted }
+            .map { (channel: $0, count: stats.channels[$0.id]?.lines ?? 0) }
+            .filter { Double($0.count) / hours < ReviewThresholds.quietLinesPerHour }
+            .sorted { ($0.count, $0.channel.name) > ($1.count, $1.channel.name) }
+        guard !quiet.isEmpty else { return }
+        let list = quiet.map { "\($0.channel.name) (\($0.count == 0 ? "none" : "\($0.count)"))" }.joined(separator: ", ")
+        add(Finding(
+            id: "quiet", severity: .info,
+            title: quiet.count == 1 ? "\(quiet[0].channel.name) barely spoke" : "\(quiet.count) channels barely spoke",
+            detail: "Lines in \(Self.hoursText(hours)) while the session was busy: \(list). If they should have been talking, check the patch and input level.",
+            channelID: quiet.count == 1 ? quiet[0].channel.id : nil,
+            evidence: quiet.flatMap { lines(on: $0.channel.id) }.prefix(3).map(\.id), fixes: []
+        ), weight: quiet.count)
     }
 
     mutating func checkCut() {

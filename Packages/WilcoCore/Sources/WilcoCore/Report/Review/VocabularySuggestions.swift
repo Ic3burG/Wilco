@@ -43,8 +43,12 @@ public struct NameCounts: Sendable, Equatable {
     static func isIgnored(_ word: String) -> Bool {
         let lowered = word.lowercased()
         return lowered == "i" || lowered.hasPrefix("i'") || SessionStats.fillerWords.contains(lowered)
+            || exclamations.contains(lowered)
             || ShowReportBuilder.stopWords.contains(lowered.replacingOccurrences(of: "'", with: ""))
     }
+
+    /// Capitalised in speech without being anyone on comms.
+    static let exclamations: Set<String> = ["god", "jesus", "christ", "lord", "gosh"]
 
     /// Single words need two letters; a lone "T" only counts inside a pair.
     static func isNameWord(_ word: String) -> Bool { word.filter(\.isLetter).count >= 2 }
@@ -65,6 +69,8 @@ public struct VocabularySuggestion: Sendable, Hashable {
 
 public enum VocabularySuggestions {
     public static let maximum = 8
+    /// Shorter names match ordinary words too easily ("BOD" / "God").
+    public static let minimumNearMissLetters = 5
 
     /// Channel names heard wrong first, then names heard often, leaving out
     /// anything the show's vocabulary, rules or highlights already know.
@@ -77,13 +83,13 @@ public enum VocabularySuggestions {
         for name in channelNames.sorted() where !known.contains(name.lowercased()) {
             let target = letters(name)
             let words = name.split(separator: " ").count
-            guard target.count >= 3 else { continue }
+            guard target.count >= minimumNearMissLetters else { continue }
             let heardRight = counts.counts[name] ?? 0
             let best = counts.counts
                 .filter { phrase, count in
                     count >= minimum && count > heardRight && phrase != name
                         && phrase.split(separator: " ").count == words
-                        && { let d = distance(letters(phrase), target); return d <= 2 && d * 2 < target.count }()
+                        && { let d = distance(letters(phrase), target); return d * 3 <= target.count }()
                 }
                 .max { ($0.value, $1.key) < ($1.value, $0.key) }
             if let best { nearMisses.append(VocabularySuggestion(term: name, heardAs: best.key, count: best.value)) }

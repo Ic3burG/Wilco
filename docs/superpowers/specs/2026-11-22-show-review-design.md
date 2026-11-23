@@ -93,16 +93,17 @@ ID) so a dismissed finding stays dismissed.
 Checks (thresholds are starting points, tuned against the 41 saved
 sessions in a locally gated test):
 
-| Check | Signal | Fix offered |
+| Check | Signal (tuned on the 41 saved sessions, 2026-11-22) | Fix offered |
 |---|---|---|
-| Busy channel | ≥300 lines and ≥25% of the session's lines | Keep busy highlights off it; mute channel |
-| Unclear channel | median confidence < 0.8 with ≥30 lines | Name suggestions from that channel; check input |
-| Quiet channel | < 4 lines/hour while the session is busy | None (info: check patch/level) |
-| Cut long talk | lines that settled ≥19 s after they started | None (info; should fall after the fix) |
-| Falling behind | delay p90 rising across the session | None (info: fewer channels or lighter profile) |
-| Common phrase | a highlight or rule phrase hitting ≥10 times an hour | Remove the phrase (highlights) |
-| Name suggestions | capitalised words/pairs seen ≥3 times (this and past sessions), not in vocabulary; near-misses of vocabulary or channel names ("T Time" ~ "Tea Time") | Add to show vocabulary |
-| Show setup | notification title that's a plain leftover ("New Rule") | Set title to `{rule}` |
+| (all data checks) | need ≥50 lines in the session; shorter sessions get only the show setup check | |
+| Busy channel (info) | ≥300 lines, ≥25% of the session, and ≥4 other channels with ≥30 lines | Keep highlights with ≥10 hits on it off it; mute channel |
+| Unclear channel | ≥30 lines, median confidence < 0.8 and ≥0.08 below the session's median (engines differ in scale) | None (points to vocabulary suggestions) |
+| Quiet channels (one finding) | session ≥2 h at ≥200 lines/hour; unmuted show channels under 4 lines/hour, listed together | None (check patch/level) |
+| Cut long talk | ≥10 lines that settled ≥19 s after they started | None |
+| Falling behind | delay p90 of the last third ≥5 s above the first third (≥50 lines each) | None |
+| Common phrase | a highlight or rule phrase with ≥20 hits and ≥10 an hour | Remove the phrase (highlights only) |
+| Vocabulary suggestions | channel names of ≥5 letters heard as a capitalised phrase within edit distance ≤ a third of their length, ≥3 times and more often than right; then capitalised names (not at a sentence start, not fillers, stop words, "I" or exclamations) seen ≥3 times across this and earlier sessions of the show; max 8 | Add the misheard channel names; tick others |
+| Show setup | a notify title that's empty or "New Rule" | Set title to `{rule}` |
 
 Delay per line is `timestamp − (session start + sessionOffset)`; session
 start is the minimum of `timestamp − sessionOffset` (whole-second

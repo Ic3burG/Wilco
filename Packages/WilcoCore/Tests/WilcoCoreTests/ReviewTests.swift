@@ -169,9 +169,13 @@ struct ShowReviewTests {
     let band = ChannelConfig(name: "Band TB")
     let sm = ChannelConfig(name: "ShowCall PL")
     let quiet = ChannelConfig(name: "BOD")
+    let others = (1...4).map { ChannelConfig(name: "Crew \($0)") }
     let audio = HighlightRule(name: "Audio Related", phrases: ["hear"])
 
-    var show: ShowDocument { ShowDocument(channels: [band, sm, quiet], highlights: [audio]) }
+    var show: ShowDocument { ShowDocument(channels: [band, sm, quiet] + others, highlights: [audio]) }
+
+    /// Some talk on four more channels, so the session isn't one channel alone.
+    var crew: [TranscriptSegment] { others.flatMap { many(40, on: $0.id, over: 7200) } }
 
     /// `count` lines on a channel, spread evenly over `seconds`.
     func many(_ count: Int, on channel: UUID, over seconds: Double, text: String = "Standby for the next cue.",
@@ -186,7 +190,7 @@ struct ShowReviewTests {
     @Test func busyChannelIsFoundWithMuteFix() throws {
         let hear = [SegmentHighlight(phrase: "hear", tint: .yellow)]
         let lines = many(400, on: band.id, over: 7200, text: "Can you hear me?", highlights: hear)
-            + many(250, on: sm.id, over: 7200)
+            + many(250, on: sm.id, over: 7200) + crew
         let review = ShowReview.make(segments: lines, show: show)
         let busy = try #require(review.findings.first { $0.id == "busy:\(band.id)" })
         #expect(busy.channelID == band.id)
@@ -194,15 +198,23 @@ struct ShowReviewTests {
         #expect(!review.findings.contains { $0.id == "busy:\(sm.id)" })
     }
 
+    /// Before doors one channel may be the only one talking; that's not news.
+    @Test func busyNeedsOtherChannelsTalking() {
+        let lines = many(400, on: band.id, over: 7200) + many(250, on: sm.id, over: 7200)
+        #expect(!ShowReview.make(segments: lines, show: show).findings.contains { $0.id.hasPrefix("busy:") })
+    }
+
     @Test func quietChannelNeedsABusySession() {
         let busy = many(900, on: sm.id, over: 3 * 3600) + many(3, on: quiet.id, over: 3 * 3600)
-        let ids = ShowReview.make(segments: busy, show: show).findings.map(\.id)
-        #expect(ids.contains("quiet:\(quiet.id)"))
-        // A channel in the show that never spoke is quiet too.
-        #expect(ids.contains("quiet:\(band.id)"))
+        let findings = ShowReview.make(segments: busy, show: show).findings
+        // One finding for every quiet channel, including ones that never spoke.
+        let quietOnes = findings.filter { $0.id == "quiet" }
+        #expect(quietOnes.count == 1)
+        #expect(quietOnes.first?.detail.contains("BOD") == true)
+        #expect(quietOnes.first?.detail.contains("Band TB") == true)
 
         let calm = many(100, on: sm.id, over: 3 * 3600) + many(3, on: quiet.id, over: 3 * 3600)
-        #expect(!ShowReview.make(segments: calm, show: show).findings.contains { $0.id.hasPrefix("quiet:") })
+        #expect(!ShowReview.make(segments: calm, show: show).findings.contains { $0.id == "quiet" })
     }
 
     @Test func unclearChannelIsAWarning() throws {
@@ -210,6 +222,13 @@ struct ShowReviewTests {
         let finding = try #require(ShowReview.make(segments: lines, show: show).findings.first { $0.id == "unclear:\(sm.id)" })
         #expect(finding.severity == .warning)
         #expect(finding.evidence.count == 3)
+    }
+
+    /// Some engines report lower confidence across the board; a channel is
+    /// unclear only next to the rest of the session.
+    @Test func unclearIsRelativeToTheSession() {
+        let lines = many(40, on: sm.id, over: 3600, confidence: 0.72) + many(40, on: band.id, over: 3600, confidence: 0.74)
+        #expect(!ShowReview.make(segments: lines, show: show).findings.contains { $0.id.hasPrefix("unclear:") })
     }
 
     @Test func cutLongTalkIsCounted() {
@@ -275,6 +294,14 @@ struct VocabularySuggestionTests {
         #expect(first == VocabularySuggestion(term: "Tea Time", heardAs: "T Time", count: 3))
     }
 
+    /// Short names and two-letter slips match ordinary words too often
+    /// ("BOD" / "God", "Triad" / "Brian").
+    @Test func nearMissesNeedALongNameAndACloseMatch() {
+        let strict = ShowDocument(channels: [ChannelConfig(name: "BOD"), ChannelConfig(name: "Triad")])
+        let counts = said(Array(repeating: "Oh my God, ask Brian.", count: 5))
+        #expect(!VocabularySuggestions.suggest(counts: counts, show: strict).contains { $0.heardAs != nil })
+    }
+
     @Test func sentenceStartIsNotAName() {
         let counts = said(Array(repeating: "Lights. Stand by.", count: 5))
         #expect(counts.counts["Lights"] == nil)
@@ -284,6 +311,11 @@ struct VocabularySuggestionTests {
     @Test func knownTermsAreNotSuggested() {
         let counts = said(Array(repeating: "Is that Omar on comms?", count: 4))
         #expect(!VocabularySuggestions.suggest(counts: counts, show: show).contains { $0.term == "Omar" })
+    }
+
+    @Test func exclamationsAreNotNames() {
+        let counts = said(Array(repeating: "Oh my God, Jesus Christ.", count: 5))
+        #expect(VocabularySuggestions.suggest(counts: counts, show: show).isEmpty)
     }
 
     @Test func acronymsAndRepeatedNamesCount() throws {
@@ -372,5 +404,40 @@ struct SessionHistoryTests {
         let review = ShowReview.make(segments: lines, show: show, history: [before])
         #expect(review.suggestions.contains { $0.term == "Dana" })
         #expect(review.trend.map(\.id) == [before.id])
+    }
+}
+
+/// Reviews every saved session on this Mac and prints the findings, for
+/// tuning `ReviewThresholds` by eye. Skips quietly where there are none.
+@Suite("Review on real sessions", .enabled(if: FileManager.default.fileExists(atPath: DataLocations.transcripts.path)))
+struct RealSessionReviewTests {
+    @Test func everySessionReviewsWithoutNoise() throws {
+        let store = ConfigurationStore()
+        let candidates = store.list().compactMap { try? store.document($0.id) }
+        let all = try SessionHistory.summaries(in: DataLocations.transcripts, candidates: candidates)
+        var lastNight: ShowReview?
+        var lastNightShow: ShowDocument?
+        for summary in all {
+            let segments = TranscriptFile.segments(in: try Data(contentsOf: summary.id))
+            let show = SessionShow.load(forTranscript: summary.id)
+                ?? SessionShow.bestMatch(for: segments, among: candidates) ?? ShowDocument()
+            let history = SessionHistory.sameShow(as: summary.showName, in: all, excluding: summary.id)
+                .filter { $0.started < summary.started }
+            let review = ShowReview.make(segments: segments, show: show, history: history)
+            print("== \(summary.id.lastPathComponent) [\(summary.showName)] \(summary.lines) lines, \(review.findings.count) findings")
+            for finding in review.findings { print("   \(finding.severity) \(finding.title) — \(finding.detail.prefix(110))") }
+            if !review.suggestions.isEmpty {
+                print("   suggestions: " + review.suggestions.map { "\($0.term)\($0.heardAs.map { " (as \($0))" } ?? "") ×\($0.count)" }.joined(separator: ", "))
+            }
+            #expect(review.findings.count <= 8, "\(summary.id.lastPathComponent): \(review.findings.count) findings")
+            if summary.id.lastPathComponent == "Session 2026-11-21 1720-52.jsonl" { lastNight = review; lastNightShow = show }
+        }
+        guard let lastNight, let show = lastNightShow else { return }
+        func channel(_ name: String) -> UUID? { show.channels.first { $0.name == name }?.id }
+        let ids = Set(lastNight.findings.map(\.id))
+        #expect(channel("Band TB").map { ids.contains("busy:\($0)") } == true)
+        #expect(lastNight.findings.first { $0.id == "quiet" }?.detail.contains("Automation") == true)
+        #expect(lastNight.findings.contains { $0.id.hasPrefix("phrase:") && $0.title.contains("hear") })
+        #expect(lastNight.suggestions.contains { $0.term == "Tea Time" })
     }
 }
