@@ -82,7 +82,7 @@ struct MarkerSettingsView: View {
                     .buttonStyle(.borderless)
                     .disabled(selectedLabelID == nil)
                 Spacer()
-                MarkerPresetsMenu()
+                MarkerPresetsMenu(onLoad: { selection = nil })
                 Button("Restore Defaults…") { confirmingRestore = true }
                     .disabled(model.document.markers == nil)
                     .help("Go back to Wilco's built-in marker lists for this show")

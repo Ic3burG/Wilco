@@ -5,6 +5,9 @@ import WilcoCore
 /// point. Loading copies the preset into the show, so later edits to either
 /// never touch the other.
 struct MarkerPresetsMenu: View {
+    /// Called after a preset replaces the show's markers, so the list can
+    /// drop a selection that may no longer exist.
+    var onLoad: () -> Void = {}
     @Environment(AppModel.self) private var model
     @State private var presets: [MarkerPreset] = []
     @State private var loading: MarkerPreset?
@@ -70,6 +73,7 @@ struct MarkerPresetsMenu: View {
         // Read again in case the file changed since the menu was built.
         do {
             model.document.markers = try store.preset(preset.id).markers
+            onLoad()
         } catch {
             errorMessage = "The “\(preset.name)” preset couldn't be read."
             refresh()
@@ -95,6 +99,7 @@ private struct SavePresetSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
     @State private var replacing: MarkerPreset?
+    @State private var saved = false
     @State private var errorMessage: String?
 
     var body: some View {
@@ -116,7 +121,12 @@ private struct SavePresetSheet: View {
             "Replace the “\(replacing?.name ?? "")” preset?",
             isPresented: Binding(get: { replacing != nil }, set: { if !$0 { replacing = nil } })
         ) {
-            Button("Replace") { save() }
+            // Save now, but close the sheet only once this dialog has gone:
+            // dismissing a sheet while its dialog is still closing can be ignored.
+            Button("Replace") { saved = save(dismissing: false) }
+        }
+        .onChange(of: replacing) { _, now in
+            if now == nil && saved { dismiss() }
         }
         .alert("Wilco", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
             Button("OK") {}
@@ -134,12 +144,15 @@ private struct SavePresetSheet: View {
         }
     }
 
-    private func save() {
+    @discardableResult
+    private func save(dismissing: Bool = true) -> Bool {
         do {
             try store.save(name: name, markers: markers)
-            dismiss()
+            if dismissing { dismiss() }
+            return true
         } catch {
             errorMessage = presetErrorText(error)
+            return false
         }
     }
 }
