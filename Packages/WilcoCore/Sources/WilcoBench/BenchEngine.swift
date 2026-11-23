@@ -65,7 +65,7 @@ extension BenchEngine {
               summary: "Apple long-form, one pass"),
         apple(id: "apple-dictation", engine: .dictation, profile: .leadAndCorrect,
               summary: "Apple dictation, fast then corrected"),
-    ] + WhisperModel.allCases.map(whisper) + parakeet + [
+    ] + WhisperModel.allCases.map(whisper) + parakeet + candidates + [
         apple(id: "apple-longform-voices", engine: .longForm, profile: .leadAndCorrect,
               summary: "Apple long-form with voice changes", voices: true),
         whisper(.base, voices: true),

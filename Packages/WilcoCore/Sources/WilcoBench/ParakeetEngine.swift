@@ -16,7 +16,7 @@ extension BenchEngine {
             },
             makeFactory: {
                 // A fresh model per run, so each run pays its own load.
-                let recognizer = BenchV2Recognizer(model: BenchParakeetModel(version: .v2))
+                let recognizer = BenchTdtRecognizer(model: BenchParakeetModel(version: .v2))
                 return factory { recognizer }
             }
         ),
@@ -167,22 +167,5 @@ actor BenchParakeetModel {
             loading = nil
             throw error
         }
-    }
-}
-
-struct BenchV2Recognizer: UtteranceRecognizer {
-    let model: BenchParakeetModel
-
-    func prepare() async throws {
-        _ = try await model.loaded()
-    }
-
-    func recognize(_ samples: [Float]) async throws -> Recognition? {
-        let manager = try await model.loaded()
-        let minimum = ASRConstants.minimumRequiredSamples(forSampleRate: 16_000)
-        let audio = samples.count < minimum ? samples + [Float](repeating: 0, count: minimum - samples.count) : samples
-        var state = TdtDecoderState.make(decoderLayers: await manager.decoderLayerCount)
-        let result = try await manager.transcribe(audio, decoderState: &state)
-        return Recognition(text: result.text, confidence: Double(result.confidence))
     }
 }
