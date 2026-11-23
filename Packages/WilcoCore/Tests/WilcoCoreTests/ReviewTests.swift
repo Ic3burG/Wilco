@@ -306,3 +306,71 @@ struct VocabularySuggestionTests {
         #expect(finding.fixes.first?.label == "Add 1 to vocabulary")
     }
 }
+
+@Suite("Session history")
+struct SessionHistoryTests {
+    let sm = ChannelConfig(name: "ShowCall PL")
+
+    func folder() throws -> URL {
+        let url = FileManager.default.temporaryDirectory.appending(path: "review-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        return url
+    }
+
+    /// Writes a session with `texts` and, when `show` is given, its show copy.
+    @discardableResult
+    func session(_ name: String, in folder: URL, texts: [String], show: ShowDocument?) throws -> URL {
+        let url = folder.appending(path: "Session \(name).jsonl")
+        var data = Data()
+        for (i, text) in texts.enumerated() {
+            data.append(try TranscriptFile.line(for: reviewLine(text, channel: sm.id, at: Double(i) * 10)))
+        }
+        try data.write(to: url)
+        if let show { try SessionShow.save(show, forTranscript: url) }
+        return url
+    }
+
+    @Test func summaryUsesTheSessionCopyName() throws {
+        let dir = try folder()
+        let url = try session("2026-11-20 1900-00", in: dir, texts: ["Standby.", "Yeah."],
+                              show: ShowDocument(name: "YE Dallas", channels: [sm]))
+        let summary = try SessionHistory.summary(transcript: url, candidates: [ShowDocument(name: "Other", channels: [sm])])
+        #expect(summary.showName == "YE Dallas")
+        #expect(summary.lines == 2)
+        #expect(summary.fillerShare == 0.5)
+        let expected = DateComponents(calendar: .current, year: 2026, month: 11, day: 20, hour: 19).date
+        #expect(summary.started == expected)
+    }
+
+    @Test func sessionWithoutCopyUsesTheBestMatch() throws {
+        let dir = try folder()
+        let url = try session("2026-11-20 1900-00", in: dir, texts: ["Standby."], show: nil)
+        let summary = try SessionHistory.summary(transcript: url, candidates: [ShowDocument(name: "YE Phoenix", channels: [sm])])
+        #expect(summary.showName == "YE Phoenix")
+    }
+
+    @Test func sameShowFiltersByNameNewestFirst() throws {
+        let dir = try folder()
+        let phoenix = ShowDocument(name: "YE Phoenix", channels: [sm])
+        let older = try session("2026-11-19 1900-00", in: dir, texts: ["Go."], show: phoenix)
+        let newer = try session("2026-11-21 1900-00", in: dir, texts: ["Go."], show: phoenix)
+        let current = try session("2026-11-22 1900-00", in: dir, texts: ["Go."], show: phoenix)
+        try session("2026-11-20 1900-00", in: dir, texts: ["Go."], show: ShowDocument(name: "YE Dallas", channels: [sm]))
+        let all = try SessionHistory.summaries(in: dir, candidates: [])
+        #expect(all.count == 4)
+        let same = SessionHistory.sameShow(as: "YE Phoenix", in: all, excluding: current)
+        #expect(same.map(\.id.lastPathComponent) == [newer, older].map(\.lastPathComponent))
+    }
+
+    @Test func historyNamesFeedSuggestions() throws {
+        let show = ShowDocument(name: "YE Phoenix", channels: [sm])
+        var before = SessionSummary(id: URL(filePath: "/a"), started: .now, showName: "YE Phoenix", lines: 2,
+                                    fillerShare: 0, unclearShare: 0, delayP90: nil)
+        before.names = NameCounts(counts: ["Dana": 2])
+        let lines = (0..<60).map { reviewLine($0 == 0 ? "Ask Dana now." : "Standby.", channel: sm.id, at: Double($0)) }
+        #expect(!ShowReview.make(segments: lines, show: show).suggestions.contains { $0.term == "Dana" })
+        let review = ShowReview.make(segments: lines, show: show, history: [before])
+        #expect(review.suggestions.contains { $0.term == "Dana" })
+        #expect(review.trend.map(\.id) == [before.id])
+    }
+}

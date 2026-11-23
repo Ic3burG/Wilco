@@ -26,11 +26,17 @@ public struct ShowReview: Sendable {
     public var findings: [Finding]
     /// Words to offer for the show vocabulary; the "vocabulary" finding lists them.
     public var suggestions: [VocabularySuggestion]
+    /// Up to four earlier sessions of the same show, newest first.
+    public var trend: [SessionSummary]
 
-    public static func make(segments: [TranscriptSegment], show: ShowDocument) -> ShowReview {
+    /// `history` is earlier sessions of the same show; their names count
+    /// towards vocabulary suggestions.
+    public static func make(segments: [TranscriptSegment], show: ShowDocument, history: [SessionSummary] = []) -> ShowReview {
         let stats = SessionStats.make(segments)
+        var names = NameCounts.make(segments)
+        for summary in history { names.add(summary.names) }
         let suggestions = stats.lines >= ReviewThresholds.minimumLines
-            ? VocabularySuggestions.suggest(counts: NameCounts.make(segments), show: show) : []
+            ? VocabularySuggestions.suggest(counts: names, show: show) : []
         var builder = Builder(segments: segments, show: show, stats: stats)
         builder.checkSetup()
         if stats.lines >= ReviewThresholds.minimumLines {
@@ -45,7 +51,7 @@ public struct ShowReview: Sendable {
         let findings = builder.found
             .sorted { ($0.finding.severity, -$0.weight) < ($1.finding.severity, -$1.weight) }
             .map(\.finding)
-        return ShowReview(stats: stats, findings: findings, suggestions: suggestions)
+        return ShowReview(stats: stats, findings: findings, suggestions: suggestions, trend: Array(history.prefix(4)))
     }
 }
 
