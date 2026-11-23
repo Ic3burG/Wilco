@@ -50,7 +50,22 @@ final class ReportModel {
     private(set) var history: [SessionSummary]?
     /// The selected session's lines and the show it was recorded with.
     /// `showIsKnown` is false when the open show stood in for one nobody saved.
-    private var reviewInput: (url: URL, segments: [TranscriptSegment], show: ShowDocument, showIsKnown: Bool, diagnostics: SessionDiagnostics?)?
+    /// What the review is built from, kept until the selection changes.
+    private struct ReviewInput {
+        var url: URL
+        var segments: [TranscriptSegment]
+        var show: ShowDocument
+        var showIsKnown: Bool
+        var diagnostics: SessionDiagnostics?
+    }
+
+    /// A session read off disk, ready to show.
+    private struct LoadedSession {
+        var report: ShowReport
+        var reviewInput: ReviewInput
+    }
+
+    private var reviewInput: ReviewInput?
     private var reviewTask: Task<Void, Never>?
     private var historyTask: Task<Void, Never>?
 
@@ -211,24 +226,26 @@ final class ReportModel {
         let show = show
         loadTask = Task {
             let built = await Task.detached(priority: .userInitiated) {
-                () -> Result<(ShowReport, [TranscriptSegment], ShowDocument, Bool, SessionDiagnostics?), Error> in
+                () -> Result<LoadedSession, Error> in
                 Result {
                     let segments = TranscriptFile.segments(in: try Data(contentsOf: url))
                     let found = SessionShow.load(forTranscript: url)
                         ?? SessionShow.bestMatch(for: segments, among: [show] + Self.savedShows())
                     let recordedWith = found ?? show
                     let report = ShowReportBuilder.build(segments: segments, show: recordedWith, sourceName: url.lastPathComponent, generated: .now)
-                    return (report, segments, recordedWith, found != nil, SessionDiagnostics.load(forTranscript: url))
+                    return LoadedSession(report: report, reviewInput: ReviewInput(
+                        url: url, segments: segments, show: recordedWith, showIsKnown: found != nil,
+                        diagnostics: SessionDiagnostics.load(forTranscript: url)))
                 }
             }.value
             guard !Task.isCancelled else { return }
             isLoading = false
             switch built {
-            case .success(let (report, _, _, _, _)) where report.totalMessages == 0:
+            case .success(let loaded) where loaded.report.totalMessages == 0:
                 error = "This session has no transcribed lines."
-            case .success(let (report, segments, recordedWith, showIsKnown, diagnostics)):
-                self.report = report
-                reviewInput = (url, segments, recordedWith, showIsKnown, diagnostics)
+            case .success(let loaded):
+                report = loaded.report
+                reviewInput = loaded.reviewInput
                 rebuildReview()
             case .failure(let failure):
                 error = "Could not read the session: \(failure.localizedDescription)"

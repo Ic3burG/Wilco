@@ -249,13 +249,15 @@ final class AppModel {
         let recorder = diagnostics
         diagnostics = nil
         transcription.diagnostics = nil
+        // Likewise the writer: a restart during the recorder's wait must not skip this one's end copy.
+        let finishing = writer
         Task {
             await transcription.stopAll()
-            await recorder?.finish()
-            if sessionStart == nil {
-                writer?.finish(show: document)
-                writer = nil
+            if sessionStart == nil, let finishing {
+                finishing.finish(show: document)
+                if writer === finishing { writer = nil }
             }
+            await recorder?.finish()
         }
     }
 
