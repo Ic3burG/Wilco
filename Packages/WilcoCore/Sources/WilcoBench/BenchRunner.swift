@@ -34,6 +34,12 @@ public struct BenchRunner: Sendable {
     public var vocabulary: [String] = []
     /// Used by engines that detect voice changes.
     public var voiceChanges: VoiceChangeSettings = .standard
+    /// Runs the per-minute meter and sound classifier in every channel, as a
+    /// live session does, writing to a temporary file that is deleted after
+    /// the run. A minute closes by wall clock and clips come only from minutes
+    /// with at least 3 s of sound, so runs shorter than a minute exercise only
+    /// the meter's per-block work, not the classifier.
+    public var diagnostics = false
 
     public init(clips: [BenchClip], sampleRate: Double = 48_000) {
         self.clips = clips
@@ -52,10 +58,19 @@ public struct BenchRunner: Sendable {
         let rings = (0..<count).map { _ in AudioRingBuffer(capacity: Int(sampleRate * 10)) }
         let rate = sampleRate
         let factory = engine.makeFactory()
+        let classifier = diagnostics ? SoundClassifierQueue() : nil
+        let diagnosticsURL = FileManager.default.temporaryDirectory
+            .appending(path: "wilco-bench-\(UUID().uuidString).diagnostics")
+        let diagnosticsRecorder = diagnostics
+            ? DiagnosticsRecorder(
+                writer: DiagnosticsWriter(url: diagnosticsURL), sessionStart: Date(), classifier: classifier
+            )
+            : nil
+        let tap = diagnosticsRecorder?.tap
         let transcribers = (0..<count).map { index in
             factory(BenchChannel(
                 index: index, id: UUID(),
-                source: AudioSource(ring: rings[index], sampleRate: { rate }),
+                source: AudioSource(ring: rings[index], sampleRate: { rate }, diagnostics: tap),
                 vocabulary: vocabulary,
                 voiceChanges: voiceChanges,
                 onEvent: { recorder.record($0, channel: index) },
@@ -123,6 +138,11 @@ public struct BenchRunner: Sendable {
         let watchedUntil = seconds(clock.now - origin)
         meter.sample()
         let usage = meter.finish()
+        // Finishing waits for classifications still running, which is not
+        // part of what the run is measuring.
+        await diagnosticsRecorder?.finish()
+        let droppedClips = await classifier?.droppedClips
+        if diagnostics { try? FileManager.default.removeItem(at: diagnosticsURL) }
 
         let texts = clips.map(\.text)
         let scores = scenario.channels.enumerated().map { index, utterances in
@@ -159,7 +179,8 @@ public struct BenchRunner: Sendable {
             voices: voices,
             voiceThreshold: engine.detectsVoiceChanges ? voiceChanges.threshold : nil,
             merged: scores.map(\.merged).reduce(0, +),
-            longTalk: scenario.longTalk ? true : nil
+            longTalk: scenario.longTalk ? true : nil,
+            droppedClips: droppedClips
         )
     }
 

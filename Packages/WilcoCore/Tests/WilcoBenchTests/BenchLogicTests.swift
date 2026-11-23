@@ -435,6 +435,26 @@ struct BenchRunnerTests {
         #expect(result.keepsUp)
     }
 
+    @Test(.timeLimit(.minutes(1))) func diagnosticsRunReportsDroppedClips() async {
+        let clips = [BenchClip(text: "go", samples: [Float](repeating: 0.1, count: 4_000))]
+        let scenario = Scenario.generate(channelCount: 2, clipDurations: [0.25], duration: 3, dutyCycle: 0.3, seed: 1)
+        let texts = clips.map(\.text)
+        let engine = BenchEngine(id: "echo", summary: "test double", unavailableReason: { nil }) {
+            { channel in
+                EchoTranscriber(channel: channel, utterances: scenario.channels[channel.index], texts: texts)
+            }
+        }
+        var runner = BenchRunner(clips: clips, sampleRate: 16_000)
+        let off = await runner.run(engine: engine, scenario: scenario, drainTimeout: 2)
+        #expect(off.droppedClips == nil)
+
+        runner.diagnostics = true
+        let on = await runner.run(engine: engine, scenario: scenario, drainTimeout: 2)
+        #expect(on.droppedClips == 0)
+        #expect(BenchReport.tableHeader(longTalk: false, diagnostics: true).contains("| Dropped | Clips dropped | Keeps up |"))
+        #expect(BenchReport.tableRow(on, diagnostics: true).contains("| 0 | 0 | yes |"))
+    }
+
     @Test func reportsAnEngineThatFailsToStart() async {
         let clips = [BenchClip(text: "go", samples: [Float](repeating: 0.1, count: 4_000))]
         let scenario = Scenario.generate(channelCount: 1, clipDurations: [0.25], duration: 2, dutyCycle: 0.3, seed: 1)

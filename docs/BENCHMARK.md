@@ -33,6 +33,7 @@ share the speech hardware, and keep the Mac otherwise quiet.
 | `--stop-when-behind` | off | Skip an engine's larger counts once it falls behind. |
 | `--conversation` | off | Channels hold exchanges between voices instead of lone calls (see below). `--duty` doesn't apply. |
 | `--long-talk` | off | Channels hold about 15 s of unbroken talking in room sound, and the run is also judged on words lost (see below). `--duty` doesn't apply. Can't be combined with `--conversation`. |
+| `--diagnostics` | off | Runs the session diagnostics in every channel, as a live session does: the per-minute level meter in each read loop and the sound classifier on one clip per channel per minute. The recorder writes to a temporary file that is deleted after the run, and the report gains a **Clips dropped** column (clips the classifier's queue dropped because 64 were waiting). A minute closes by wall clock and clips come only from minutes with 3 s or more of sound, so use `--duration 120` or more; shorter runs measure the meter but not the classifier. |
 | `--voice-threshold D` | the app's default | Voice-change threshold (cosine distance) for the `-voices` engines. |
 
 ### Live preview

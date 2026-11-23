@@ -46,6 +46,9 @@ public struct RunResult: Codable, Equatable, Sendable {
     /// True for long-talk runs, which are also judged on words lost. Nil for
     /// other runs and in reports from before long talks.
     public var longTalk: Bool?
+    /// Diagnostics clips the sound classifier's queue dropped because it was
+    /// full. Nil when the run had no diagnostics (and in older reports).
+    public var droppedClips: Int?
 
     public struct Sample: Codable, Equatable, Sendable {
         public var reference: String
@@ -115,16 +118,18 @@ public struct BenchReport: Codable, Equatable, Sendable {
 
     public static let tableHeader = tableHeader(longTalk: false)
 
-    /// Long-talk runs get a "Words lost" column after WER.
-    public static func tableHeader(longTalk: Bool) -> String {
+    /// Long-talk runs get a "Words lost" column after WER; runs with
+    /// diagnostics get a "Clips dropped" column after Dropped.
+    public static func tableHeader(longTalk: Bool, diagnostics: Bool = false) -> String {
         let lost = longTalk ? (" Words lost |", "---:|") : ("", "")
+        let clips = diagnostics ? (" Clips dropped |", "---:|") : ("", "")
         return """
-            | Engine | Ch | WER |\(lost.0) Missed | Final delay p50 / p95 / max | Display p95 | First words p50 | Backlog | Start | CPU (us) | CPU (Mac) | Memory | Dropped | Keeps up |
-            |---|---:|---:|\(lost.1)---:|---|---:|---:|---:|---:|---:|---:|---:|---:|:---:|
+            | Engine | Ch | WER |\(lost.0) Missed | Final delay p50 / p95 / max | Display p95 | First words p50 | Backlog | Start | CPU (us) | CPU (Mac) | Memory | Dropped |\(clips.0) Keeps up |
+            |---|---:|---:|\(lost.1)---:|---|---:|---:|---:|---:|---:|---:|---:|---:|\(clips.1):---:|
             """
     }
 
-    public static func tableRow(_ r: RunResult) -> String {
+    public static func tableRow(_ r: RunResult, diagnostics: Bool = false) -> String {
         func s(_ value: Double?) -> String { value.map { String(format: "%.2f s", $0) } ?? "–" }
         let delay = r.finalLatency.map { String(format: "%.2f / %.2f / %.2f s", $0.p50, $0.p95, $0.max) } ?? "–"
         let cells = [
@@ -142,6 +147,7 @@ public struct BenchReport: Codable, Equatable, Sendable {
             String(format: "%.0f%%", r.systemCPU * 100),
             String(format: "%.0f MB", r.peakMemoryMB),
             "\(r.droppedFrames)",
+        ] + (diagnostics ? [r.droppedClips.map(String.init) ?? "–"] : []) + [
             r.keepsUp ? "yes" : "**no**",
         ]
         return "| " + cells.joined(separator: " | ") + " |"
@@ -174,15 +180,16 @@ public struct BenchReport: Codable, Equatable, Sendable {
     public func markdown() -> String {
         let formatter = ISO8601DateFormatter()
         let longTalk = results.contains { $0.longTalk == true }
+        let diagnostics = results.contains { $0.droppedClips != nil }
         var lines = [
             "# Wilco transcription benchmark",
             "",
             "\(formatter.string(from: date)) · \(machine) · macOS \(osVersion) · speech: \(corpus)"
                 + (idleSystemCPU.map { String(format: " · Mac idle: %.0f%% CPU", $0 * 100) } ?? ""),
             "",
-            Self.tableHeader(longTalk: longTalk),
+            Self.tableHeader(longTalk: longTalk, diagnostics: diagnostics),
         ]
-        lines += results.map(Self.tableRow)
+        lines += results.map { Self.tableRow($0, diagnostics: diagnostics) }
         let limit = Int(RunResult.acceptableDelay)
         lines += [
             "",
@@ -196,6 +203,13 @@ public struct BenchReport: Codable, Equatable, Sendable {
                 + "dropped audio, ≤ 5% of calls missed, p95 final delay and backlog ≤ \(limit) s; with voice changes "
                 + "on, also display p95 and display backlog ≤ \(limit) s.",
         ]
+        if diagnostics {
+            lines += [
+                "",
+                "Clips dropped: sound clips the classifier's queue dropped because 64 were already waiting. The run "
+                    + "recorded session diagnostics (the per-minute meter and sound classifier) in every channel.",
+            ]
+        }
         if longTalk {
             lines += [
                 "",

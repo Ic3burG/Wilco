@@ -34,6 +34,10 @@ let usage = """
                              sound (echo and hiss), some dropping to a quiet
                              voice halfway. Fails when over 10% of the words
                              are lost. --duty doesn't apply.
+      --diagnostics          Run the session diagnostics (per-minute meter and
+                             sound classifier) in every channel and add a
+                             "clips dropped" column. Clips come once a minute,
+                             so use --duration 120 or more to exercise them.
       --voice-threshold D    Voice-change threshold for `-voices` engines
                              (default: the app's, \(VoiceChangeSettings.standard.threshold)).
     """
@@ -52,6 +56,7 @@ struct Options {
     var stopWhenBehind = false
     var conversation = false
     var longTalk = false
+    var diagnostics = false
     var voiceThreshold = VoiceChangeSettings.standard.threshold
 }
 
@@ -87,6 +92,7 @@ func parse(_ arguments: [String]) -> Options {
         case "--stop-when-behind": options.stopWhenBehind = true
         case "--conversation": options.conversation = true
         case "--long-talk": options.longTalk = true
+        case "--diagnostics": options.diagnostics = true
         case "--voice-threshold": options.voiceThreshold = number(argument) { $0 > 0 && $0 < 2 }
         case "-h", "--help": print(usage); exit(0)
         default: fail("unknown option \(argument)")
@@ -195,6 +201,7 @@ do {
 
 var runner = BenchRunner(clips: clips, sampleRate: sampleRate)
 runner.voiceChanges.threshold = options.voiceThreshold
+runner.diagnostics = options.diagnostics
 let durations = clips.map { $0.duration(sampleRate: sampleRate) }
 if options.conversation, Set(clips.map(\.voice)).count < 2 {
     fail("--conversation needs at least two voices (more `say` voices, or speaker marks in the corpus)")
@@ -238,8 +245,9 @@ report.idleSystemCPU = await BenchRunner.idleSystemCPU()
 log(String(format: "Mac idle: %.0f%% of all cores busy", (report.idleSystemCPU ?? 0) * 100))
 log("\(report.machine) · \(engines.count) engine(s) × channels \(options.channels) · \(Int(options.duration)) s runs, "
     + (options.conversation ? "conversations" : options.longTalk ? "long talks" : "\(Int(options.duty * 100))% talk time")
+    + (options.diagnostics ? " · diagnostics on" : "")
     + (engines.contains(where: \.detectsVoiceChanges) ? " · voice threshold \(options.voiceThreshold)" : ""))
-print(BenchReport.tableHeader(longTalk: options.longTalk))
+print(BenchReport.tableHeader(longTalk: options.longTalk, diagnostics: options.diagnostics))
 for engine in engines {
     for channels in options.channels {
         let scenario = options.conversation
@@ -258,7 +266,7 @@ for engine in engines {
         log("→ \(engine.id) × \(channels) channels (\(scenario.utteranceCount) calls)…")
         let result = await runner.run(engine: engine, scenario: scenario)
         report.results.append(result)
-        print(BenchReport.tableRow(result))
+        print(BenchReport.tableRow(result, diagnostics: options.diagnostics))
         if result.voices != nil { log("  voices: " + BenchReport.voiceRow(result)) }
         save()
         if options.stopWhenBehind, !result.keepsUp {
