@@ -15,8 +15,8 @@ import WilcoCore
 
     private func recorder(
         _ url: URL, hold: Double = 30, classifier: SoundClassifierQueue? = nil, at offset: Double = 0
-    ) -> (DiagnosticsRecorder, Clock) {
-        let clock = Clock(start.addingTimeInterval(offset))
+    ) -> (DiagnosticsRecorder, ManualDate) {
+        let clock = ManualDate(start.addingTimeInterval(offset))
         let r = DiagnosticsRecorder(
             writer: DiagnosticsWriter(url: url), sessionStart: start, classifier: classifier,
             hold: hold, now: { clock.date }, writeInterval: nil)
@@ -113,10 +113,77 @@ import WilcoCore
         #expect(!FileManager.default.fileExists(atPath: url.path))
         await r.finish()
     }
+
+    @Test func finishDoesNotWaitOnClassificationsOfWrittenRows() async {
+        let url = tempURL()
+        let queue = SoundClassifierQueue { _ in
+            try? await Task.sleep(for: .seconds(3600))
+            return nil
+        }
+        let (r, clock) = recorder(url, hold: 5, classifier: queue)
+        r.tap.sink(MeterReport(row: row(0), clip: clip()))
+        await waitFor { await r.pendingClassifications == 1 }
+        clock.date = start.addingTimeInterval(60 + 6)
+        await r.writeDue()
+        #expect(fileRows(url).count == 1)
+        r.tap.sink(MeterReport(row: row(1)))
+        await waitFor { await r.heldRowCount == 1 }
+        let began = Date()
+        await r.finish()
+        #expect(Date().timeIntervalSince(began) < 1)
+        #expect(fileRows(url).map(\.minute) == [0, 1])
+    }
+
+    @Test func aWriteFailureForgetsRowsWithoutCrashing() async throws {
+        let blocker = tempURL()
+        try FileManager.default.createDirectory(
+            at: blocker.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data().write(to: blocker)
+        let (r, clock) = recorder(blocker.appendingPathComponent("s.diagnostics"))
+        r.tap.sink(MeterReport(row: row(0)))
+        await waitFor { await r.heldRowCount == 1 }
+        clock.date = start.addingTimeInterval(60 + 31)
+        await r.writeDue()
+        r.tap.sink(MeterReport(row: row(1)))
+        await waitFor { await r.heldRowCount == 1 }
+        clock.date = start.addingTimeInterval(120 + 31)
+        await r.writeDue()
+        #expect(await r.heldRowCount == 0)
+        await r.finish()
+    }
+
+    @Test func holdsARowWhileItsClassificationIsPending() async {
+        let url = tempURL()
+        let release = Release()
+        let queue = SoundClassifierQueue { [shares] _ in
+            while !release.isSet { try? await Task.sleep(for: .milliseconds(5)) }
+            return shares
+        }
+        let (r, clock) = recorder(url, classifier: queue)
+        r.tap.sink(MeterReport(row: row(0), clip: clip()))
+        await waitFor { await r.pendingClassifications == 1 }
+        clock.date = start.addingTimeInterval(60 + 10)
+        await r.writeDue()
+        #expect(!FileManager.default.fileExists(atPath: url.path))
+        #expect(await r.heldRowCount == 1)
+        release.set()
+        await waitFor { await r.pendingClassifications == 0 }
+        clock.date = start.addingTimeInterval(60 + 31)
+        await r.writeDue()
+        #expect(fileRows(url).first?.classified == shares)
+        await r.finish()
+    }
+}
+
+fileprivate final class Release: @unchecked Sendable {
+    private let lock = NSLock()
+    private var flag = false
+    var isSet: Bool { lock.withLock { flag } }
+    func set() { lock.withLock { flag = true } }
 }
 
 /// A date the test moves by hand.
-final class Clock: @unchecked Sendable {
+fileprivate final class ManualDate: @unchecked Sendable {
     private let lock = NSLock()
     private var value: Date
     init(_ value: Date) { self.value = value }

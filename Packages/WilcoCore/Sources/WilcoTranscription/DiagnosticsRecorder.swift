@@ -23,7 +23,8 @@ public actor DiagnosticsRecorder {
     private var loopTask: Task<Void, Never>?
 
     private var rows: [Key: ChannelMinute] = [:]
-    private var outstanding = 0
+    /// Classifications still unanswered, per row not yet written.
+    private var pending: [Key: Int] = [:]
     private var writeFailed = false
 
     /// Where every channel's meter sends its minutes.
@@ -65,7 +66,8 @@ public actor DiagnosticsRecorder {
                 while !Task.isCancelled {
                     try? await Task.sleep(for: .seconds(writeInterval))
                     if Task.isCancelled { break }
-                    await self?.writeDue()
+                    guard let self else { return }
+                    await self.writeDue()
                 }
             }
         }
@@ -94,7 +96,7 @@ public actor DiagnosticsRecorder {
         finished = true
         await drainTask?.value
         let deadline = ContinuousClock.now + .seconds(hold)
-        while outstanding > 0, ContinuousClock.now < deadline {
+        while rows.keys.contains(where: { pending[$0] != nil }), ContinuousClock.now < deadline {
             try? await Task.sleep(for: .milliseconds(10))
         }
         write(rows.keys)
@@ -103,7 +105,7 @@ public actor DiagnosticsRecorder {
     /// Rows held back, waiting to be written. For tests.
     var heldRowCount: Int { rows.count }
     /// Classifications not yet answered. For tests.
-    var pendingClassifications: Int { outstanding }
+    var pendingClassifications: Int { pending.values.reduce(0, +) }
 
     private func accept(_ report: MeterReport) {
         let key = Key(channel: report.row.channel, minute: report.row.minute)
@@ -113,7 +115,7 @@ public actor DiagnosticsRecorder {
             rows[key] = report.row
         }
         guard let clip = report.clip, let classifier else { return }
-        outstanding += 1
+        pending[key, default: 0] += 1
         Task {
             let shares = await classifier.classify(clip)
             self.classified(shares, for: key)
@@ -122,7 +124,9 @@ public actor DiagnosticsRecorder {
 
     /// A late result, for a row already written, is dropped.
     private func classified(_ shares: SoundShares?, for key: Key) {
-        outstanding -= 1
+        // No entry means the row was written meanwhile: drop the result.
+        guard let count = pending[key] else { return }
+        pending[key] = count > 1 ? count - 1 : nil
         guard let shares, rows[key] != nil, rows[key]?.classified == nil else { return }
         rows[key]?.classified = shares
     }
@@ -132,6 +136,7 @@ public actor DiagnosticsRecorder {
             $0.minute != $1.minute ? $0.minute < $1.minute : $0.channel.uuidString < $1.channel.uuidString
         }
         for key in ordered {
+            pending[key] = nil
             guard let row = rows.removeValue(forKey: key), !writeFailed else { continue }
             do { try writer.append(row) } catch { writeFailed = true }
         }
