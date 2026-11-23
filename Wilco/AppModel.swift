@@ -99,6 +99,9 @@ final class AppModel {
     @ObservationIgnored private var meterTimer: Timer?
     @ObservationIgnored private let transcription: TranscriptionController
     @ObservationIgnored private var writer: TranscriptWriter?
+    /// One sound classifier for the app's lifetime; each session's recorder shares it.
+    @ObservationIgnored private let soundClassifier = SoundClassifierQueue()
+    @ObservationIgnored private var diagnostics: DiagnosticsRecorder?
     @ObservationIgnored private var reportedWriteFailure = false
     @ObservationIgnored private var evaluator = AutomationEvaluator()
     /// Keywords of recognised lines, kept until their annotated pieces arrive.
@@ -215,7 +218,13 @@ final class AppModel {
         guard !isCapturing else { return }
         let start = Date()
         sessionStart = start
-        writer = TranscriptWriter(url: DataLocations.transcripts.appending(path: TranscriptFile.fileName(for: start)), show: document)
+        let transcriptURL = DataLocations.transcripts.appending(path: TranscriptFile.fileName(for: start))
+        writer = TranscriptWriter(url: transcriptURL, show: document)
+        let recorder = DiagnosticsRecorder(
+            writer: DiagnosticsWriter(url: DiagnosticsFile.url(forTranscript: transcriptURL)),
+            sessionStart: start, classifier: soundClassifier)
+        diagnostics = recorder
+        transcription.diagnostics = recorder.tap
         reportedWriteFailure = false
         evaluator.reset()
         pendingLines = PendingLines()
@@ -236,8 +245,13 @@ final class AppModel {
         meterTimer = nil
         meters = [:]
         let transcription = transcription
+        // This session's recorder, so one started at once gets its own.
+        let recorder = diagnostics
+        diagnostics = nil
+        transcription.diagnostics = nil
         Task {
             await transcription.stopAll()
+            await recorder?.finish()
             if sessionStart == nil {
                 writer?.finish(show: document)
                 writer = nil
