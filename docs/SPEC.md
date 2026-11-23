@@ -57,6 +57,7 @@ All under `~/Library/Application Support/Wilco/` [file]:
 |---|---|
 | `Current.wilco` | The open show: JSON-encoded `ShowDocument` (§4). Autosaved (`ShowStore.scheduleSave` debounced, `saveNow`). If unreadable on launch it is renamed `Current-unreadable-<…>` and the user is told *"Could not open the previous show file. It has been kept at …"* [str, sym] |
 | `Configurations/‹UUID›.wilco` | **New in the rebuild, not in the reference app.** Saved show setups, one plain `ShowDocument` each (same format as `Current.wilco`). `Current.wilco` stays the autosaved working copy; a configuration changes only on Save. The loaded one's UUID is in `UserDefaults` `configurations.loaded`. See `docs/superpowers/specs/2026-11-12-configurations-design.md`. |
+| `Presets/Markers/‹UUID›.json` | **New in the rebuild.** Marker presets (`MarkerPresetStore`): `{ name, markers }`, `markers` being a `MarkerSettings`. The UUID is the identity, and names are unique ignoring case. Unreadable files are skipped and left alone. See `docs/superpowers/specs/2026-11-22-marker-presets-design.md`. |
 | `Transcripts/Session yyyy-MM-dd HHmm-ss.jsonl` | One `TranscriptSegment` JSON object per line, appended as each line is finalised (`TranscriptWriter`). *"Every finalised line is written to disk as it happens, so clearing the on-screen log does not discard the record."* |
 | `Transcripts/Session yyyy-MM-dd HHmm-ss.wilco` | Wilco addition. A copy of the show (`ShowDocument`) the session was recorded with, written with the first line and updated when capture stops. The post-show report takes its title, channel names and colours from it. Older sessions have no copy: the report uses whichever saved show or open show shares the most channel IDs with the lines (the open show wins a tie), else the open show. |
 | `WhisperModels/models/argmaxinc/whisperkit-coreml/openai_whisper-<variant>/` | WhisperKit's standard download layout. **Reuse this path** so existing downloads (3 GB here) carry over. |
@@ -261,7 +262,11 @@ Toggling it off removes the rules and destination. [str 18086, 27490–27497]
 `MarkerSettings` (`ShowDocument.markers`). `nil`, the default, means the
 built-in `MarkerSettings.standard`, so an unedited show's file has no
 `markers` key. The lists are edited per show in **Settings › Markers**;
-**Restore Defaults** sets `markers` back to `nil`.
+**Restore Defaults** sets `markers` back to `nil`. **Presets** (same tab) saves the
+show's markers as a named preset or loads one. Loading replaces the show's
+markers with a copy, and confirms first if the show has its own edited
+markers. Saving under an existing name (ignoring case) replaces that preset
+after confirming.
 
 - **Labels** (`MarkerLabel`: category, name, on/off, phrases) for phases,
   house lights, songs and cue calls. Phrases match as whole words, any case,
