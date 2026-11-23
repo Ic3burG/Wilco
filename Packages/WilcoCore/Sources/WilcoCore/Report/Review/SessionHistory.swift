@@ -5,6 +5,8 @@ public struct SessionSummary: Sendable, Identifiable {
     /// The session's `.jsonl` file.
     public var id: URL
     public var started: Date
+    /// The zone it was recorded in, when known (see ``CaptureTimeZone``).
+    public var timeZone: TimeZone?
     public var showName: String
     public var lines: Int
     public var fillerShare: Double
@@ -34,14 +36,16 @@ public enum SessionHistory {
         let stats = SessionStats.make(segments)
         let show = SessionShow.load(forTranscript: transcript) ?? SessionShow.bestMatch(for: segments, among: candidates)
         let name = show?.name.trimmingCharacters(in: .whitespaces) ?? ""
+        let zone = CaptureTimeZone.of(segments, transcript: transcript)
         var summary = SessionSummary(
             id: transcript,
-            started: started(fromFileName: transcript) ?? Date(timeIntervalSince1970: stats.start),
+            started: started(fromFileName: transcript, timeZone: zone) ?? Date(timeIntervalSince1970: stats.start),
             showName: name.isEmpty ? unknownShow : name,
             lines: stats.lines, fillerShare: stats.fillerShare, unclearShare: stats.unclearShare,
             delayP90: stats.delayP90
         )
         summary.names = NameCounts.make(segments)
+        summary.timeZone = zone
         return summary
     }
 
@@ -60,13 +64,9 @@ public enum SessionHistory {
             .sorted { $0.started > $1.started }
     }
 
-    /// "Session 2026-11-07 2225-51.jsonl" → its local start time.
-    public static func started(fromFileName url: URL) -> Date? {
-        let name = url.deletingPathExtension().lastPathComponent
-        guard name.hasPrefix("Session ") else { return nil }
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "yyyy-MM-dd HHmm-ss"
-        return formatter.date(from: String(name.dropFirst("Session ".count)))
+    /// "Session 2026-11-07 2225-51.jsonl" → its start, the name being wall
+    /// clock in the capture zone (this Mac's when that isn't known).
+    public static func started(fromFileName url: URL, timeZone: TimeZone? = nil) -> Date? {
+        TranscriptFile.started(fromFileName: url, timeZone: timeZone ?? .current)
     }
 }

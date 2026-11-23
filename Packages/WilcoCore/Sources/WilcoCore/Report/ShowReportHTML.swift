@@ -5,17 +5,22 @@ import Foundation
 /// offline, follows the reader's light or dark mode, and escapes everything
 /// taken from the session, since it is speech from comms.
 public enum ShowReportHTML {
-    public static func render(_ report: ShowReport, timeZone: TimeZone = .current) -> String {
-        let clock = formatter(timeZone, template: "jmmss")
+    /// Times are shown in the zone the session was recorded in, labelled
+    /// when that isn't `localTimeZone`. Passing `timeZone` forces one zone,
+    /// unlabelled.
+    public static func render(_ report: ShowReport, timeZone: TimeZone? = nil, localTimeZone: TimeZone = .current) -> String {
+        let zone = CaptureClock(capture: timeZone ?? report.timeZone, local: timeZone ?? localTimeZone, at: report.sessionStart)
+        let clock = Clock(formatter: formatter(zone.timeZone, template: "jmmss"), suffix: zone.suffix)
         let title = escape(report.showName)
         let session = escape(report.sourceName.replacingOccurrences(of: ".jsonl", with: ""))
-        let date = escape(formatter(timeZone, template: "EEE d MMM yyyy jmm").string(from: report.sessionStart))
+        let date = escape(formatter(zone.timeZone, template: "EEE d MMM yyyy jmm").string(from: report.sessionStart) + zone.suffix)
+        let note = zone.note.map { "\n  " + #"<p class="zone">\#(escape($0))</p>"# } ?? ""
         return """
         <!DOCTYPE html>
         <html lang="en"><head><meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>\(title) — \(date)</title>
-        <style>\(css)\(report.messages.contains { $0.voice != nil } ? voiceCSS : "")</style>
+        <style>\(css)\(report.messages.contains { $0.voice != nil } ? voiceCSS : "")\(note.isEmpty ? "" : zoneCSS)</style>
         </head><body>
         <div class="bar">
           <div class="where"><b>Post-Show</b><span>\(session)</span></div>
@@ -29,7 +34,7 @@ public enum ShowReportHTML {
           <div class="stats">
             \(stat(duration(report.duration), "duration"))\(stat(report.totalMessages.formatted(), "messages"))\
         \(stat(report.markers.count.formatted(), "markers"))\(stat(report.channels.count.formatted(), "channels"))
-          </div>
+          </div>\(note)
         </header>
         <div class="chips" id="channel-chips">\(channelChips(report))</div>
         <section id="run">\(runOfShow(report, clock: clock))</section>
@@ -64,7 +69,15 @@ public enum ShowReportHTML {
             }.joined()
     }
 
-    private static func timeCell(_ date: Date, _ elapsed: Double, clock: DateFormatter) -> String {
+    /// Clock times in the capture zone, with its label when it isn't the
+    /// exporting Mac's.
+    private struct Clock {
+        let formatter: DateFormatter
+        let suffix: String
+        func string(from date: Date) -> String { formatter.string(from: date) + suffix }
+    }
+
+    private static func timeCell(_ date: Date, _ elapsed: Double, clock: Clock) -> String {
         #"<td class="time"><b>\#(escape(clock.string(from: date)))</b><span>\#(offset(elapsed))</span></td>"#
     }
 
@@ -79,7 +92,7 @@ public enum ShowReportHTML {
         return #" <span class="voice">\#(escape(voice))</span>"#
     }
 
-    private static func runOfShow(_ report: ShowReport, clock: DateFormatter) -> String {
+    private static func runOfShow(_ report: ShowReport, clock: Clock) -> String {
         guard !report.markers.isEmpty else {
             return #"<p class="none">No house light calls, cue calls or show terms were heard on any channel.</p>"#
         }
@@ -102,7 +115,7 @@ public enum ShowReportHTML {
         return #"<div class="chips cats">\#(everything)\#(categories)</div><table class="rows">\#(rows)</table>"#
     }
 
-    private static func chatLog(_ report: ShowReport, clock: DateFormatter) -> String {
+    private static func chatLog(_ report: ShowReport, clock: Clock) -> String {
         let rows = report.messages.map { message in
             let unsure = (message.confidence ?? 1) < ShowReport.unclearBelow
             let title = message.confidence.map { #" title="\#(Int(($0 * 100).rounded()))% confidence""# } ?? ""
@@ -208,6 +221,8 @@ public enum ShowReportHTML {
     }
 
     /// Added only when a line has a letter, so reports of older sessions stay as they were.
+    /// Added only when times are labelled, so other reports are unchanged.
+    private static let zoneCSS = "\n.zone{flex-basis:100%;margin:0;font-size:13px;color:var(--muted)}"
     private static let voiceCSS = "\n.voice{display:inline-block;min-width:1.4em;margin-left:4px;padding:0 4px;border-radius:4px;text-align:center;font-size:11px;font-weight:700;color:var(--ink);background:color-mix(in srgb,var(--t) 22%,transparent)}"
 
     private static let css = """

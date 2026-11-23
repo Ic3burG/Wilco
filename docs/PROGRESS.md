@@ -1272,3 +1272,47 @@ builds. Not yet verified in the app.
   another Mac may reset them. Storing the date in the show would avoid
   that but is a format change; left for now.
 - The New Channels and Review tab checks from earlier today still stand.
+
+## 2026-11-23 — Session times in the zone they were recorded in
+
+### Fixes
+
+- **Times showed in the Mac's current zone.** Lines are stored in UTC,
+  and the report converted them to wherever the Mac is now, so Saturday's
+  Phoenix sessions read two hours late back on Eastern time. The report,
+  HTML export, session list and Review trends now show times in the zone
+  the session was recorded in.
+- When that zone's offset differs from this Mac's, times carry its
+  abbreviation ("5:23:06 PM MST") and the report header says so: "Times
+  are Phoenix time (MST), when it was recorded: 2 h behind this Mac." When
+  they agree, nothing changes on screen, and older HTML exports are
+  byte-identical.
+- The session list now groups by the day where the session was recorded.
+  The Review's "earlier sessions" cut-off uses true start times.
+
+### Format
+
+- New optional `timeZone` on each `.jsonl` line (zone identifier), stamped
+  by `TranscriptWriter` with the zone at capture start, the same zone used
+  for the file name. Lines without it decode and write as before.
+- Older sessions: `CaptureTimeZone` works out the offset from the file name
+  against the lines (a quarter hour, within 2 min) and labels it "GMT-7",
+  as the place can't be told. On this Mac: 9 sessions come out GMT-7
+  (Phoenix, Nov 20–21), 1 GMT-6 (Nov 7; the file's creation date agrees),
+  25 GMT-5. The Nov 6 file had lines added days after it was named, so it
+  stays in this Mac's zone, unlabelled.
+
+Tested: 12 new package tests (format compatibility, writer stamping, the
+file-name fallback and its limits, label and note wording, HTML export,
+history start times); full package suite passes; app builds. Not yet
+verified in the app.
+
+### Next steps / where we left off
+
+- Open Post-Show on a Phoenix session: times should read as on the night
+  with "MST"/"GMT-7" and the header note; an Eastern session should look
+  as before.
+- The live transcript still uses the Mac's zone. That only matters if the
+  Mac changes zone mid-show.
+- Peer lines (`PeerLine`) carry no zone yet; add one when peer sharing is
+  rebuilt.

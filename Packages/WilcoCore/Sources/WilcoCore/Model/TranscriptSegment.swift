@@ -20,6 +20,10 @@ public struct TranscriptSegment: Codable, Equatable, Identifiable, Sendable {
     /// Per-channel exchange counter, so "A in exchange 3" differs from "A in
     /// exchange 4".
     public var exchange: Int?
+    /// The Mac's time zone when the line was written, as an identifier
+    /// ("America/Phoenix"), so the session's times can be shown as they
+    /// were on the night wherever it is opened later. Older lines have none.
+    public var timeZone: String?
 
     public init(
         id: UUID = UUID(),
@@ -32,7 +36,8 @@ public struct TranscriptSegment: Codable, Equatable, Identifiable, Sendable {
         matchedKeywords: [String] = [],
         highlights: [SegmentHighlight] = [],
         voice: String? = nil,
-        exchange: Int? = nil
+        exchange: Int? = nil,
+        timeZone: String? = nil
     ) {
         self.id = id
         self.channelID = channelID
@@ -45,6 +50,7 @@ public struct TranscriptSegment: Codable, Equatable, Identifiable, Sendable {
         self.highlights = highlights
         self.voice = voice
         self.exchange = exchange
+        self.timeZone = timeZone
     }
 }
 

@@ -216,7 +216,13 @@ final class AppModel {
         guard !isCapturing else { return }
         let start = Date()
         sessionStart = start
-        writer = TranscriptWriter(url: DataLocations.transcripts.appending(path: TranscriptFile.fileName(for: start)), show: document)
+        // One zone for the file name and every line, so the session reads
+        // in local time wherever it's opened later.
+        let zone = TimeZone.current
+        writer = TranscriptWriter(
+            url: DataLocations.transcripts.appending(path: TranscriptFile.fileName(for: start, timeZone: zone)),
+            show: document, timeZone: zone
+        )
         reportedWriteFailure = false
         evaluator.reset()
         pendingLines = PendingLines()

@@ -229,7 +229,8 @@ private struct TrendTable: View {
                 unclear: review.stats.unclearShare, delay: review.stats.delayP90)
                 .fontWeight(.semibold)
             ForEach(review.trend) { past in
-                row(past.started.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute()),
+                row(CaptureClock(capture: past.timeZone, at: past.started)
+                        .format(past.started, .dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute()),
                     lines: past.lines, fillers: past.fillerShare, unclear: past.unclearShare, delay: past.delayP90)
             }
         }

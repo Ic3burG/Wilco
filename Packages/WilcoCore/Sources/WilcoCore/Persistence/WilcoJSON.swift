@@ -28,6 +28,18 @@ public enum TranscriptFile {
         return "Session \(formatter.string(from: sessionStart)).jsonl"
     }
 
+    /// The start time a session's file name gives, read as being in
+    /// `timeZone`; nil for a file not named by ``fileName(for:timeZone:)``.
+    public static func started(fromFileName url: URL, timeZone: TimeZone = .current) -> Date? {
+        let name = url.deletingPathExtension().lastPathComponent
+        guard name.hasPrefix("Session ") else { return nil }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = timeZone
+        formatter.dateFormat = "yyyy-MM-dd HHmm-ss"
+        return formatter.date(from: String(name.dropFirst("Session ".count)))
+    }
+
     /// One line of a session file, newline included.
     public static func line(for segment: TranscriptSegment) throws -> Data {
         var data = try WilcoJSON.encoder().encode(segment)

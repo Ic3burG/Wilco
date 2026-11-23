@@ -6,11 +6,15 @@ import Foundation
 public final class TranscriptWriter {
     public let url: URL
     private let show: ShowDocument?
+    /// Stamped on every line that doesn't carry its own. Fixed for the
+    /// session, so a Mac that changes zone mid-show keeps one clock.
+    public let timeZone: TimeZone
     private var handle: FileHandle?
 
-    public init(url: URL, show: ShowDocument? = nil) {
+    public init(url: URL, show: ShowDocument? = nil, timeZone: TimeZone = .current) {
         self.url = url
         self.show = show
+        self.timeZone = timeZone
     }
 
     deinit {
@@ -18,6 +22,8 @@ public final class TranscriptWriter {
     }
 
     public func append(_ segment: TranscriptSegment) throws {
+        var segment = segment
+        if segment.timeZone == nil { segment.timeZone = timeZone.identifier }
         try fileHandle().write(contentsOf: TranscriptFile.line(for: segment))
     }
 

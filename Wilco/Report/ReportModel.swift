@@ -6,18 +6,16 @@ struct SessionFile: Identifiable, Hashable {
     var url: URL
     var modified: Date
     var byteSize: Int
+    /// The zone it was recorded in, read from the start of the file.
+    var timeZone: TimeZone?
 
     var id: URL { url }
 
-    /// "Session 2026-11-07 2225-51.jsonl" → the capture start, when the name allows.
-    var started: Date? {
-        let name = url.deletingPathExtension().lastPathComponent
-        guard name.hasPrefix("Session ") else { return nil }
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "yyyy-MM-dd HHmm-ss"
-        return formatter.date(from: String(name.dropFirst("Session ".count)))
-    }
+    /// "Session 2026-11-07 2225-51.jsonl" → the capture start, when the name
+    /// allows. The name is wall-clock time in the capture zone.
+    var started: Date? { TranscriptFile.started(fromFileName: url, timeZone: timeZone ?? .current) }
+
+    var clock: CaptureClock { CaptureClock(capture: timeZone, at: started ?? modified) }
 }
 
 /// The report window: which past session is open and how it is filtered.
@@ -82,7 +80,8 @@ final class ReportModel {
                 let values = try? url.resourceValues(forKeys: keys)
                 let size = values?.fileSize ?? 0
                 guard size > 0 else { return nil }  // a session nobody spoke in
-                return SessionFile(url: url, modified: values?.contentModificationDate ?? .distantPast, byteSize: size)
+                return SessionFile(url: url, modified: values?.contentModificationDate ?? .distantPast, byteSize: size,
+                                   timeZone: CaptureTimeZone.read(transcript: url, bytes: 16 * 1024))
             }
             .sorted { $0.modified > $1.modified }
         if selection == nil || !sessions.contains(where: { $0.id == selection }) {
@@ -106,10 +105,16 @@ final class ReportModel {
         return ShowReportSearch.messages(in: report, matching: searchText, channels: channelFilter)
     }
 
-    /// Sessions grouped by the day they started, newest day first.
+    /// Sessions grouped by the day they started where they were recorded,
+    /// newest day first.
     var sessionsByDay: [(day: Date, sessions: [SessionFile])] {
-        let calendar = Calendar.current
-        let groups = Dictionary(grouping: sessions) { calendar.startOfDay(for: $0.started ?? $0.modified) }
+        let groups = Dictionary(grouping: sessions) { session in
+            // The capture date's day, as a local midnight for the header.
+            var capture = Calendar.current
+            capture.timeZone = session.clock.timeZone
+            let parts = capture.dateComponents([.year, .month, .day], from: session.started ?? session.modified)
+            return Calendar.current.date(from: parts) ?? session.modified
+        }
         return groups.keys.sorted(by: >).map { day in
             (day, groups[day, default: []].sorted { ($0.started ?? $0.modified) > ($1.started ?? $1.modified) })
         }
@@ -185,7 +190,7 @@ final class ReportModel {
     private func rebuildReview() {
         reviewTask?.cancel()
         guard let input = reviewInput else { review = nil; return }
-        let started = SessionHistory.started(fromFileName: input.url) ?? .distantFuture
+        let started = SessionHistory.started(fromFileName: input.url, timeZone: report?.timeZone) ?? .distantFuture
         // Earlier sessions only, so an old session's review doesn't see the future.
         let earlier = SessionHistory.sameShow(as: reviewShowName, in: history ?? [], excluding: input.url)
             .filter { $0.started < started }
@@ -217,7 +222,7 @@ final class ReportModel {
                     let found = SessionShow.load(forTranscript: url)
                         ?? SessionShow.bestMatch(for: segments, among: [show] + Self.savedShows())
                     let recordedWith = found ?? show
-                    let report = ShowReportBuilder.build(segments: segments, show: recordedWith, sourceName: url.lastPathComponent, generated: .now)
+                    let report = ShowReportBuilder.build(segments: segments, show: recordedWith, sourceName: url.lastPathComponent, generated: .now, transcript: url)
                     return (report, segments, recordedWith, found != nil)
                 }
             }.value

@@ -33,9 +33,10 @@ private struct SessionList: View {
                 Section(group.day.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())) {
                     ForEach(group.sessions) { session in
                         VStack(alignment: .leading, spacing: 1) {
-                            Text((session.started ?? session.modified).formatted(date: .omitted, time: .standard))
+                            Text(session.clock.format(session.started ?? session.modified, Date.FormatStyle(date: .omitted, time: .standard)))
                                 .font(.headline)
                                 .monospacedDigit()
+                                .help(session.clock.note ?? "")
                             Text(session.byteSize.formatted(.byteCount(style: .file)))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
@@ -92,6 +93,7 @@ private struct ReportDetail: View {
                 case .review: ReviewView(model: model)
                 }
             }
+            .environment(\.captureClock, report.clock)
         } else if model.isLoading {
             ProgressView("Building report…").frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let error = model.error {
@@ -146,9 +148,23 @@ private struct ReportHeader: View {
     let report: ShowReport
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            summary
+            if let note = report.clock.note {
+                Label(note, systemImage: "clock.arrow.2.circlepath")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 16)
+        .padding(.bottom, 10)
+    }
+
+    private var summary: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text(report.showName).font(.title2.weight(.semibold))
-            Text(report.sessionStart.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).year().hour().minute()))
+            Text(report.clock.format(report.sessionStart, .dateTime.weekday(.abbreviated).day().month(.abbreviated).year().hour().minute()))
                 .font(.title3)
                 .foregroundStyle(.secondary)
             Spacer(minLength: 24)
@@ -159,9 +175,6 @@ private struct ReportHeader: View {
                 StatFigure(value: report.channels.count.formatted(), caption: "channels")
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 16)
-        .padding(.bottom, 10)
     }
 }
 
@@ -223,16 +236,23 @@ private enum Columns {
     static let channel: CGFloat = 130
 }
 
+extension EnvironmentValues {
+    /// The open session's clock: times in the zone it was recorded in.
+    @Entry var captureClock = CaptureClock(capture: nil, at: .now)
+}
+
 private struct TimeCell: View {
     let date: Date
     let elapsed: Double
+    @Environment(\.captureClock) private var clock
 
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
-            Text(date.formatted(date: .omitted, time: .standard)).fontWeight(.semibold).monospacedDigit()
+            Text(clock.format(date, Date.FormatStyle(date: .omitted, time: .standard))).fontWeight(.semibold).monospacedDigit()
             Text(elapsedText(elapsed)).font(.caption).monospacedDigit().foregroundStyle(.secondary)
         }
-        .frame(width: Columns.time, alignment: .leading)
+        // Room for the zone label ("MST") when it is shown.
+        .frame(width: Columns.time + (clock.isLabelled ? 36 : 0), alignment: .leading)
     }
 }
 

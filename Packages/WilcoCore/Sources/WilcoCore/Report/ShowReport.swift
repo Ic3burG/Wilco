@@ -136,13 +136,22 @@ public struct ShowReport: Sendable {
     public var bucketSeconds: Double
     public var sourceName: String
     public var generated: Date
+    /// The zone the session was recorded in; nil when it can't be told.
+    public var timeZone: TimeZone?
+
+    /// How to show this session's times on this Mac.
+    public var clock: CaptureClock { CaptureClock(capture: timeZone, at: sessionStart) }
 }
 
 public enum ShowReportBuilder {
     /// Repeats of a call further apart than this are separate markers.
     static let repeatWindow: Double = 60
 
-    public static func build(segments: [TranscriptSegment], show: ShowDocument, sourceName: String, generated: Date) -> ShowReport {
+    /// `transcript` is the session file, used to work out the capture zone
+    /// of lines written before it was recorded on each line.
+    public static func build(
+        segments: [TranscriptSegment], show: ShowDocument, sourceName: String, generated: Date, transcript: URL? = nil
+    ) -> ShowReport {
         let lines = segments.filter(\.isFinal).sorted { $0.sessionOffset < $1.sessionOffset }
         let first = lines.first
         let sessionStart = first.map { $0.timestamp.addingTimeInterval(-$0.sessionOffset) } ?? generated
@@ -233,7 +242,8 @@ public enum ShowReportBuilder {
         return ShowReport(
             showName: show.name, sessionStart: sessionStart, duration: duration, totalMessages: lines.count,
             channels: channels, groups: groups, markers: markers, messages: messages, buckets: buckets,
-            bucketSeconds: bucketSeconds, sourceName: sourceName, generated: generated
+            bucketSeconds: bucketSeconds, sourceName: sourceName, generated: generated,
+            timeZone: CaptureTimeZone.of(lines, transcript: transcript)
         )
     }
 
