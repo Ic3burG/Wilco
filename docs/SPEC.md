@@ -258,7 +258,7 @@ Toggling it off removes the rules and destination. [str 18086, 27490–27497]
 ## 8. Run-of-show markers & post-show report
 
 `MarkerDetector` classifies final lines into `ShowReport.MarkerCategory`
-{ `phase`, `houseLights`, `song`, `cue`, `department` } using the show's
+{ `phase`, `houseLights`, `song`, `cue`, `department`, `talkback` } using the show's
 `MarkerSettings` (`ShowDocument.markers`). `nil`, the default, means the
 built-in `MarkerSettings.standard`, so an unedited show's file has no
 `markers` key. The lists are edited per show in **Settings › Markers**;
@@ -266,18 +266,29 @@ built-in `MarkerSettings.standard`, so an unedited show's file has no
 show's markers as a named preset or loads one. Loading replaces the show's
 markers with a copy, and confirms first if the show has its own edited
 markers. Saving under an existing name (ignoring case) replaces that preset
-after confirming.
+after confirming. Under a **Built-in** heading the menu also offers
+read-only **Concert**, **Corporate** and **Theatre** presets
+(`MarkerPreset.builtIn`, fixed IDs, defined in code, never written to the
+presets folder or shown in Manage Presets). Each is `.standard` with labels
+added or removed and extra departments; Concert adds the talkback labels
+*Monitor request, Soundcheck, Run it again, Problem*; Corporate turns song
+start off. See `docs/superpowers/specs/2026-11-22-built-in-marker-presets-design.md`.
 
 - **Labels** (`MarkerLabel`: category, name, on/off, phrases) for phases,
-  house lights, songs and cue calls. Phrases match as whole words, any case,
+  house lights, songs, cue calls and talkback. **Talkback** (purple) is for
+  band talkback mics: monitor requests, soundcheck, "from the top". It has no
+  labels in `.standard`, so it only fills when a show adds some (e.g. by
+  loading the Concert preset). Report chips only appear for categories with
+  markers, so older reports are unchanged. Phrases match as whole words, any case,
   like automation rules. Within a category, labels are tried in list order and
   the first match wins (at most one marker per category per line). Built-in
   phase labels: *Doors, Walk-in, Top of show, Downbeat, Blackout, Curtain,
   Intermission, Encore, Show clear, Load out*; house lights *out / at half /
   up / discussed*; *Playback*; *Standby, Hold*.
 - **Departments**: a list of names, each matched as "X go" or "go X"
-  (consecutive words, punctuation ignored), plus "cue N go" / "go cue N",
-  which needs no list entry. The call said first in the line wins, then the longest name.
+  (consecutive words, punctuation ignored), with or without a cue
+  number ("LX 47 go", "go sound 12"), plus "cue N go" / "go cue N", which
+  needs no list entry. The call said first in the line wins, then the longest name.
   The label is the name as listed: "LX go", "Go pyro". One on/off switch
   covers all department gos, cue gos included. The report highlights the call
   across punctuation ("Content, go"), as `PhraseLocator` skips punctuation

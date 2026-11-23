@@ -22,10 +22,15 @@ struct MarkerPresetsMenu: View {
             Button("Save as Preset…") { savingSheet = true }
             Divider()
             if presets.isEmpty {
-                Button("No Presets") {}.disabled(true)
+                Button("No Saved Presets") {}.disabled(true)
             }
             ForEach(presets) { preset in
                 Button(preset.name) { choose(preset) }
+            }
+            Section("Built-in") {
+                ForEach(MarkerPreset.builtIn) { preset in
+                    Button(preset.name) { choose(preset) }
+                }
             }
             Divider()
             Button("Manage Presets…") { managingSheet = true }
@@ -72,7 +77,8 @@ struct MarkerPresetsMenu: View {
     private func load(_ preset: MarkerPreset) {
         // Read again in case the file changed since the menu was built.
         do {
-            model.document.markers = try store.preset(preset.id).markers
+            // Built-ins live in the app; saved presets are read again in case the file changed.
+            model.document.markers = preset.isBuiltIn ? preset.markers : try store.preset(preset.id).markers
             onLoad()
         } catch {
             errorMessage = "The “\(preset.name)” preset couldn't be read."
