@@ -120,7 +120,14 @@ final class AppModel {
         let parakeetModels = ParakeetModelStore()
         // Likewise one voice model, so Settings and channels agree on whether it is installed.
         let voiceprints = WeSpeakerVoiceprints()
-        installer = ModelInstaller(parakeetStore: parakeetModels, voiceprints: voiceprints)
+        // Parakeet Ultra labels kept clips; it shares the live model's vocabulary model.
+        let parakeetUltraModels = ParakeetModelStore(
+            directory: DataLocations.parakeetUltraModels, version: .ultra,
+            vocabularyDirectory: DataLocations.parakeetModels
+        )
+        installer = ModelInstaller(
+            parakeetStore: parakeetModels, parakeetUltraStore: parakeetUltraModels, voiceprints: voiceprints
+        )
         transcription = TranscriptionController(parakeetModels: parakeetModels, voiceprints: voiceprints)
         self.store = store
         self.configurationStore = configurationStore

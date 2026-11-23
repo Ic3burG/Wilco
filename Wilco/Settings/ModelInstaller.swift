@@ -13,6 +13,8 @@ final class ModelInstaller {
         case whisper(WhisperModel)
         /// Parakeet is one model for every channel, plus its vocabulary model.
         case parakeet
+        /// Parakeet Ultra, which only transcribes kept clips after a show.
+        case parakeetUltra
         case apple(SpeechEngine, localeIdentifier: String)
         /// The speaker-embedding model that tells voices apart; shared by every channel.
         case voiceModel
@@ -29,13 +31,15 @@ final class ModelInstaller {
 
     let whisperStore = WhisperModelStore()
     let parakeetStore: ParakeetModelStore
+    let parakeetUltraStore: ParakeetModelStore
     let voiceprints: WeSpeakerVoiceprints
     /// Whether the voice model is on disk. Kept here so the transcript and
     /// inspector, which can't poll, update the moment it's installed or removed.
     private(set) var voiceModelInstalled: Bool
 
-    init(parakeetStore: ParakeetModelStore, voiceprints: WeSpeakerVoiceprints) {
+    init(parakeetStore: ParakeetModelStore, parakeetUltraStore: ParakeetModelStore, voiceprints: WeSpeakerVoiceprints) {
         self.parakeetStore = parakeetStore
+        self.parakeetUltraStore = parakeetUltraStore
         self.voiceprints = voiceprints
         voiceModelInstalled = voiceprints.isInstalled()
     }
@@ -64,6 +68,8 @@ final class ModelInstaller {
                     try await whisperStore.download(model, progress: report)
                 case .parakeet:
                     try await parakeetStore.install(progress: report)
+                case .parakeetUltra:
+                    try await parakeetUltraStore.install(progress: report)
                 case .apple(let engine, let locale):
                     try await SpeechAssets.install(engine: engine, localeIdentifier: locale, progress: report)
                 case .voiceModel:
@@ -87,6 +93,9 @@ final class ModelInstaller {
             generation += 1
         case .parakeet:
             do { try parakeetStore.remove() } catch { errors[item] = error.localizedDescription }
+            generation += 1
+        case .parakeetUltra:
+            do { try parakeetUltraStore.remove() } catch { errors[item] = error.localizedDescription }
             generation += 1
         case .voiceModel:
             do { try voiceprints.remove() } catch { errors[item] = error.localizedDescription }
