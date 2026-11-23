@@ -24,6 +24,7 @@ The core app works and is in testing; it is not yet released. See
 | Configurations: saved show setups, load in one click, import/export (new) | |
 | Multichannel transcription benchmark, `wilco-bench` (see `docs/BENCHMARK.md`) | |
 | Voice letters: who's speaking within an exchange, in the transcript and reports (new) | |
+| Report markers editable per show, with presets (built-in Concert, Corporate, Theatre) and a Talkback category (new) | |
 
 ## Files
 

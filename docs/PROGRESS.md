@@ -1021,3 +1021,69 @@ everything looks good.
 - Symbol names were checked on macOS 27; confirm they all draw on a
   macOS 15 Mac.
 - The items from 2026-11-20 still stand.
+
+## 2026-11-22 — Editable report markers, presets and Talkback
+
+### Features
+
+- **Report markers are now set per show** (Settings › Markers). The
+  report's phrase lists used to be fixed in code; now each show carries
+  its own `MarkerSettings` (`ShowDocument.markers`). `nil` means the
+  built-in lists, so a show that was never edited saves no `markers` key
+  and its file is unchanged. Labels can be renamed, added, deleted,
+  turned off and dragged (first match in a category wins). Restore
+  Defaults goes back to the built-ins. A report still uses the show its
+  session was recorded with, so editing later doesn't change past
+  reports.
+- **Departments are a list, not a regex.** "X go" or "go X" for each
+  name, plus the new **"LX 47 go" / "go sound 12"** form (any department
+  with a cue number; "cue 47 go" is the same rule). The call said first in
+  a line wins, then the longest name. Countdown and song start stay built
+  in, each with an on/off switch.
+- **Marker presets.** Save as Preset… / load / Manage Presets… in the
+  Markers tab. Files are `Presets/Markers/‹UUID›.json`; names are unique
+  ignoring case; loading copies the preset into the show (and asks first
+  if the show has its own edits).
+- **Built-in Concert, Corporate and Theatre presets**, read-only in code,
+  under a "Built-in" heading. Each is the built-in lists plus changes;
+  Concert adds talkback labels.
+- **Talkback category** (purple) for band talkback mics: Monitor request,
+  Soundcheck, Run it again, Problem. Empty in the built-in lists, so
+  existing reports don't change.
+
+### Fixes and checks
+
+- Before swapping out the old rules, both detectors were run over all
+  21,220 local session lines: no unexpected differences; 10 extra
+  department calls found, all with a comma between the words ("go, pyro").
+- Reports had slowed from 7.05 s to 15.9 s over all local sessions;
+  lists are now split into words once per report and lines without "go"
+  skip the department check (7.3 s).
+- Report highlights and search now skip punctuation between words, so
+  "Content, go" is marked.
+- Each of the three features had a fresh code review; fixes from those
+  are in.
+
+Tested only (303 package tests, app builds). Not yet tried in the app.
+
+### Tooling
+
+- Specs and plans are also shown as local web pages in the browser.
+- Three timing-sensitive segmenter tests failed once under load and
+  passed on rerun; they look flaky.
+
+### Next steps / where we left off
+
+- Try Settings › Markers in the app: editing, dragging labels, the
+  Presets menu, Save/Replace and Manage sheets, and the wider list column.
+- Some built-in phrases may fire on ordinary chatter (Corporate "walk
+  up", "keynote"; Concert "curfew", "headliner", "feedback", "take it
+  from"; Theatre "act one/two"). Tighten them if reports get noisy.
+- Deferred minors: department names must match words exactly
+  ("followspot go" isn't caught); labels from a newer build are lost if an
+  older one re-saves; undoing an edit still stores a full copy;
+  a deleted preset says "couldn't be read"; redundant phrase pairs; a
+  stale comment in `MarkerPresetsMenu.swift`.
+- Cue markers from "Mark Cue Point" are still memory-only and don't reach
+  reports.
+- The items from 2026-11-21 still stand.
