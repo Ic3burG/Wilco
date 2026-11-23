@@ -90,11 +90,11 @@ public struct ClipLabels: Codable, Equatable, Sendable {
 }
 
 /// A session's kept clips: `Session yyyy-MM-dd HHmm-ss.clips`, a folder beside
-/// the transcript holding `manifest.json`, `labels.json` and one WAV per clip.
+/// the transcript holding `clips.json`, `labels.json` and one WAV per clip.
 /// The extension is not `.jsonl`, so the folder is never listed as a session.
 public enum ClipsFolder {
     public static let fileExtension = "clips"
-    static let manifestName = "manifest.json"
+    static let manifestName = "clips.json"
     static let labelsName = "labels.json"
 
     public static func url(forTranscript transcript: URL) -> URL {

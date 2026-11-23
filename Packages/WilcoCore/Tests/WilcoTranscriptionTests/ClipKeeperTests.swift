@@ -124,6 +124,57 @@ import WilcoCore
         #expect(ClipsFolder.loadManifest(in: folder) == nil)
     }
 
+    /// Ids of the clip WAVs on disk (regular files only).
+    private func wavIDs(in folder: URL) -> Set<String> {
+        Set(wavFiles(in: folder)
+            .filter { (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true }
+            .map { $0.deletingPathExtension().lastPathComponent })
+    }
+
+    private func manifestIDs(in folder: URL) -> Set<String> {
+        Set((ClipsFolder.loadManifest(in: folder)?.clips ?? []).map(\.id.uuidString))
+    }
+
+    @Test func filesAndManifestAgreeAfterAFailedWrite() async throws {
+        let folder = tempFolder()
+        let keeper = ClipKeeper(
+            folder: folder, selector: ClipSelector(unclearCap: 1, random: { _ in 0 }), saveInterval: nil)
+        let first = offer(at: 0, confidence: nil)
+        let second = offer(at: 30, confidence: nil)
+        keeper.tap.offer(first)
+        // The first clip is written before the second's file is blocked.
+        while await keeper.manifest.clips.isEmpty { try await Task.sleep(for: .milliseconds(5)) }
+        // A non-empty folder where the second WAV goes makes only that write fail.
+        let blocker = ClipsFolder.audioURL(for: second.candidate.id, in: folder)
+        try FileManager.default.createDirectory(at: blocker, withIntermediateDirectories: true)
+        try Data("x".utf8).write(to: blocker.appendingPathComponent("x"))
+
+        // The second replaces the first, so the first is deleted after the failure.
+        keeper.tap.offer(second)
+        await keeper.finish()
+
+        #expect(ClipsFolder.loadManifest(in: folder) != nil)
+        #expect(wavIDs(in: folder) == manifestIDs(in: folder))
+    }
+
+    @Test func filesAndManifestAgreeWhenTheFolderBecomesReadOnly() async throws {
+        let folder = tempFolder()
+        let keeper = ClipKeeper(folder: folder, saveInterval: 0.02)
+        keeper.tap.offer(offer(at: 0, confidence: nil))
+        while ClipsFolder.loadManifest(in: folder)?.clips.count != 1 {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: folder.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: folder.path) }
+
+        for i in 1...4 { keeper.tap.offer(offer(at: Double(i) * 30, confidence: nil)) }
+        await keeper.finish()
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: folder.path)
+        #expect(wavIDs(in: folder).count == 1)
+        #expect(wavIDs(in: folder) == manifestIDs(in: folder))
+    }
+
     @Test func savesPeriodicallyWhileRunning() async throws {
         let folder = tempFolder()
         let keeper = ClipKeeper(folder: folder, saveInterval: 0.05)

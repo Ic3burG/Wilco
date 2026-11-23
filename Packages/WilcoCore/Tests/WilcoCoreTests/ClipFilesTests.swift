@@ -36,6 +36,8 @@ import Testing
         try ClipsFolder.save(labels, in: dir)
         #expect(ClipsFolder.loadManifest(in: dir) == manifest)
         #expect(ClipsFolder.loadLabels(in: dir) == labels)
+        #expect(FileManager.default.fileExists(atPath: dir.appendingPathComponent("clips.json").path))
+        #expect(FileManager.default.fileExists(atPath: dir.appendingPathComponent("labels.json").path))
         let json = #"{"clip":"\#(c.id.uuidString)","words":"disputed","candidates":{},"checked":"x"}"#
         let label = try WilcoJSON.decoder().decode(ClipLabel.self, from: Data(json.utf8))
         #expect(label.answer == "x")

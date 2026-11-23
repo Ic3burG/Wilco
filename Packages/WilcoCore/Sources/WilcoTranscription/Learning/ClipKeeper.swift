@@ -5,11 +5,12 @@ import WilcoCore
 /// Keeps some of a capture session's finished lines as clips in the session's
 /// `.clips` folder. Transcribers offer every final line's audio through
 /// ``tap``; a ``ClipSelector`` decides which to hold, write or delete, and the
-/// keeper saves `manifest.json` as it goes and when the session finishes.
+/// keeper saves `clips.json` as it goes and when the session finishes.
 ///
 /// Offering never waits for the keeper: offers queue up to `queueLimit`, and
 /// any beyond that are dropped and counted in the manifest. A failed write
-/// stops all further writing for the session; transcription carries on.
+/// stops new clips for the session (deletes and a last manifest save still
+/// run, so the files and the manifest agree); transcription carries on.
 public actor ClipKeeper {
     /// Counts offers dropped because the queue was full. Shared with the tap,
     /// which runs on the transcribers' actors.
@@ -97,7 +98,9 @@ public actor ClipKeeper {
         await drainTask?.value
         apply(selector.finish(), current: nil)
         held.removeAll()
-        saveIfChanged()
+        // One last try even after a failed write, so the manifest on disk
+        // matches the WAVs that made it.
+        saveIfChanged(evenAfterFailure: true)
     }
 
     /// The manifest as it stands. For tests.
@@ -153,20 +156,28 @@ public actor ClipKeeper {
         changed = true
     }
 
+    /// Deletes even after a failed write, since deleting frees space. The
+    /// record goes only once the file is gone, so the manifest never lists a
+    /// missing file and never misses one that's still there.
     private func remove(_ id: UUID) {
         held[id] = nil
-        guard written.remove(id) != nil else { return }
+        guard written.contains(id) else { return }
+        let url = ClipsFolder.audioURL(for: id, in: folder)
+        do {
+            try FileManager.default.removeItem(at: url)
+        } catch {
+            guard !FileManager.default.fileExists(atPath: url.path) else { return }
+        }
+        written.remove(id)
         records.removeAll { $0.id == id }
         changed = true
-        guard !writeFailed else { return }
-        try? FileManager.default.removeItem(at: ClipsFolder.audioURL(for: id, in: folder))
     }
 
     /// Saves the manifest when a record or the drop count changed since the
     /// last save. A session that never kept or dropped anything makes no folder.
-    private func saveIfChanged() {
+    private func saveIfChanged(evenAfterFailure: Bool = false) {
         let current = manifest
-        guard !writeFailed, changed || current.dropped != savedDropped else { return }
+        guard evenAfterFailure || !writeFailed, changed || current.dropped != savedDropped else { return }
         do {
             try ClipsFolder.save(current, in: folder)
             changed = false
