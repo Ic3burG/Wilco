@@ -1316,3 +1316,33 @@ verified in the app.
   Mac changes zone mid-show.
 - Peer lines (`PeerLine`) carry no zone yet; add one when peer sharing is
   rebuilt.
+
+## 2026-11-23 — Global vocabulary as a summary row and chip editor
+
+- **A long vocabulary filled the Languages tab.** Every term took its own
+  form row, so the settings below it scrolled out of view. Settings →
+  Languages and the Show inspector now show one row instead: the term count
+  and the first few terms ("42 terms · Pyro, Fly 12, … and 38 more") with
+  an Edit… button.
+- **Edit… opens a sheet** that lays terms out as wrapping chips, each with
+  ×. Add takes one term or several separated by commas; Paste List adds
+  every line on the clipboard (a cue list from a script, say); Search
+  filters the chips; Sort A–Z orders them. Blanks and case-insensitive
+  duplicates are skipped.
+- The inspector's "Show Vocabulary" is now "Global Vocabulary", the same
+  name as Settings.
+- Splitting, de-duplication, search and sort are in `WilcoCore`'s
+  `TermList`; the sheet and row are `Wilco/Components/VocabularyEditor.swift`
+  and reuse the existing `FlowLayout`. Stored data is unchanged, so older
+  shows open as before.
+
+Tested: 6 new package tests; full package suite passes; app builds with no
+warnings. Verified: the user tried the sheet in the app.
+
+### Next steps / where we left off
+
+- Rule phrases, highlights, marker phrases and departments still use the
+  inline one-row-per-term `TokenListEditor`. Switch any of them to the
+  summary row and sheet if they grow long.
+- The sheet could offer the Review's vocabulary suggestions as one-click
+  chips.
