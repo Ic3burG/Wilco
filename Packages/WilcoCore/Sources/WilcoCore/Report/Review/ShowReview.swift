@@ -38,10 +38,13 @@ public enum ReviewThresholds {
     public static let lowLevelRMS = -40.0
     /// A channel "has sound" when this share of its minutes were sound minutes.
     public static let quietSoundShare = 0.1
+    /// Music needs this many sound minutes the classifier answered for...
     public static let musicMinimumMinutes = 30
+    /// ...and music or singing beating speech in this share of them.
     public static let musicShare = 0.6
     /// Hot: clipping in this share of sound minutes.
     public static let hotClipShare = 0.05
+    /// Low level needs this many sound minutes to be a pattern, not a quiet spell.
     public static let lowLevelMinimumMinutes = 30
     /// Lost: this many seconds dropped over the session.
     public static let lostDroppedSeconds = 5.0
@@ -123,13 +126,14 @@ public struct FindingFix: Hashable, Sendable {
 
 /// Why a quiet channel was quiet, as far as its measurements say.
 private enum QuietReason {
-    case noInput, lowLevel, notSpeech
+    case noInput, lowLevel, notSpeech, notCaptured
 
     var text: String {
         switch self {
         case .noInput: "no input"
         case .lowLevel: "low level"
         case .notSpeech: "not speech"
+        case .notCaptured: "not captured"
         }
     }
 }
@@ -194,7 +198,7 @@ private struct Builder {
         for highlight in show.highlights where (hits[highlight.id] ?? 0) >= ReviewThresholds.busyHighlightHits {
             fixes.append(FindingFix(fix: .keepHighlight(highlight.id, offChannel: id),
                                     label: "Keep “\(highlight.name)” off \(name(id))"))
-            hitText += " “\(highlight.name)” highlighted \(hits[highlight.id]!.formatted()) of them."
+            hitText += " “\(highlight.name)” highlighted \(hits[highlight.id]!.formatted()) of its \(mine.count.formatted()) lines."
         }
         fixes.append(FindingFix(fix: .muteChannel(id), label: "Mute \(name(id))"))
         return (fixes, hitText)
@@ -256,7 +260,8 @@ private struct Builder {
     }
 
     func quietReason(for id: UUID) -> QuietReason? {
-        guard let d = diagnostics?.channels[id] else { return nil }
+        guard let diagnostics else { return nil }
+        guard let d = diagnostics.channels[id] else { return .notCaptured }
         guard let peak = d.peak, peak >= ReviewThresholds.noInputPeak else { return .noInput }
         let hasSound = Double(d.soundMinutes) >= ReviewThresholds.quietSoundShare * Double(d.minutes)
         guard hasSound else { return nil }
@@ -281,6 +286,13 @@ private struct Builder {
         if quiet.contains(where: { $0.reason == .notSpeech }) {
             advice.append("The channels marked not speech carried mostly music or noise.")
         }
+        if quiet.contains(where: { $0.reason == .notCaptured }) {
+            advice.append("The channels marked not captured have no measurements; check they were on.")
+        }
+        if diagnostics != nil, quiet.contains(where: { $0.reason == nil }) {
+            let others = quiet.contains { $0.reason != nil }
+            advice.append("\(others ? "The other channels’ input" : "Their input") measured fine, so nobody seems to have talked on them.")
+        }
         let ending = advice.isEmpty
             ? "If they should have been talking, check the patch and input level." : advice.joined(separator: " ")
         add(Finding(
@@ -293,8 +305,8 @@ private struct Builder {
     }
 
     mutating func checkCut() {
-        let exact = diagnostics?.channels.values.compactMap(\.cuts)
-        let capped = exact?.isEmpty == false ? exact!.reduce(0, +) : stats.channels.values.reduce(0) { $0 + $1.capped }
+        var capped = stats.channels.values.reduce(0) { $0 + $1.capped }
+        if let exact = diagnostics?.channels.values.compactMap(\.cuts), !exact.isEmpty { capped = exact.reduce(0, +) }
         guard capped >= ReviewThresholds.cutMinimum else { return }
         let examples = segments
             .filter { SessionStats.delay(of: $0, sessionStart: stats.start) >= SessionStats.cappedDelay }
@@ -377,8 +389,11 @@ private struct Builder {
             guard dropped || !d.lostMinutes.isEmpty else { continue }
             var parts: [String] = []
             if !d.lostMinutes.isEmpty {
-                let times = d.lostMinutes.sorted().prefix(5)
-                    .map { clock.string(from: Date(timeIntervalSince1970: stats.start + Double($0) * 60)) }
+                // With no lines there is no session start to count from.
+                let times = d.lostMinutes.sorted().prefix(5).map { minute in
+                    stats.lines == 0 ? "minute \(minute)"
+                        : clock.string(from: Date(timeIntervalSince1970: stats.start + Double(minute) * 60))
+                }
                 let more = d.lostMinutes.count > 5 ? " and \(d.lostMinutes.count - 5) more" : ""
                 parts.append("Audio went missing in \(d.lostMinutes.count == 1 ? "1 minute" : "\(d.lostMinutes.count) minutes"), at \(times.joined(separator: ", "))\(more).")
             }

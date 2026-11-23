@@ -633,4 +633,68 @@ struct DiagnosticsReviewTests {
         let review = ShowReview.make(segments: session(900, on: sm.id), show: show(), showIsKnown: false, diagnostics: diagnostics)
         #expect(ids(review).contains("low:\(sm.id)"))
     }
+
+    @Test func musicDetailNamesItsLinesAndFewHitsOffersOnlyMute() throws {
+        let hear = [SegmentHighlight(phrase: "hear", tint: .yellow)]
+        let lines = session(20, on: band.id, text: "I can hear you.", highlights: hear)
+        let few = Array(lines.prefix(9)) + session(11, on: band.id)
+        let diagnostics = SessionDiagnostics.make(rows(band.id) { _, row in row.classified = SoundShares(speech: 0, music: 0.9, singing: 0) })
+        let finding = try #require(ShowReview.make(segments: few, show: show(), diagnostics: diagnostics)
+            .findings.first { $0.id == "music:\(band.id)" })
+        #expect(finding.fixes.map(\.fix) == [.muteChannel(band.id)])
+        let many = try #require(ShowReview.make(segments: lines, show: show(), diagnostics: diagnostics)
+            .findings.first { $0.id == "music:\(band.id)" })
+        #expect(many.detail.contains("of its 20 lines"))
+    }
+
+    @Test func musicShareJustUnderThresholdIsNotFlagged() {
+        // 17 of 30 classified minutes is 0.567.
+        let diagnostics = SessionDiagnostics.make(rows(band.id, minutes: 30) { minute, row in
+            row.classified = SoundShares(speech: minute < 17 ? 0 : 0.9, music: minute < 17 ? 0.9 : 0, singing: 0)
+        })
+        #expect(!ids(ShowReview.make(segments: session(20, on: band.id), show: show(), diagnostics: diagnostics))
+            .contains("music:\(band.id)"))
+    }
+
+    @Test func lowLevelNeedsThirtySoundMinutes() {
+        let diagnostics = SessionDiagnostics.make(rows(sm.id, minutes: 29, rms: -45))
+        #expect(!ids(ShowReview.make(segments: session(900, on: sm.id), show: show(), diagnostics: diagnostics))
+            .contains("low:\(sm.id)"))
+    }
+
+    @Test func aMeasuredPeakBelowSixtyIsNoInput() throws {
+        let diagnostics = SessionDiagnostics.make(rows(lasers.id, sound: 0, rms: nil, peak: -65) + rows(sm.id))
+        let review = ShowReview.make(segments: session(900, on: sm.id), show: show(sm, lasers), diagnostics: diagnostics)
+        #expect(try #require(review.findings.first { $0.id == "quiet" }).detail.contains("Lasers (none, no input)"))
+    }
+
+    @Test func lostNamesFiveMinutesAndCountsTheRest() throws {
+        let diagnostics = SessionDiagnostics.make(rows(sm.id) { minute, row in if (10..<17).contains(minute) { row.audio = 10 } })
+        let review = ShowReview.make(segments: session(900, on: sm.id), show: show(), diagnostics: diagnostics)
+        let detail = try #require(review.findings.first { $0.id == "lost:\(sm.id)" }).detail
+        #expect(detail.contains("7 minutes"))
+        #expect(detail.contains("and 2 more"))
+    }
+
+    @Test func lostWithoutLinesNamesMinutesNotClockTimes() throws {
+        let diagnostics = SessionDiagnostics.make(rows(sm.id) { minute, row in if minute == 7 { row.audio = 10 } })
+        let review = ShowReview.make(segments: [], show: show(), diagnostics: diagnostics)
+        let detail = try #require(review.findings.first { $0.id == "lost:\(sm.id)" }).detail
+        #expect(detail.contains("minute 7"))
+        #expect(!detail.contains("1970"))
+    }
+
+    @Test func quietChannelsWithFineInputSaySoAndUncapturedOnesAreMarked() throws {
+        let calm = ChannelConfig(name: "Calm")
+        let never = ChannelConfig(name: "Never")
+        let lines = session(900, on: sm.id)
+        let fine = SessionDiagnostics.make(rows(calm.id, sound: 0, rms: nil, peak: -20) + rows(sm.id))
+        let detail = try #require(ShowReview.make(segments: lines, show: show(sm, calm), diagnostics: fine)
+            .findings.first { $0.id == "quiet" }).detail
+        #expect(detail.contains("measured fine"))
+        #expect(!detail.contains("check the patch and input level"))
+        let missing = try #require(ShowReview.make(segments: lines, show: show(sm, never), diagnostics: fine)
+            .findings.first { $0.id == "quiet" }).detail
+        #expect(missing.contains("Never (none, not captured)"))
+    }
 }
