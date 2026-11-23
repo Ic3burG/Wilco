@@ -156,6 +156,39 @@ struct UtteranceTranscriberTests {
         return log.events.withLock { $0 }
     }
 
+    @Test(.timeLimit(.minutes(1))) func meteredChannelReportsUtterances() async throws {
+        let rate = 48_000.0
+        let ring = AudioRingBuffer(capacity: Int(rate) * 30)
+        let channel = UUID()
+        let reports = Mutex<[MeterReport]>([])
+        // Started 59 s ago, so the first minute closes during the test.
+        let tap = DiagnosticsTap(sessionStart: Date(timeIntervalSinceNow: -59)) { report in
+            reports.withLock { $0.append(report) }
+        }
+        let log = Log()
+        let transcriber = UtteranceChannelTranscriber(
+            channelID: channel, source: AudioSource(ring: ring, sampleRate: { rate }, diagnostics: tap),
+            sessionOffset: 0, recognizer: FakeRecognizer(),
+            onEvent: { event in log.events.withLock { $0.append(event) } }, onStatus: { _ in }
+        )
+        await transcriber.start()
+        try await play(talk(seconds: 1, rate: rate) + quiet(seconds: 1.5, rate: rate), into: ring, rate: rate)
+        for _ in 0..<50 where log.events.withLock({ $0.filter(\.isFinal).isEmpty }) {
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        // Let the first minute close.
+        try await Task.sleep(for: .seconds(1.2))
+        _ = ring.write(quiet(seconds: 0.2, rate: rate))
+        try await Task.sleep(for: .milliseconds(300))
+        await transcriber.stop()
+
+        let rows = reports.withLock { $0 }.map(\.row).filter { $0.channel == channel }
+        try #require(!rows.isEmpty)
+        #expect(rows.map(\.utterances).compactMap { $0 }.reduce(0, +) >= 1)
+        #expect(rows.allSatisfy { ($0.recognize ?? 0) >= 0 && $0.cuts == 0 })
+        #expect(rows.last?.partial == true)
+    }
+
     @Test(.timeLimit(.minutes(1))) func previewsWhileTalkingThenSendsTheFinalLine() async throws {
         let rate = 48_000.0
         let events = try await run(

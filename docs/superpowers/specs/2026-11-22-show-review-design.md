@@ -138,12 +138,13 @@ new files. The same pass gathers name counts for vocabulary suggestions.
 
 ### Stage 2: diagnostics file
 
-A sidecar `Session yyyy-MM-dd HHmm-ss.diagnostics.jsonl`, one row per
-channel per minute: input level (mean/peak dBFS), speech seconds,
-utterances, cap cuts, ring overruns, transcription time. Written from the
-transcriber pump (not the capture callback). The `.jsonl` format is
-unchanged; checks that need it skip older sessions. This answers "silent
-because nobody talked, or because the level was low?"
+Designed separately in `2026-11-22-session-diagnostics-design.md`. In short:
+a sidecar `Session yyyy-MM-dd HHmm-ss.diagnostics` (not `.jsonl`), one row
+per channel per minute with input level, sound seconds, audio read, ring
+drops, clipping, utterance and cut counts, and a sound classification. The
+transcript `.jsonl` format is unchanged; checks that need the file skip
+older sessions. This answers "silent because nobody talked, or because the
+level was low?"
 
 ### Stage 3: real-audio test set (opt-in)
 

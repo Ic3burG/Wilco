@@ -7,9 +7,25 @@ public struct AudioSource: Sendable {
     /// Read each time, since a device can change rate mid-show.
     public var sampleRate: @Sendable () -> Double
 
-    public init(ring: AudioRingBuffer, sampleRate: @escaping @Sendable () -> Double) {
+    /// Where the channel's per-minute level and speech figures go. Nil for none.
+    public var diagnostics: DiagnosticsTap?
+
+    public init(
+        ring: AudioRingBuffer, sampleRate: @escaping @Sendable () -> Double, diagnostics: DiagnosticsTap? = nil
+    ) {
         self.ring = ring
         self.sampleRate = sampleRate
+        self.diagnostics = diagnostics
+    }
+}
+
+extension AudioSource {
+    /// Reads everything available and shows it to the meter, if there is one.
+    /// Called from a transcriber's read loop, never from the capture callback.
+    func read(metering meter: inout ChannelMeter?) -> [Float] {
+        let samples = ring.read(maxCount: ring.availableToRead)
+        meter?.add(samples, sampleRate: sampleRate(), droppedFrames: ring.droppedFrames, at: Date())
+        return samples
     }
 }
 

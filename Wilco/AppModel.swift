@@ -100,6 +100,9 @@ final class AppModel {
     @ObservationIgnored private var meterTimer: Timer?
     @ObservationIgnored private let transcription: TranscriptionController
     @ObservationIgnored private var writer: TranscriptWriter?
+    /// One sound classifier for the app's lifetime; each session's recorder shares it.
+    @ObservationIgnored private let soundClassifier = SoundClassifierQueue()
+    @ObservationIgnored private var diagnostics: DiagnosticsRecorder?
     @ObservationIgnored private var reportedWriteFailure = false
     @ObservationIgnored private var evaluator = AutomationEvaluator()
     /// Keywords of recognised lines, kept until their annotated pieces arrive.
@@ -231,10 +234,13 @@ final class AppModel {
         // One zone for the file name and every line, so the session reads
         // in local time wherever it's opened later.
         let zone = TimeZone.current
-        writer = TranscriptWriter(
-            url: DataLocations.transcripts.appending(path: TranscriptFile.fileName(for: start, timeZone: zone)),
-            show: document, timeZone: zone
-        )
+        let transcriptURL = DataLocations.transcripts.appending(path: TranscriptFile.fileName(for: start, timeZone: zone))
+        writer = TranscriptWriter(url: transcriptURL, show: document, timeZone: zone)
+        let recorder = DiagnosticsRecorder(
+            writer: DiagnosticsWriter(url: DiagnosticsFile.url(forTranscript: transcriptURL)),
+            sessionStart: start, classifier: soundClassifier)
+        diagnostics = recorder
+        transcription.diagnostics = recorder.tap
         reportedWriteFailure = false
         evaluator.reset()
         pendingLines = PendingLines()
@@ -255,12 +261,19 @@ final class AppModel {
         meterTimer = nil
         meters = [:]
         let transcription = transcription
+        // This session's recorder, so one started at once gets its own.
+        let recorder = diagnostics
+        diagnostics = nil
+        transcription.diagnostics = nil
+        // Likewise the writer: a restart during the recorder's wait must not skip this one's end copy.
+        let finishing = writer
         Task {
             await transcription.stopAll()
-            if sessionStart == nil {
-                writer?.finish(show: document)
-                writer = nil
+            if sessionStart == nil, let finishing {
+                finishing.finish(show: document)
+                if writer === finishing { writer = nil }
             }
+            await recorder?.finish()
         }
     }
 

@@ -1,0 +1,170 @@
+{
+  "corpus" : "say (Samantha en_US, Daniel en_GB, Karen en_AU, Moira en_IE; 160 clips",
+  "date" : "2026-11-23T05:38:50Z",
+  "idleSystemCPU" : 0.24516507130298887,
+  "machine" : "Apple M1 Max, 10 cores, 64 GB",
+  "osVersion" : "Version 27.2.1 (Build 26B131)",
+  "results" : [
+    {
+      "channels" : 1,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.8274019578365355,
+        "mean" : 0.7394171972038496,
+        "p50" : 0.7490364297591299,
+        "p95" : 0.8274019578365355
+      },
+      "drainSeconds" : 0,
+      "droppedClips" : 0,
+      "droppedFrames" : 0,
+      "duration" : 120,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-v3",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.8274019578365355,
+        "mean" : 0.7394171972038496,
+        "p50" : 0.7490364297591299,
+        "p95" : 0.8274019578365355
+      },
+      "firstWordLatency" : {
+        "max" : 3.760862185036558,
+        "mean" : 2.7637134935001453,
+        "p50" : 2.726068624503199,
+        "p95" : 3.760862185036558
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 159.71959686279297,
+      "processCPU" : 0.03201283940641524,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound Q7 and fly Q3. Front of house clear, you have the show. Lighting Q42, go. Sound, can you bring the playback up a touch? House to half, please. Cutting out. Standing by Deck is clear. Second half beginners to the stage, please. Stand by sound Q7 and fly Q3. Cart notes Rail, stand by to fly in the drop.",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show. Lighting cue forty two, go. Sound, can you bring the playback up a touch? House to half, please. Curtain out. Standing by. Deck is clear. Second half beginners to the stage, please. Standby sound cue seven and fly cue three. Curtain out. Rail, standby to fly in the drop."
+        }
+      ],
+      "speechSeconds" : 36.437333333333335,
+      "startSeconds" : 0.213857417,
+      "systemCPU" : 0.26780831054492094,
+      "utterances" : 18,
+      "wordErrors" : {
+        "deletions" : 0,
+        "insertions" : 0,
+        "referenceWords" : 95,
+        "substitutions" : 3
+      }
+    },
+    {
+      "channels" : 16,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.8210182202203953,
+        "mean" : 0.6882841915372364,
+        "p50" : 0.6856897549576217,
+        "p95" : 0.7638659553373657
+      },
+      "drainSeconds" : 0,
+      "droppedClips" : 0,
+      "droppedFrames" : 0,
+      "duration" : 120,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-v3",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.8210182202203953,
+        "mean" : 0.6882841915372364,
+        "p50" : 0.6856897549576217,
+        "p95" : 0.7638659553373657
+      },
+      "firstWordLatency" : {
+        "max" : 3.9502997279194645,
+        "mean" : 2.802990659198925,
+        "p50" : 2.910696645644265,
+        "p95" : 3.742907188416183
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 232.23531341552734,
+      "processCPU" : 0.19925344082317295,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound Q7 and fly Q3. Front of house clear, you have the show. Lighting Q42, go. Sound, can you bring the playback up a touch? House to half, please. Cutting out. Standing by Deck is clear. Second half beginners to the stage, please. Stand by sound Q7 and fly Q3. Cart notes Rail, stand by to fly in the drop.",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show. Lighting cue forty two, go. Sound, can you bring the playback up a touch? House to half, please. Curtain out. Standing by. Deck is clear. Second half beginners to the stage, please. Standby sound cue seven and fly cue three. Curtain out. Rail, standby to fly in the drop."
+        },
+        {
+          "hypothesis" : "Fog machine on, please. Lighting Q42, go. Places please for the top of Act 2. Standby lighting Q42 Can someone check the radio mic on track 4? Can I get a work light on stage right? Follow spots, stand by for the blackout. Stand by for the curtain call. Standby video Q12 Thank you, five minutes. Places please for the top of Act 2. Stop, stop, stop, hold everything. Props table, is the lantern preset? Lighting Q105, go. Curtain out. We are going again from the top of the scene.",
+          "reference" : "Fog machine on, please. Lighting cue forty two, go. Places please for the top of act two. Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Follow spots, standby for the blackout. Standby for the curtain call. Standby video cue twelve. Thank you, five minutes. Places please for the top of act two. Stop, stop, stop. Hold everything. Props table, is the lantern preset? Lighting cue one hundred five, go. Curtain out. We are going again from the top of the scene."
+        }
+      ],
+      "speechSeconds" : 566.7413333333333,
+      "startSeconds" : 0.15804083300000002,
+      "systemCPU" : 0.44547435929553825,
+      "utterances" : 268,
+      "wordErrors" : {
+        "deletions" : 0,
+        "insertions" : 2,
+        "referenceWords" : 1499,
+        "substitutions" : 37
+      }
+    },
+    {
+      "channels" : 32,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.7946617346576801,
+        "mean" : 0.6636208679179159,
+        "p50" : 0.664293846514866,
+        "p95" : 0.734163689717839
+      },
+      "drainSeconds" : 0,
+      "droppedClips" : 0,
+      "droppedFrames" : 0,
+      "duration" : 120,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-v3",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.7946617346576801,
+        "mean" : 0.6636208679179159,
+        "p50" : 0.664293846514866,
+        "p95" : 0.734163689717839
+      },
+      "firstWordLatency" : {
+        "max" : 4.089882513261458,
+        "mean" : 2.7545258958508754,
+        "p50" : 2.881187483281437,
+        "p95" : 3.7721107906672415
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 288.62598419189453,
+      "processCPU" : 0.34895593371744765,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound Q7 and fly Q3. Front of house clear, you have the show. Lighting Q42, go. Sound, can you bring the playback up a touch? House to half, please. Cutting out. Standing by Deck is clear. Second half beginners to the stage, please. Stand by sound Q7 and fly Q3. Cart notes Rail, stand by to fly in the drop.",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show. Lighting cue forty two, go. Sound, can you bring the playback up a touch? House to half, please. Curtain out. Standing by. Deck is clear. Second half beginners to the stage, please. Standby sound cue seven and fly cue three. Curtain out. Rail, standby to fly in the drop."
+        },
+        {
+          "hypothesis" : "Fog machine on, please. Lighting Q42, go. Places please for the top of Act 2. Standby lighting Q42 Can someone check the radio mic on track 4? Can I get a work light on stage right? Follow spots, stand by for the blackout. Stand by for the curtain call. Standby video Q12 Thank you, five minutes. Places please for the top of Act 2. Stop, stop, stop, hold everything. Props table, is the lantern preset? Lighting Q105, go. Curtain out. We are going again from the top of the scene.",
+          "reference" : "Fog machine on, please. Lighting cue forty two, go. Places please for the top of act two. Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Follow spots, standby for the blackout. Standby for the curtain call. Standby video cue twelve. Thank you, five minutes. Places please for the top of act two. Stop, stop, stop. Hold everything. Props table, is the lantern preset? Lighting cue one hundred five, go. Curtain out. We are going again from the top of the scene."
+        }
+      ],
+      "speechSeconds" : 1122.8159999999991,
+      "startSeconds" : 0.167550791,
+      "systemCPU" : 0.34964152614603006,
+      "utterances" : 537,
+      "wordErrors" : {
+        "deletions" : 8,
+        "insertions" : 4,
+        "referenceWords" : 2982,
+        "substitutions" : 75
+      }
+    }
+  ]
+}

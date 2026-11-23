@@ -38,6 +38,18 @@ struct UtteranceSegmenterTests {
         #expect(seconds > 1.5 && seconds < 2.6)
     }
 
+    @Test func cutAtLimitIsMarked() {
+        var segmenter = UtteranceSegmenter(sampleRate: rate)
+        segmenter.maximumLength = 20
+        let cut = segmenter.append(syllables(25))
+        #expect(cut.first?.wasCut == true)
+
+        var other = UtteranceSegmenter(sampleRate: rate)
+        let ended = other.append(silence(1) + tone(1.5) + silence(1))
+        #expect(ended.count == 1)
+        #expect(ended.first?.wasCut == false)
+    }
+
     @Test func silenceAloneEmitsNothing() {
         var segmenter = UtteranceSegmenter(sampleRate: rate)
         #expect(segmenter.append(silence(5)).isEmpty)

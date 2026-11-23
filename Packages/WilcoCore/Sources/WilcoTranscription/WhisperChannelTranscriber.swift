@@ -135,6 +135,7 @@ actor WhisperChannelTranscriber: ChannelTranscriber {
     private let annotator: VoiceAnnotator?
     private var voices: VoiceAnnotationQueue?
     private var pump: Task<Void, Never>?
+    private var meter: ChannelMeter?
 
     init(
         configuration: TranscriberConfiguration, source: AudioSource, sessionOffset: Double,
@@ -162,6 +163,9 @@ actor WhisperChannelTranscriber: ChannelTranscriber {
         }
         // Discard audio that queued while the model loaded.
         _ = source.ring.read(maxCount: source.ring.availableToRead)
+        meter = source.diagnostics.map {
+            ChannelMeter(channelID: configuration.channelID, tap: $0, countsUtterances: true)
+        }
         onStatus(.listening)
         voices = annotator.map { VoiceAnnotationQueue(annotator: $0, onEvent: onEvent) }
         pump = Task { await self.run() }
@@ -171,6 +175,8 @@ actor WhisperChannelTranscriber: ChannelTranscriber {
         pump?.cancel()
         await pump?.value
         pump = nil
+        meter?.finish(at: Date())
+        meter = nil
         // Lines already sent to rules still get their voice.
         await voices?.finish()
         voices = nil
@@ -189,7 +195,7 @@ actor WhisperChannelTranscriber: ChannelTranscriber {
             : Locale(identifier: configuration.localeIdentifier).language.languageCode?.identifier
 
         while !Task.isCancelled {
-            let samples = source.ring.read(maxCount: source.ring.availableToRead)
+            let samples = source.read(metering: &meter)
             if !samples.isEmpty, let resampled = try? converter.convertToSamples(samples, sampleRate: source.sampleRate()) {
                 for utterance in segmenter.append(resampled) {
                     await transcribe(utterance, language: language)
@@ -203,13 +209,20 @@ actor WhisperChannelTranscriber: ChannelTranscriber {
     }
 
     private func transcribe(_ utterance: UtteranceSegmenter.Utterance, language: String?) async {
-        guard let results = try? await models.transcribe(
+        let clock = ContinuousClock()
+        let began = clock.now
+        let transcribed = try? await models.transcribe(
             utterance.samples, model: configuration.whisperModel,
             language: language, vocabulary: configuration.vocabulary,
             translate: configuration.translateToEnglish,
             // Word times cost Whisper time; only ask when voice analysis can use them.
             wordTimestamps: annotator?.isUsable == true
-        ) else { return }
+        )
+        meter?.recognized(
+            modelSeconds: (clock.now - began) / .seconds(1),
+            audioSeconds: Double(utterance.samples.count) / 16_000, cut: utterance.wasCut
+        )
+        guard let results = transcribed else { return }
         let segments = results.flatMap(\.segments)
         let text = segments.map(\.text).joined().trimmingCharacters(in: .whitespaces)
         guard !text.isEmpty else { return }

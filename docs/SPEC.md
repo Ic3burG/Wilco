@@ -60,8 +60,63 @@ All under `~/Library/Application Support/Wilco/` [file]:
 | `Presets/Markers/‹UUID›.json` | **New in the rebuild.** Marker presets (`MarkerPresetStore`): `{ name, markers }`, `markers` being a `MarkerSettings`. The UUID is the identity, and names are unique ignoring case. Unreadable files are skipped and left alone. See `docs/superpowers/specs/2026-11-22-marker-presets-design.md`. |
 | `Transcripts/Session yyyy-MM-dd HHmm-ss.jsonl` | One `TranscriptSegment` JSON object per line, appended as each line is finalised (`TranscriptWriter`). *"Every finalised line is written to disk as it happens, so clearing the on-screen log does not discard the record."* The name is the start in the Mac's time zone at capture. **Capture time zone (new in the rebuild):** each line Wilco writes carries `timeZone`, the Mac's zone identifier when capture started (`"America/Phoenix"`), fixed for the session. The report, its HTML export, the session list and Review trends show times in that zone, with its abbreviation ("5:23:06 PM MST") and a header note ("Times are Phoenix time (MST), when it was recorded: 2 h behind this Mac.") only when its offset on the night differs from this Mac's. Older lines have no zone: `CaptureTimeZone` takes the offset from the gap between the file name and the earliest `timestamp − sessionOffset`, rounded to a quarter hour and dropped if more than 2 min off one. Labels are letters: the system's where it has them ("MST"), else from `TimeZone.abbreviationDictionary`, a zone with the same offset at that moment, preferring the same region, then common North American and European zones, then matching daylight saving (`ZoneAbbreviation`). So an older UTC−7 session reads "MST" and Berlin reads "CET"; with no match (Sydney) it stays "GMT+11". With neither, times use this Mac's zone, unlabelled, as before. Subtitles are timed from the session start and don't change. |
 | `Transcripts/Session yyyy-MM-dd HHmm-ss.wilco` | Wilco addition. A copy of the show (`ShowDocument`) the session was recorded with, written with the first line and updated when capture stops. The post-show report takes its title, channel names and colours from it. Older sessions have no copy: the report uses whichever saved show or open show shares the most channel IDs with the lines (the open show wins a tie), else the open show. |
+| `Transcripts/Session yyyy-MM-dd HHmm-ss.diagnostics` | Wilco addition. Per-minute level and speech figures for each channel, one JSON object per line. See "Session diagnostics file" below. |
 | `WhisperModels/models/argmaxinc/whisperkit-coreml/openai_whisper-<variant>/` | WhisperKit's standard download layout. **Reuse this path** so existing downloads (3 GB here) carry over. |
 | `ParakeetModels/‹model repository›/` | Parakeet speech and vocabulary models, one folder per repository (~600 MB). New in the rebuild. |
+
+### Session diagnostics file
+
+Wilco addition (design: `docs/superpowers/specs/2026-11-22-session-diagnostics-design.md`).
+`Transcripts/Session yyyy-MM-dd HHmm-ss.diagnostics` sits beside the
+transcript and holds one row per channel per minute of the session: how loud
+the input was, how much of it was sound, how much audio the engine actually
+read, and what kind of sound it was. The post-show Review reads it to tell
+"nobody talked" from "the level was low", and to find music, clipping and
+lost audio.
+
+The name must not end in `.jsonl`: every `.jsonl` in `Transcripts/` is
+treated as a session. The transcript format, shows and preferences are
+unchanged, and a session without the file gets the Review it had before.
+
+The file is created on the first row and appended as each minute closes
+(a row waits up to 30 s past the end of its minute for its sound
+classification), so a crash keeps everything up to the last minute. A
+session where nothing was captured leaves no file. Muted or unpatched
+channels are not transcribed, so they have no rows. No audio is written to
+disk.
+
+Every row carries `"v":1`. Decoding is lenient: unknown fields are ignored,
+missing optional fields are nil, and a line that doesn't parse (such as a
+last line cut off by a crash) is skipped without losing the rows before it.
+Later versions add fields and raise `v`.
+
+```json
+{"v":1,"channel":"<uuid>","minute":12,"audio":59.9,"sound":21.4,
+ "rms":-27.1,"peak":-6.2,"floor":-58.3,"clipped":0,"dropped":0,
+ "utterances":7,"speech":18.9,"cuts":0,"recognize":3.1,
+ "classified":{"speech":0.91,"music":0.04,"singing":0.02}}
+```
+
+| Field | Meaning |
+|---|---|
+| `v` | Row format version, 1 |
+| `channel` | The channel's UUID, as in the transcript |
+| `minute` | Minute of the session: `floor(offset / 60)`, offset from the session start |
+| `audio` | Seconds of audio the engine read this minute. Well under 60 means capture stalled or the engine wasn't reading |
+| `sound` | Seconds of 20 ms frames above -46 dBFS (the segmenter's speech floor) |
+| `rms` | RMS level of the sound frames in dBFS; key omitted if `sound` is 0 |
+| `peak` | Highest sample in dBFS (key omitted when the input is digital silence) |
+| `floor` | 10th-percentile frame level in dBFS: the hiss of an open ring; key omitted for digital silence |
+| `clipped` | Samples at or above 0.999 |
+| `dropped` | Frames the ring dropped this minute because the engine fell behind |
+| `droppedSeconds` | The same in seconds, at the rate the frames were captured |
+| `utterances`, `speech`, `cuts`, `recognize` | Utterance engines only (nil for Apple): utterances sent to the model, their seconds, how many were cut at the 20 s limit, seconds the model spent on them |
+| `partial` | True when the channel's transcriber started, stopped or restarted this minute; absent otherwise |
+| `classified` | The classifier's confidence for speech, music and singing on one 3 s clip from this minute; nil if the minute had no clip or the classifier was busy |
+
+A clip is taken once a minute per channel, only from minutes with at least
+3 s of sound, and classified one at a time at low priority. A clip that
+finds 64 others waiting is dropped.
 
 `.wilco` is also a document type (`ShowFile: FileDocument`) for
 import/export of shows, and `SubtitleFile: FileDocument` exports **SRT / VTT**.
