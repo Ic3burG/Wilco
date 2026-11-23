@@ -168,6 +168,29 @@ struct TemplateTests {
         #expect(TemplateContext(text: "Go", channel: "SM", keyword: "", date: .now, offset: 0).expand("[{voice}]") == "[]")
     }
 
+    @Test func rulePlaceholderExpands() {
+        let context = TemplateContext(text: "Go", channel: "SM", keyword: "", date: .now, offset: 0, rule: "Pyro")
+        #expect(context.expand("{rule} on {channel}") == "Pyro on SM")
+    }
+
+    /// Regression (2026-11-21 show): a notification added to a fresh rule
+    /// took the rule's name at that moment, so every alert was titled "New
+    /// Rule" after the rule was renamed. The default title now follows it.
+    @Test func newNotificationTitleFollowsTheRuleName() throws {
+        guard case .notify(let title, _) = AutomationAction.newNotification else {
+            Issue.record("not a notification"); return
+        }
+        let context = TemplateContext(text: "Omar", channel: "Comm", keyword: "Omar", date: .now, offset: 0,
+                                      rule: "Omar Notifications")
+        #expect(context.notificationTitle(title) == "Omar Notifications")
+    }
+
+    @Test func emptyNotificationTitleFallsBackToTheRuleName() {
+        let context = TemplateContext(text: "", channel: "SM", keyword: "", date: .now, offset: 0, rule: "Holds")
+        #expect(context.notificationTitle("  ") == "Holds")
+        #expect(context.notificationTitle("Heard {keyword}") == "Heard ")
+    }
+
     @Test func expandsEveryPlaceholder() {
         let tz = TimeZone(identifier: "America/Chicago")!
         #expect(context.expand("{channel}: {keyword} at {offset}", timeZone: tz) == "Stage Manager: hold at 1:02:05")

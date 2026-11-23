@@ -77,7 +77,7 @@ final class ActionPerformer {
                 }
 
             case .notify(let title, let bodyTemplate):
-                notify(title: context.expand(title), body: context.expand(bodyTemplate), ruleName: rule.name)
+                notify(title: context.notificationTitle(title), body: context.expand(bodyTemplate), ruleName: rule.name)
 
             case .markCuePoint(let label):
                 let text = context.expand(label)

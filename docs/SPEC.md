@@ -224,6 +224,12 @@ never queued, while any channel's final line is being transcribed, and
 previews never get vocabulary boosting. Previews reach the screen only, not
 rules or outputs. `single` sends final lines only. Whisper has no preview.
 
+Whisper and Parakeet channels cut the audio into utterances at pauses of
+0.7 s (`UtteranceSegmenter`). Someone who talks for 20 s without one is cut
+anyway, to bound the delay: the cut goes in the latest 100 ms stretch of the
+last 3 s that is within 25% of the quietest, so it falls between words, and
+the audio after it carries into the next utterance.
+
 Vocabulary biasing = global (show) vocabulary + every enabled rule /
 highlight phrase that listens to the channel (*"Rule phrases are biased in automatically"*).
 `SpeechAssetManager` installs per-locale assets with progress
@@ -245,8 +251,8 @@ highlight phrase that listens to the channel (*"Rule phrases are biased in autom
 Highlights (`highlights(in:channelID:)`) only tint matching text.
 
 **Templates** — `TemplateContext.expand` replaces `{text}`, `{channel}`,
-`{keyword}`, `{time}`, `{offset}` [str/small-strings], and `{voice}` (new in the rebuild; reserved and always empty for now: rules fire on the recognised line before voice analysis, so no letter is known yet. Expanded and escaped like the others). Defaults: webhook body
-`{"channel":"{channel}","text":"{text}"}`, notification body `Heard on {channel}`.
+`{keyword}`, `{time}`, `{offset}` [str/small-strings], `{rule}` (the rule's name; new in the rebuild) and `{voice}` (new in the rebuild; reserved and always empty for now: rules fire on the recognised line before voice analysis, so no letter is known yet. Expanded and escaped like the others). Defaults: webhook body
+`{"channel":"{channel}","text":"{text}"}`, notification body `Heard on {channel}`. A notification added in the rebuild has the title `{rule}`, so it follows a renamed rule (it used to copy the rule's name when added, so a renamed rule kept alerting as "New Rule"); a title that expands to nothing shows the rule's name.
 
 **Built-in integration: Vor** (`IntegrationDescriptor`, getvor.app). Adds an
 OSC destination (default host `127.0.0.1`) and starter rules

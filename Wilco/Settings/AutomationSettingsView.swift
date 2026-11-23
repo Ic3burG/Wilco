@@ -209,7 +209,7 @@ private struct RuleEditor: View {
                                                      bodyTemplate: #"{"channel":"{channel}","text":"{text}"}"#))
                     }
                     Button("Show Notification") {
-                        rule.actions.append(.notify(title: rule.name, bodyTemplate: "Heard on {channel}: {text}"))
+                        rule.actions.append(.newNotification)
                     }
                     Button("Mark Cue Point") {
                         rule.actions.append(.markCuePoint(label: "{keyword}"))
@@ -219,7 +219,7 @@ private struct RuleEditor: View {
             } header: {
                 Text("Actions")
             } footer: {
-                Text("Placeholders: {text} {channel} {keyword} {time} {offset}")
+                Text("Placeholders: {text} {channel} {keyword} {time} {offset} {rule}")
             }
 
             Section {

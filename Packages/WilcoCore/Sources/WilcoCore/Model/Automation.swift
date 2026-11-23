@@ -78,6 +78,10 @@ public enum AutomationAction: Codable, Equatable, Sendable {
     case webhook(urlTemplate: String, method: String, bodyTemplate: String)
     case notify(title: String, bodyTemplate: String)
     case markCuePoint(label: String)
+
+    /// A notification as first added to a rule. The title is `{rule}`, not
+    /// the rule's name at that moment, so renaming the rule renames its alerts.
+    public static let newNotification = AutomationAction.notify(title: "{rule}", bodyTemplate: "Heard on {channel}: {text}")
 }
 
 public enum MIDIMessageSpec: Codable, Equatable, Sendable {

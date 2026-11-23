@@ -320,7 +320,7 @@ final class AppModel {
             // Rules run before voice analysis, so `{voice}` is always empty here.
             let context = TemplateContext(
                 text: text, channel: channelName, keyword: firing.matched.first ?? "",
-                date: date, offset: offset, voice: ""
+                date: date, offset: offset, voice: "", rule: firing.rule.name
             )
             performer.perform(firing.rule, context: context, show: show, channelID: channelID)
         }
@@ -339,7 +339,8 @@ final class AppModel {
             channel: channel?.name ?? "Test",
             keyword: keyword,
             date: Date(),
-            offset: sessionStart.map { Date().timeIntervalSince($0) } ?? 0
+            offset: sessionStart.map { Date().timeIntervalSince($0) } ?? 0,
+            rule: rule.name
         )
         log(ActivityEntry(kind: .info, ruleName: rule.name, detail: "Test fired"))
         performer.perform(rule, context: context, show: document, channelID: channel?.id)
