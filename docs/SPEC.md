@@ -315,7 +315,10 @@ Time" heard as "T Time"); then names seen ≥3 times; at most 8.
 
 A fix (`ShowFix`) names the channels, highlights or rules it changes and
 applies to the open show only when it has all of them; otherwise its
-button is disabled. A fix already true shows Done. Keeping a highlight off
+button is disabled. A fix already true shows Done. Fixes are disabled while capturing: changing
+the show then restarts the transcriber of every channel whose settings
+change (mute stops it; vocabulary, highlight and rule phrases feed each
+channel's vocabulary), cutting the line in progress. Keeping a highlight off
 its only channel turns the highlight off, since an empty list means every
 channel. When a session has no show copy and no saved show shares its channels,
 the open show only stands in: the show setup and quiet checks are

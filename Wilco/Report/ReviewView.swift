@@ -16,6 +16,12 @@ struct ReviewView: View {
                     Text(summary(review, findings: visible.count))
                         .font(.callout)
                         .foregroundStyle(.secondary)
+                    if app.isCapturing {
+                        Label("Fixes are off while capturing: changing the show restarts transcription on the channels it touches.",
+                              systemImage: "record.circle")
+                            .font(.callout)
+                            .foregroundStyle(.orange)
+                    }
                     if visible.isEmpty {
                         Text(review.findings.isEmpty ? "Nothing to flag in this session." : "Every finding is dismissed.")
                             .foregroundStyle(.secondary)
@@ -133,6 +139,10 @@ private struct FixButton: View {
                 .font(.callout)
                 .foregroundStyle(.green)
                 .help(label)
+        } else if app.isCapturing {
+            Button(label) {}
+                .disabled(true)
+                .help("Stop capture to apply fixes")
         } else if !app.document.canApply(fix) || !review.applies(to: app.document) {
             Button(label) {}
                 .disabled(true)
@@ -179,8 +189,9 @@ private struct VocabularyPicker: View {
                 chosen = []
             }
             .buttonStyle(.borderedProminent)
-            .disabled(chosen.isEmpty || app.document.isApplied(fix) || !review.applies(to: app.document))
-            .help(review.applies(to: app.document) ? "" : "Open the show this session was recorded with")
+            .disabled(chosen.isEmpty || app.document.isApplied(fix) || !review.applies(to: app.document) || app.isCapturing)
+            .help(app.isCapturing ? "Stop capture to apply fixes"
+                  : review.applies(to: app.document) ? "" : "Open the show this session was recorded with")
             .padding(.top, 4)
         }
         .onAppear(perform: resetChoice)
