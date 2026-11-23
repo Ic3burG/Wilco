@@ -5,8 +5,7 @@ import WilcoCore
 
 @Suite("Clip voters")
 struct ClipVoterTests {
-    /// Each voter installed on this Mac hears a spoken call. Apple long-form
-    /// writes "cue forty two" as "Q 42", so the check is on another word.
+    /// Each voter installed on this Mac hears a spoken call.
     @Test(.enabled(if: ProcessInfo.processInfo.environment["WILCO_ASR_TESTS"] != nil))
     func votersTranscribeASayClip() async throws {
         let ultra = ParakeetModelStore(
@@ -19,8 +18,18 @@ struct ClipVoterTests {
             let text = try await voter.transcribe(samples, vocabulary: [], localeIdentifier: "en-US")
             print("voter \(voter.id) (\(voter.version)): \(text)")
             let words = TranscriptNormalizer.words(text)
-            #expect(words.contains("lighting") && words.contains("forty"), "\(voter.id) heard \"\(text)\"")
+            #expect(words.contains("cue"), "\(voter.id) heard \"\(text)\"")
         }
         print("voters installed: \(voters.map(\.id))")
+    }
+
+    /// An empty clip gives no text rather than waiting for results forever.
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["WILCO_ASR_TESTS"] != nil), .timeLimit(.minutes(1)))
+    func appleVoterReturnsForAnEmptyClip() async throws {
+        guard #available(macOS 26, *) else { return }
+        let voter = await AppleLongFormVoter.checking(localeIdentifier: "en-US")
+        guard voter.isInstalled() else { return }
+        let text = try await voter.transcribe([], vocabulary: ["cue"], localeIdentifier: "en-US")
+        #expect(text.isEmpty)
     }
 }

@@ -14,6 +14,17 @@ struct TranscriptNormalizerTests {
         #expect(TranscriptNormalizer.words("0") == ["zero"])
     }
 
+    @Test func readsALoneQBeforeANumberAsCue() {
+        #expect(TranscriptNormalizer.words("Standby lighting Q 42.") == TranscriptNormalizer.words("standby lighting cue 42"))
+        #expect(TranscriptNormalizer.words("Q forty two") == ["cue", "forty", "two"])
+        #expect(TranscriptNormalizer.words("Q 5 go") == ["cue", "five", "go"])
+    }
+
+    @Test func leavesOtherLoneQsAlone() {
+        #expect(TranscriptNormalizer.words("standby Q") == ["standby", "q"])
+        #expect(TranscriptNormalizer.words("Q and A") == ["q", "and", "a"])
+    }
+
     @Test func readsCueShorthand() {
         #expect(TranscriptNormalizer.words("Q5 go") == ["cue", "five", "go"])
         #expect(TranscriptNormalizer.words("queue 5") == ["cue", "five"])

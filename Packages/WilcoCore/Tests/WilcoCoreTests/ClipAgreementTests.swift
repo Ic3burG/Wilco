@@ -16,6 +16,15 @@ struct ClipAgreementTests {
         #expect(result.text == "Standby Tea Time, cue five.")
     }
 
+    @Test func aLoneQBeforeANumberAgreesWithCue() {
+        let result = ClipAgreement.words(
+            candidates: [ultra: "standby lighting cue forty two", apple: "Standby lighting Q 42."],
+            voters: [ultra, apple], sittingOut: []
+        )
+        #expect(result.verdict == .agreed)
+        #expect(result.text == "standby lighting cue forty two")
+    }
+
     @Test func twoVotersDisagree() {
         let result = ClipAgreement.words(
             candidates: [ultra: "t time", apple: "tea time"], voters: [ultra, apple], sittingOut: []

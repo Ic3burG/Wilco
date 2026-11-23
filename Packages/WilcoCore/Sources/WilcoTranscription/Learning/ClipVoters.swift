@@ -101,6 +101,9 @@ public struct AppleLongFormVoter: ClipVoter {
             try await analyzer.setContext(context)
         }
         let buffers = try SampleRateConverter(output: format).convert(samples, sampleRate: 16_000)
+        // An analyzer that is fed no audio never ends its results, so an
+        // empty clip would wait forever.
+        guard !buffers.isEmpty else { return "" }
 
         // Read results while the analyzer runs; the sequence ends when it finishes.
         let collected = Task {
