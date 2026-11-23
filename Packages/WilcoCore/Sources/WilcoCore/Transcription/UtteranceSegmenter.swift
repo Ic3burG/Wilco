@@ -11,6 +11,9 @@ public struct UtteranceSegmenter: Sendable {
         public var samples: [Float]
         /// Seconds from the first sample ever appended to the utterance start.
         public var startOffset: Double
+        /// True when the utterance was cut at the maximum length while
+        /// speech was still going, rather than ended by a pause.
+        public var wasCut = false
     }
 
     public let sampleRate: Double
@@ -177,7 +180,8 @@ public struct UtteranceSegmenter: Sendable {
 
         var utterance: Utterance?
         if Double(speechFrames - carriedSpeech) * frameSeconds >= minimumSpeech {
-            utterance = Utterance(samples: Array(current[..<kept]), startOffset: Double(currentStart) / sampleRate)
+            utterance = Utterance(
+                samples: Array(current[..<kept]), startOffset: Double(currentStart) / sampleRate, wasCut: true)
         }
         current = Array(current[kept...])
         currentStart += kept
