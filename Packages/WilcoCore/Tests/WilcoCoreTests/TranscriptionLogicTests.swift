@@ -48,9 +48,32 @@ struct UtteranceSegmenterTests {
         let utterances = segmenter.append(syllables(segmenter.maximumLength + 1))
         #expect(utterances.count == 1)
         let seconds = Double(utterances[0].samples.count) / rate
-        // Cut at the maximum, not earlier: continuous talking isn't noise.
-        #expect(seconds >= segmenter.maximumLength - 0.1)
+        // Cut in the last dip before the maximum (one syllable, 0.28 s, at
+        // most), not earlier: continuous talking isn't noise.
+        #expect(seconds >= segmenter.maximumLength - 0.3)
         #expect(seconds <= segmenter.maximumLength + segmenter.preRoll + 0.05)
+        // The dips sit 0.2–0.28 s into each syllable period.
+        let phase = seconds.truncatingRemainder(dividingBy: 0.28)
+        #expect(phase >= 0.19 && phase <= 0.29, "cut mid-syllable at \(seconds) s")
+    }
+
+    /// Regression (2026-11-21 show): a cut at the maximum used to land on
+    /// whatever frame reached it, splitting words ("…go stra" / "E it
+    /// would…"). It should fall in the last pause between words instead,
+    /// and the rest of the speech should carry on with nothing lost.
+    @Test func maximumLengthCutLandsInThePauseBetweenWords() throws {
+        var segmenter = UtteranceSegmenter(sampleRate: rate)
+        let gapStart = 17.0, gap = 0.15
+        let audio = syllables(gapStart) + [Float](repeating: 0.002, count: Int(gap * rate))
+            + syllables(5) + silence(1)
+        let utterances = segmenter.append(audio)
+        #expect(utterances.count == 2)
+        let first = try #require(utterances.first)
+        let cut = first.startOffset + Double(first.samples.count) / rate
+        #expect(cut > gapStart && cut < gapStart + gap, "cut at \(cut) s, not in the pause")
+        let second = try #require(utterances.last)
+        #expect(abs(second.startOffset - cut) < 0.001, "samples lost or repeated at the cut")
+        #expect(Double(second.samples.count) / rate > 5)
     }
 
     @Test func steadyToneIsLearnedAsBackground() {
@@ -162,8 +185,9 @@ struct UtteranceSegmenterTests {
         let cut = segmenter.append(syllables(2.5))
         #expect(cut.count == 1)
         let next = try #require(segmenter.inProgress)
-        #expect(next.startOffset >= 1.99)
-        #expect(Double(next.samples.count) / rate < 0.6)
+        // The cut falls in the last dip before 2 s; the rest carries on.
+        #expect(next.startOffset >= 1.7)
+        #expect(Double(next.samples.count) / rate < 0.85)
     }
 }
 

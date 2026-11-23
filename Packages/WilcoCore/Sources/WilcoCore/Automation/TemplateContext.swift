@@ -1,7 +1,7 @@
 import Foundation
 
-/// Fills `{text}`, `{channel}`, `{keyword}`, `{time}`, `{offset}` and `{voice}` in
-/// action templates with what was heard.
+/// Fills `{text}`, `{channel}`, `{keyword}`, `{time}`, `{offset}`, `{voice}` and
+/// `{rule}` in action templates with what was heard.
 public struct TemplateContext: Sendable {
     public enum Escaping: Sendable {
         case none
@@ -25,14 +25,27 @@ public struct TemplateContext: Sendable {
     public var offset: Double
     /// The speaker's letter, or empty when unknown.
     public var voice: String
+    /// The name of the rule that fired.
+    public var rule: String
 
-    public init(text: String, channel: String, keyword: String, date: Date, offset: Double, voice: String = "") {
+    public init(
+        text: String, channel: String, keyword: String, date: Date, offset: Double, voice: String = "",
+        rule: String = ""
+    ) {
         self.text = text
         self.channel = channel
         self.keyword = keyword
         self.date = date
         self.offset = offset
         self.voice = voice
+        self.rule = rule
+    }
+
+    /// A notification's title: the expanded template, or the rule's name
+    /// when that leaves nothing to show.
+    public func notificationTitle(_ template: String) -> String {
+        let title = expand(template)
+        return title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? rule : title
     }
 
     public func expand(_ template: String, escaping: Escaping = .none, timeZone: TimeZone = .current) -> String {
@@ -43,6 +56,7 @@ public struct TemplateContext: Sendable {
             ("{time}", time(in: timeZone)),
             ("{offset}", Self.offsetText(offset)),
             ("{voice}", voice),
+            ("{rule}", rule),
         ]
         return values.reduce(template) { result, pair in
             result.replacingOccurrences(of: pair.0, with: Self.escape(pair.1, escaping))
