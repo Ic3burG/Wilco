@@ -199,6 +199,17 @@ cuts at pauses the same way the Whisper path does.
 dependency on the `WilcoBench` target only, so the app doesn't link it until
 it's adopted.
 
+### Candidate models
+
+`wilco-bench --list` also has seven Neural Engine models FluidAudio ships
+that the app doesn't: `parakeet-ultra`, `phonon-2`, `bark-3-clean` and
+`parakeet-unified-offline` share one model like v3; `nemotron-1120`,
+`parakeet-unified-1120` and `parakeet-eou-320` stream, one stream per
+channel. A streaming model is fed each preview's new audio and finished at
+the pause (`StreamedUtteranceRecognizer`), so it's cut by the same
+segmenter as every other engine. Install them with `--install`. Results
+and the decision: [`benchmarks/2026-11-23-m1-max-say-candidates.md`](benchmarks/2026-11-23-m1-max-say-candidates.md).
+
 ## Results
 
 Dated baselines are kept in [`docs/benchmarks/`](benchmarks/).

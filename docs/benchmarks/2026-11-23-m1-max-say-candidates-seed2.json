@@ -1,0 +1,279 @@
+{
+  "corpus" : "say (Samantha en_US, Daniel en_GB, Karen en_AU, Moira en_IE; 160 clips",
+  "date" : "2026-11-23T08:00:57Z",
+  "idleSystemCPU" : 0.2517696575473503,
+  "machine" : "Apple M1 Max, 10 cores, 64 GB",
+  "osVersion" : "Version 27.2.1 (Build 26B131)",
+  "results" : [
+    {
+      "channels" : 32,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.7952802182491716,
+        "mean" : 0.6792728866632324,
+        "p50" : 0.6807766071037946,
+        "p95" : 0.751648458252685
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-v3",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.7952802182491716,
+        "mean" : 0.6792728866632324,
+        "p50" : 0.6807766071037946,
+        "p95" : 0.751648458252685
+      },
+      "firstWordLatency" : {
+        "max" : 4.2278675780421935,
+        "mean" : 2.8464426058329506,
+        "p50" : 2.9851550632645,
+        "p95" : 3.562304746257624
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 216.1414031982422,
+      "processCPU" : 0.375142065520495,
+      "samples" : [
+        {
+          "hypothesis" : "Stand by the band for the overture. Curtain out. Front of house clear, you have the show. Stand by for the curtain call. Hold please, we have a hold. Video 12, go. Thank you. Five minutes. Lighting Q42, go. Rail, stand by to fly in the drop.",
+          "reference" : "Standby the band for the overture. Curtain out. Front of house clear, you have the show. Standby for the curtain call. Hold please, we have a hold. Video twelve, go. Thank you, five minutes. Lighting cue forty two, go. Rail, standby to fly in the drop."
+        },
+        {
+          "hypothesis" : "Lighting Q105, go. Spot 1. Pick up the lead at center. Pyro is armed and ready. Standing by. Props table, is the lantern preset? Can someone check the radio mic on track 4? Standby for the curtain call. Second half beginners to the stage, please.",
+          "reference" : "Lighting cue one hundred five, go. Spot one, pick up the lead at centre. Pyro is armed and ready. Standing by. Props table, is the lantern preset? Can someone check the radio mic on track four? Standby for the curtain call. Second half beginners to the stage, please."
+        }
+      ],
+      "speechSeconds" : 591.6373333333337,
+      "startSeconds" : 0.249073791,
+      "systemCPU" : 0.30500050038362747,
+      "utterances" : 273,
+      "wordErrors" : {
+        "deletions" : 8,
+        "insertions" : 0,
+        "referenceWords" : 1621,
+        "substitutions" : 51
+      }
+    },
+    {
+      "channels" : 32,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.8296885999969206,
+        "mean" : 0.6881638628170795,
+        "p50" : 0.6851321083524091,
+        "p95" : 0.7645964079915402
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-ultra",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.8296885999969206,
+        "mean" : 0.6881638628170795,
+        "p50" : 0.6851321083524091,
+        "p95" : 0.7645964079915402
+      },
+      "firstWordLatency" : {
+        "max" : 4.274626259599842,
+        "mean" : 2.8553335819867995,
+        "p50" : 2.9913216914694094,
+        "p95" : 3.574733245257619
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 285.7351989746094,
+      "processCPU" : 0.387393070487854,
+      "samples" : [
+        {
+          "hypothesis" : "Stand by the band for the overture. Curtain out. Front of house clear, you have the show. Stand by for the curtain call. Hold please, we have a hold. Video 12, go. Thank you. Five minutes. Lighting Q42, go. Rail, stand by to fly in the drop.",
+          "reference" : "Standby the band for the overture. Curtain out. Front of house clear, you have the show. Standby for the curtain call. Hold please, we have a hold. Video twelve, go. Thank you, five minutes. Lighting cue forty two, go. Rail, standby to fly in the drop."
+        },
+        {
+          "hypothesis" : "Lighting Q105, go. Spot 1. Pick up the lead at center. Pyro is armed and ready. Standing by. Props table, is the lantern preset? Can someone check the radio mic on track 4? Stand by for the curtain call. Second half beginners to the stage, please.",
+          "reference" : "Lighting cue one hundred five, go. Spot one, pick up the lead at centre. Pyro is armed and ready. Standing by. Props table, is the lantern preset? Can someone check the radio mic on track four? Standby for the curtain call. Second half beginners to the stage, please."
+        }
+      ],
+      "speechSeconds" : 591.6373333333337,
+      "startSeconds" : 0.2373095,
+      "systemCPU" : 0.4447990642493107,
+      "utterances" : 273,
+      "wordErrors" : {
+        "deletions" : 8,
+        "insertions" : 0,
+        "referenceWords" : 1621,
+        "substitutions" : 63
+      }
+    },
+    {
+      "channels" : 32,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.8419821295704066,
+        "mean" : 0.6840679780698263,
+        "p50" : 0.6804525830799157,
+        "p95" : 0.760401301648912
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "bark-3-clean",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.8419821295704066,
+        "mean" : 0.6840679780698263,
+        "p50" : 0.6804525830799157,
+        "p95" : 0.760401301648912
+      },
+      "firstWordLatency" : {
+        "max" : 4.210545662542209,
+        "mean" : 2.8512376972395432,
+        "p50" : 2.9883005348411213,
+        "p95" : 3.5538566056180034
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 244.23519897460938,
+      "processCPU" : 0.3772760624741415,
+      "samples" : [
+        {
+          "hypothesis" : "Stand by the band for the overture. Curtain out. front of house clear you have the show Stand by for the curtain call. Hold, please. We have a hold. Video twelve. Go. Thank you. Five minutes. lighting Q forty-two, go. Rail, stand by to fly in the drop.",
+          "reference" : "Standby the band for the overture. Curtain out. Front of house clear, you have the show. Standby for the curtain call. Hold please, we have a hold. Video twelve, go. Thank you, five minutes. Lighting cue forty two, go. Rail, standby to fly in the drop."
+        },
+        {
+          "hypothesis" : "lighting Q105 go spot one pick up the leaded center pyro is armed and ready Standing by. props table is the lantern preset can someone check the radio mic on track four Stand by for the curtain call. second half beginners to the stage please",
+          "reference" : "Lighting cue one hundred five, go. Spot one, pick up the lead at centre. Pyro is armed and ready. Standing by. Props table, is the lantern preset? Can someone check the radio mic on track four? Standby for the curtain call. Second half beginners to the stage, please."
+        }
+      ],
+      "speechSeconds" : 591.6373333333337,
+      "startSeconds" : 0.19043966699999998,
+      "systemCPU" : 0.438224936998281,
+      "utterances" : 273,
+      "wordErrors" : {
+        "deletions" : 10,
+        "insertions" : 9,
+        "referenceWords" : 1621,
+        "substitutions" : 98
+      }
+    },
+    {
+      "channels" : 32,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.827118701026123,
+        "mean" : 0.6953793834654299,
+        "p50" : 0.6940500364297808,
+        "p95" : 0.7706002249969188
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-unified-offline",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.827118701026123,
+        "mean" : 0.6953793834654299,
+        "p50" : 0.6940500364297808,
+        "p95" : 0.7706002249969188
+      },
+      "firstWordLatency" : {
+        "max" : 4.280956801599835,
+        "mean" : 2.8625491026351484,
+        "p50" : 2.9971141786808637,
+        "p95" : 3.5810732452576204
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 261.87586975097656,
+      "processCPU" : 0.3258634144922558,
+      "samples" : [
+        {
+          "hypothesis" : "Stand by the band for the overture. Curtain out Front of house clear, you have the show. Stand by for the curtain call Hold, please. We have a hold Video 12, go. Thank you, five minutes. Lighting Q42, go. Rail, stand by to fly in the drop",
+          "reference" : "Standby the band for the overture. Curtain out. Front of house clear, you have the show. Standby for the curtain call. Hold please, we have a hold. Video twelve, go. Thank you, five minutes. Lighting cue forty two, go. Rail, standby to fly in the drop."
+        },
+        {
+          "hypothesis" : "Lighting Q105, go. Spot one, pick up the lead at center Pyro is armed and ready Standing by Props table, is the lantern preset? Can someone check the radio mic on track 4 Stand by for the curtain call Second half beginners to the stage, please.",
+          "reference" : "Lighting cue one hundred five, go. Spot one, pick up the lead at centre. Pyro is armed and ready. Standing by. Props table, is the lantern preset? Can someone check the radio mic on track four? Standby for the curtain call. Second half beginners to the stage, please."
+        }
+      ],
+      "speechSeconds" : 591.6373333333337,
+      "startSeconds" : 0.223284334,
+      "systemCPU" : 0.3290820159257466,
+      "utterances" : 273,
+      "wordErrors" : {
+        "deletions" : 14,
+        "insertions" : 0,
+        "referenceWords" : 1621,
+        "substitutions" : 51
+      }
+    },
+    {
+      "channels" : 32,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 1.056080897257326,
+        "mean" : 0.7078183459233057,
+        "p50" : 0.7033520239061488,
+        "p95" : 0.8168674672491711
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-unified-1120",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 1.056080897257326,
+        "mean" : 0.7078183459233057,
+        "p50" : 0.7033520239061488,
+        "p95" : 0.8168674672491711
+      },
+      "firstWordLatency" : {
+        "max" : 2.3634418557649033,
+        "mean" : 1.761426860093025,
+        "p50" : 1.7466076453142918,
+        "p95" : 1.9243870722426903
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 669.5793609619141,
+      "processCPU" : 0.584428232260651,
+      "samples" : [
+        {
+          "hypothesis" : "Stand by the band for the overture. Curtain out Front of house clear, you have the show. Stand by for the curtain call Hold, please. We have a hold. Video 12, go. Thank you. Five minutes Lighting Q42, go. Rail, stand by to fly in the drop.",
+          "reference" : "Standby the band for the overture. Curtain out. Front of house clear, you have the show. Standby for the curtain call. Hold please, we have a hold. Video twelve, go. Thank you, five minutes. Lighting cue forty two, go. Rail, standby to fly in the drop."
+        },
+        {
+          "hypothesis" : "Lighting Q105, go. Spot 1, pick up the lead at center Pyro is armed and ready Standing by Props table is the lantern preset? Can someone check the radio mic on track for Stand by for the curtain call Second half beginners to the stage, please.",
+          "reference" : "Lighting cue one hundred five, go. Spot one, pick up the lead at centre. Pyro is armed and ready. Standing by. Props table, is the lantern preset? Can someone check the radio mic on track four? Standby for the curtain call. Second half beginners to the stage, please."
+        }
+      ],
+      "speechSeconds" : 591.6373333333337,
+      "startSeconds" : 0.574531334,
+      "systemCPU" : 0.2615131851901024,
+      "utterances" : 273,
+      "wordErrors" : {
+        "deletions" : 8,
+        "insertions" : 0,
+        "referenceWords" : 1621,
+        "substitutions" : 52
+      }
+    }
+  ]
+}

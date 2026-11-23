@@ -1,0 +1,279 @@
+{
+  "corpus" : "say (Samantha en_US, Daniel en_GB, Karen en_AU, Moira en_IE; 160 clips",
+  "date" : "2026-11-23T08:06:21Z",
+  "idleSystemCPU" : 0.2006067500948047,
+  "machine" : "Apple M1 Max, 10 cores, 64 GB",
+  "osVersion" : "Version 27.2.1 (Build 26B131)",
+  "results" : [
+    {
+      "channels" : 32,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.9174629002479735,
+        "mean" : 0.6815767974306836,
+        "p50" : 0.6783303185422938,
+        "p95" : 0.7591422815339328
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-v3",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.9174629002479735,
+        "mean" : 0.6815767974306836,
+        "p50" : 0.6783303185422938,
+        "p95" : 0.7591422815339328
+      },
+      "firstWordLatency" : {
+        "max" : 3.9333948598330153,
+        "mean" : 2.958047060224596,
+        "p50" : 3.006962536585668,
+        "p95" : 3.839141692846745
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 219.5476531982422,
+      "processCPU" : 0.37650283437276266,
+      "samples" : [
+        {
+          "hypothesis" : "Lighting Q42, go. Can I get a headset check from stage left? Video 12, go. Fog machine on, please. Stand by sound Q7 and fly Q3. Lighting Q105, go. Deck is clear. Front of house, how are we looking for clearance?",
+          "reference" : "Lighting cue forty two, go. Can I get a headset check from stage left? Video twelve, go. Fog machine on, please. Standby sound cue seven and fly cue three. Lighting cue one hundred five, go. Deck is clear. Front of house, how are we looking for clearance?"
+        },
+        {
+          "hypothesis" : "Spot 1, pick up the lead at center. Thank you, five minutes. Sound, can you bring the playback up a touch? Stand by sound Q7 and fly Q3. Rail, stand by to fly in the drop. Hold please, we have a hold. Hold please, we have a hold.",
+          "reference" : "Spot one, pick up the lead at centre. Thank you, five minutes. Sound, can you bring the playback up a touch? Standby sound cue seven and fly cue three. Rail, standby to fly in the drop. Hold please, we have a hold. Hold please, we have a hold."
+        }
+      ],
+      "speechSeconds" : 548.6293333333325,
+      "startSeconds" : 0.18958041699999997,
+      "systemCPU" : 0.27110598539169967,
+      "utterances" : 241,
+      "wordErrors" : {
+        "deletions" : 31,
+        "insertions" : 0,
+        "referenceWords" : 1514,
+        "substitutions" : 46
+      }
+    },
+    {
+      "channels" : 32,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.8244682717959586,
+        "mean" : 0.6833580412522597,
+        "p50" : 0.677729225133163,
+        "p95" : 0.7729756452970129
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-ultra",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.8244682717959586,
+        "mean" : 0.6833580412522597,
+        "p50" : 0.677729225133163,
+        "p95" : 0.7729756452970129
+      },
+      "firstWordLatency" : {
+        "max" : 3.9876904627154417,
+        "mean" : 2.959828304046172,
+        "p50" : 3.04248333604185,
+        "p95" : 3.8063380613585123
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 208.32894897460938,
+      "processCPU" : 0.3758814463468337,
+      "samples" : [
+        {
+          "hypothesis" : "Lighting Q42, go. Can I get a headset check from stage left? Video 12, go. Fog machine on, please. Stand by sound Q7 and fly Q3. Lighting Q105, go. Deck is clear. Front of house, how are we looking for clearance?",
+          "reference" : "Lighting cue forty two, go. Can I get a headset check from stage left? Video twelve, go. Fog machine on, please. Standby sound cue seven and fly cue three. Lighting cue one hundred five, go. Deck is clear. Front of house, how are we looking for clearance?"
+        },
+        {
+          "hypothesis" : "Spot 1, pick up the lead at center. Thank you. Five minutes. Sound, can you bring the playback up a touch? Stand by sound Q7 and fly Q3. Rail, stand by to fly in the drop. Hold please, we have a hold. Hold please, we have a hold.",
+          "reference" : "Spot one, pick up the lead at centre. Thank you, five minutes. Sound, can you bring the playback up a touch? Standby sound cue seven and fly cue three. Rail, standby to fly in the drop. Hold please, we have a hold. Hold please, we have a hold."
+        }
+      ],
+      "speechSeconds" : 548.6293333333325,
+      "startSeconds" : 0.1689235,
+      "systemCPU" : 0.2792253403351507,
+      "utterances" : 241,
+      "wordErrors" : {
+        "deletions" : 30,
+        "insertions" : 0,
+        "referenceWords" : 1514,
+        "substitutions" : 49
+      }
+    },
+    {
+      "channels" : 32,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.8168210217959588,
+        "mean" : 0.675789525302052,
+        "p50" : 0.6744856040251799,
+        "p95" : 0.7501212815339322
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "bark-3-clean",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.8168210217959588,
+        "mean" : 0.675789525302052,
+        "p50" : 0.6744856040251799,
+        "p95" : 0.7501212815339322
+      },
+      "firstWordLatency" : {
+        "max" : 3.9158301928330133,
+        "mean" : 2.952259788095966,
+        "p50" : 3.009631822366657,
+        "p95" : 3.8299964891873906
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 195.90705108642578,
+      "processCPU" : 0.37441733879444183,
+      "samples" : [
+        {
+          "hypothesis" : "lighting Q forty-two go. can I get a headset check from stage left Video twelve. Go. fog machine on, please. Stand by sound Q seven and fly Q3 . lighting Q105, go. deck is clear Front of house. How are we looking for clearance?",
+          "reference" : "Lighting cue forty two, go. Can I get a headset check from stage left? Video twelve, go. Fog machine on, please. Standby sound cue seven and fly cue three. Lighting cue one hundred five, go. Deck is clear. Front of house, how are we looking for clearance?"
+        },
+        {
+          "hypothesis" : "spot one pick up the led at center Thank you, five minutes. Sound. Can you bring the playback up a touch? stand by sound Q7 and fly Q3 . Rail, stand by to fly in the drop. Hold, please. We have a hold. Hold, please. We have a hold.",
+          "reference" : "Spot one, pick up the lead at centre. Thank you, five minutes. Sound, can you bring the playback up a touch? Standby sound cue seven and fly cue three. Rail, standby to fly in the drop. Hold please, we have a hold. Hold please, we have a hold."
+        }
+      ],
+      "speechSeconds" : 548.6293333333325,
+      "startSeconds" : 0.181183333,
+      "systemCPU" : 0.23861889163714153,
+      "utterances" : 241,
+      "wordErrors" : {
+        "deletions" : 30,
+        "insertions" : 10,
+        "referenceWords" : 1514,
+        "substitutions" : 80
+      }
+    },
+    {
+      "channels" : 32,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.8528644032113153,
+        "mean" : 0.6965493325759113,
+        "p50" : 0.6925287324850018,
+        "p95" : 0.7794508492325178
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-unified-offline",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.8528644032113153,
+        "mean" : 0.6965493325759113,
+        "p50" : 0.6925287324850018,
+        "p95" : 0.7794508492325178
+      },
+      "firstWordLatency" : {
+        "max" : 3.920845129715442,
+        "mean" : 2.9730195953698253,
+        "p50" : 3.0279739636841683,
+        "p95" : 3.835927984846748
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 290.84459686279297,
+      "processCPU" : 0.3109135352961575,
+      "samples" : [
+        {
+          "hypothesis" : "Lighting Q42, go. Can I get a headset check from stage left? Video 12, go. Fog machine on, please. Standby sound Q7 and fly Q3 Lighting Q105, go. Deck is clear. Front of house, how are we looking for clearance?",
+          "reference" : "Lighting cue forty two, go. Can I get a headset check from stage left? Video twelve, go. Fog machine on, please. Standby sound cue seven and fly cue three. Lighting cue one hundred five, go. Deck is clear. Front of house, how are we looking for clearance?"
+        },
+        {
+          "hypothesis" : "Spot one, pick up the lead at center Thank you, five minutes. Sound, can you bring the play back up a touch? Standby sound Q7 and fly Q3 Rail, standby to fly in the drop. Hold please, we have a hold. Hold please, we have a hold.",
+          "reference" : "Spot one, pick up the lead at centre. Thank you, five minutes. Sound, can you bring the playback up a touch? Standby sound cue seven and fly cue three. Rail, standby to fly in the drop. Hold please, we have a hold. Hold please, we have a hold."
+        }
+      ],
+      "speechSeconds" : 548.6293333333325,
+      "startSeconds" : 0.152407958,
+      "systemCPU" : 0.31384230287859827,
+      "utterances" : 241,
+      "wordErrors" : {
+        "deletions" : 38,
+        "insertions" : 13,
+        "referenceWords" : 1514,
+        "substitutions" : 77
+      }
+    },
+    {
+      "channels" : 32,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.8984389875340071,
+        "mean" : 0.6970137445510151,
+        "p50" : 0.6973151176016827,
+        "p95" : 0.7918379057594453
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-unified-1120",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.8984389875340071,
+        "mean" : 0.6970137445510151,
+        "p50" : 0.6973151176016827,
+        "p95" : 0.7918379057594453
+      },
+      "firstWordLatency" : {
+        "max" : 2.28507552491336,
+        "mean" : 1.775284442539951,
+        "p50" : 1.77721970252545,
+        "p95" : 1.8878356356095338
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 690.3293380737305,
+      "processCPU" : 0.543789579249821,
+      "samples" : [
+        {
+          "hypothesis" : "Lighting Dew 42, go. Can I get a headset check from stage left? Video 12, go. Fog machine on, please. Standby sound Q7 and fly Q3 Lighting Q105, go. Deck is clear. Front of house, how are we looking for clearance?",
+          "reference" : "Lighting cue forty two, go. Can I get a headset check from stage left? Video twelve, go. Fog machine on, please. Standby sound cue seven and fly cue three. Lighting cue one hundred five, go. Deck is clear. Front of house, how are we looking for clearance?"
+        },
+        {
+          "hypothesis" : "Spot one, pick up the lead at center Thank you, five minutes. Sound, can you bring the play back up a touch? Standby sound Q7 and fly Q3 Rail, standby to fly in the drop. Hold please, we have a hold. Hold please, we have a hold.",
+          "reference" : "Spot one, pick up the lead at centre. Thank you, five minutes. Sound, can you bring the playback up a touch? Standby sound cue seven and fly cue three. Rail, standby to fly in the drop. Hold please, we have a hold. Hold please, we have a hold."
+        }
+      ],
+      "speechSeconds" : 548.6293333333325,
+      "startSeconds" : 0.580188958,
+      "systemCPU" : 0.33059439400967466,
+      "utterances" : 241,
+      "wordErrors" : {
+        "deletions" : 30,
+        "insertions" : 17,
+        "referenceWords" : 1514,
+        "substitutions" : 77
+      }
+    }
+  ]
+}

@@ -1446,3 +1446,53 @@ diagnostics file yet. Not yet verified in the app.
 - Stage 3 (opt-in real-audio clips for `wilco-bench`), then a voice-change
   redesign: it over-splits on real comms (letters up to K for two people;
   one steady voice taken for another), tuned only on `say` voices.
+
+## 2026-11-23 — Benchmarking other Neural Engine speech models
+
+### Research
+
+FluidAudio 0.18.3, the version Wilco pins, already ships about 20 speech
+models besides Parakeet v3. Seven were worth measuring against the
+32-channel goal; the rest run on the GPU (LFM3-Audio, Phonon-2.5,
+Nemotron Transcribe Lite), are far too slow (Cohere Transcribe, about 2×
+real time) or target Chinese or Japanese.
+
+Licences: Ultra, Phonon-2 and Unified are CC-BY-4.0 like v3. Parakeet EOU
+is under the NVIDIA Open Model License. Nemotron's card contradicts itself
+and Bark 3.0 Clean's card wasn't readable.
+
+### Tooling
+
+- `wilco-bench` gains the seven candidates (`CandidateEngines.swift`):
+  `parakeet-ultra`, `phonon-2`, `bark-3-clean`, `parakeet-unified-offline`
+  (one shared model each) and `nemotron-1120`, `parakeet-unified-1120`,
+  `parakeet-eou-320` (streaming, one stream per channel).
+- `StreamedUtteranceRecognizer` runs a streaming model behind the usual
+  pause-cut utterances: each preview feeds only the new audio, the final
+  line finishes and resets the stream. 5 new tests.
+- Streaming models load from their folders directly, not through
+  FluidAudio's download-and-recover path, which deletes the cache when a
+  load fails and isn't safe with 32 channels loading at once.
+
+### Results
+
+Full tables: [`benchmarks/2026-11-23-m1-max-say-candidates.md`](benchmarks/2026-11-23-m1-max-say-candidates.md).
+
+- **Parakeet v3 stays.** Over three seeds at 32 channels its word error
+  rate averaged 3.9%; Ultra 4.6%, Unified 5.7–5.9%, Bark 3.0 Clean 6.8%.
+  All of them keep up with the same delays.
+- Phonon-2 (12%) and Parakeet EOU (13%, missed calls) are much less
+  accurate. Nemotron loads a full model per channel and fails by 16
+  channels (24 GB, dropped audio).
+- Streaming doesn't beat v3's live preview for first words on short
+  calls. On long talks at 32 channels, Unified streaming showed words
+  sooner (1.8 s against 2.8 s) with half the CPU.
+
+Tested: all on `say` speech only; nothing changed in the app.
+
+### Next steps / where we left off
+
+- Run the closest candidates (v3, Ultra, Unified) with `--corpus` on real
+  comms recordings before treating the decision as final.
+- If preview CPU at 32 long-talking channels becomes a problem, revisit
+  Parakeet Unified streaming as the preview path for English shows.

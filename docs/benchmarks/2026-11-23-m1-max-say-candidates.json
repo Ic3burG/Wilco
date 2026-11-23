@@ -1,0 +1,1651 @@
+{
+  "corpus" : "say (Samantha en_US, Daniel en_GB, Karen en_AU, Moira en_IE; 160 clips",
+  "date" : "2026-11-23T06:26:41Z",
+  "idleSystemCPU" : 0.28818897637795277,
+  "machine" : "Apple M1 Max, 10 cores, 64 GB",
+  "osVersion" : "Version 27.2.1 (Build 26B131)",
+  "results" : [
+    {
+      "channels" : 1,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.9489352908365376,
+        "mean" : 0.7419041789190044,
+        "p50" : 0.7015150269859305,
+        "p95" : 0.9489352908365376
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-v3",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.9489352908365376,
+        "mean" : 0.7419041789190044,
+        "p50" : 0.7015150269859305,
+        "p95" : 0.9489352908365376
+      },
+      "firstWordLatency" : {
+        "max" : 3.602848360319264,
+        "mean" : 2.869904178919004,
+        "p50" : 2.847601957503201,
+        "p95" : 3.602848360319264
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 115.36003875732422,
+      "processCPU" : 0.024480152548700753,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound Q7 and fly Q3. Front of house clear, you have the show.",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        }
+      ],
+      "speechSeconds" : 17.024,
+      "startSeconds" : 0.2431305,
+      "systemCPU" : 0.2219520724741461,
+      "utterances" : 8,
+      "wordErrors" : {
+        "deletions" : 0,
+        "insertions" : 0,
+        "referenceWords" : 46,
+        "substitutions" : 0
+      }
+    },
+    {
+      "channels" : 8,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.7848715060044107,
+        "mean" : 0.692141219330679,
+        "p50" : 0.6880049038546758,
+        "p95" : 0.7514482274388747
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-v3",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.7848715060044107,
+        "mean" : 0.692141219330679,
+        "p50" : 0.6880049038546758,
+        "p95" : 0.7514482274388747
+      },
+      "firstWordLatency" : {
+        "max" : 3.6445416989351003,
+        "mean" : 2.986185663775123,
+        "p50" : 2.988610313535702,
+        "p95" : 3.5772504162178116
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 127.0007095336914,
+      "processCPU" : 0.10755803036743986,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound Q7 and fly Q3. Front of house clear, you have the show.",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        },
+        {
+          "hypothesis" : "Fog machine on, please. Lighting Q42, go. Places please for the top of Act 2. Standby lighting Q42 Can someone check the radio mic on track 4? Can I get a work light on stage right? Follow spots, stand by for the blackout.",
+          "reference" : "Fog machine on, please. Lighting cue forty two, go. Places please for the top of act two. Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Follow spots, standby for the blackout."
+        }
+      ],
+      "speechSeconds" : 137.64266666666663,
+      "startSeconds" : 0.183811292,
+      "systemCPU" : 0.23901918621126503,
+      "utterances" : 60,
+      "wordErrors" : {
+        "deletions" : 0,
+        "insertions" : 1,
+        "referenceWords" : 380,
+        "substitutions" : 4
+      }
+    },
+    {
+      "channels" : 16,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.8002263933903109,
+        "mean" : 0.6932807209620884,
+        "p50" : 0.6898124750130838,
+        "p95" : 0.7719396888187156
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-v3",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.8002263933903109,
+        "mean" : 0.6932807209620884,
+        "p50" : 0.6898124750130838,
+        "p95" : 0.7719396888187156
+      },
+      "firstWordLatency" : {
+        "max" : 3.9559793724396783,
+        "mean" : 2.916614054295423,
+        "p50" : 2.9781118958961557,
+        "p95" : 3.7358448863826794
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 141.4382095336914,
+      "processCPU" : 0.22939995760448761,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound Q7 and fly Q3. Front of house clear, you have the show.",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        },
+        {
+          "hypothesis" : "Fog machine on, please. Lighting Q42, go. Places please for the top of Act 2. Standby lighting Q42 Can someone check the radio mic on track 4? Can I get a work light on stage right? Follow spots, stand by for the blackout.",
+          "reference" : "Fog machine on, please. Lighting cue forty two, go. Places please for the top of act two. Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Follow spots, standby for the blackout."
+        }
+      ],
+      "speechSeconds" : 284.58666666666664,
+      "startSeconds" : 0.152648125,
+      "systemCPU" : 0.26724382391699614,
+      "utterances" : 128,
+      "wordErrors" : {
+        "deletions" : 0,
+        "insertions" : 2,
+        "referenceWords" : 748,
+        "substitutions" : 14
+      }
+    },
+    {
+      "channels" : 32,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 1.159674788679041,
+        "mean" : 0.6978901729917597,
+        "p50" : 0.6877483260441437,
+        "p95" : 0.779506727590423
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-v3",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 1.159674788679041,
+        "mean" : 0.6978901729917597,
+        "p50" : 0.6877483260441437,
+        "p95" : 0.779506727590423
+      },
+      "firstWordLatency" : {
+        "max" : 3.914662974627298,
+        "mean" : 2.8064415514378758,
+        "p50" : 2.9459392591012374,
+        "p95" : 3.742355193693612
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 206.8601531982422,
+      "processCPU" : 0.3779472423813117,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound Q7 and fly Q3. Front of house clear, you have the show.",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        },
+        {
+          "hypothesis" : "Fog machine on, please. Lighting Q42, go. Places please for the top of Act 2. Standby lighting Q42 Can someone check the radio mic on track 4? Can I get a work light on stage right? Follow spots, stand by for the blackout.",
+          "reference" : "Fog machine on, please. Lighting cue forty two, go. Places please for the top of act two. Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Follow spots, standby for the blackout."
+        }
+      ],
+      "speechSeconds" : 560.8746666666668,
+      "startSeconds" : 0.148081792,
+      "systemCPU" : 0.3784474550223009,
+      "utterances" : 266,
+      "wordErrors" : {
+        "deletions" : 0,
+        "insertions" : 4,
+        "referenceWords" : 1478,
+        "substitutions" : 42
+      }
+    },
+    {
+      "channels" : 1,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.9330721590441442,
+        "mean" : 0.7341378460440031,
+        "p50" : 0.7190922324831575,
+        "p95" : 0.9330721590441442
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-ultra",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.9330721590441442,
+        "mean" : 0.7341378460440031,
+        "p50" : 0.7190922324831575,
+        "p95" : 0.9330721590441442
+      },
+      "firstWordLatency" : {
+        "max" : 3.604125486319262,
+        "mean" : 2.862137846044003,
+        "p50" : 2.810405492377477,
+        "p95" : 3.604125486319262
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 155.6257781982422,
+      "processCPU" : 0.023911552957112843,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by. Stand by for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Stand by sound Q7 and flight Q3. Front of house clear, you have the show.",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        }
+      ],
+      "speechSeconds" : 17.024,
+      "startSeconds" : 0.26111029199999997,
+      "systemCPU" : 0.27642574769395006,
+      "utterances" : 8,
+      "wordErrors" : {
+        "deletions" : 0,
+        "insertions" : 0,
+        "referenceWords" : 46,
+        "substitutions" : 1
+      }
+    },
+    {
+      "channels" : 8,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.7332383994831573,
+        "mean" : 0.6681486286806789,
+        "p50" : 0.6724188665980506,
+        "p95" : 0.7273671392800622
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-ultra",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.7332383994831573,
+        "mean" : 0.6681486286806789,
+        "p50" : 0.6724188665980506,
+        "p95" : 0.7273671392800622
+      },
+      "firstWordLatency" : {
+        "max" : 3.625502115935113,
+        "mean" : 2.962193073125122,
+        "p50" : 2.9271278078326834,
+        "p95" : 3.572544650181406
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 101.03202819824219,
+      "processCPU" : 0.09870396126524804,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by. Stand by for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Stand by sound Q7 and flight Q3. Front of house clear, you have the show.",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        },
+        {
+          "hypothesis" : "Fog machine on, please. Lighting Q42, go. Places please for the top of Act 2. Standby Lighting Q42. Can someone check the radio mic on track 4? Can I get a work light on stage right? Follow spots, stand by for the blackout.",
+          "reference" : "Fog machine on, please. Lighting cue forty two, go. Places please for the top of act two. Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Follow spots, standby for the blackout."
+        }
+      ],
+      "speechSeconds" : 137.64266666666663,
+      "startSeconds" : 0.178515917,
+      "systemCPU" : 0.30419971612256824,
+      "utterances" : 60,
+      "wordErrors" : {
+        "deletions" : 0,
+        "insertions" : 0,
+        "referenceWords" : 380,
+        "substitutions" : 5
+      }
+    },
+    {
+      "channels" : 16,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.7837944998365316,
+        "mean" : 0.679873423110526,
+        "p50" : 0.6779884353064283,
+        "p95" : 0.7498689385357054
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-ultra",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.7837944998365316,
+        "mean" : 0.679873423110526,
+        "p50" : 0.6779884353064283,
+        "p95" : 0.7498689385357054
+      },
+      "firstWordLatency" : {
+        "max" : 3.9331444359194663,
+        "mean" : 2.903206756443859,
+        "p50" : 2.932660005585223,
+        "p95" : 3.7313556338013356
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 103.48515319824219,
+      "processCPU" : 0.19135378539322206,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by. Stand by for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Stand by sound Q7 and flight Q3. Front of house clear, you have the show.",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        },
+        {
+          "hypothesis" : "Fog machine on, please. Lighting Q42, go. Places please for the top of Act 2. Standby Lighting Q42. Can someone check the radio mic on track 4? Can I get a work light on stage right? Follow spots, stand by for the blackout.",
+          "reference" : "Fog machine on, please. Lighting cue forty two, go. Places please for the top of act two. Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Follow spots, standby for the blackout."
+        }
+      ],
+      "speechSeconds" : 284.58666666666664,
+      "startSeconds" : 0.151482542,
+      "systemCPU" : 0.2935285955497601,
+      "utterances" : 128,
+      "wordErrors" : {
+        "deletions" : 0,
+        "insertions" : 0,
+        "referenceWords" : 748,
+        "substitutions" : 26
+      }
+    },
+    {
+      "channels" : 32,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.7637553975357037,
+        "mean" : 0.6713279905443914,
+        "p50" : 0.6727803548107119,
+        "p95" : 0.7365328431012372
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-ultra",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.7637553975357037,
+        "mean" : 0.6713279905443914,
+        "p50" : 0.6727803548107119,
+        "p95" : 0.7365328431012372
+      },
+      "firstWordLatency" : {
+        "max" : 3.935647018919461,
+        "mean" : 2.7798793689905072,
+        "p50" : 2.9025356219896175,
+        "p95" : 3.7005301748013366
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 108.07890319824219,
+      "processCPU" : 0.3400254421581235,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by. Stand by for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Stand by sound Q7 and flight Q3. Front of house clear, you have the show.",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        },
+        {
+          "hypothesis" : "Fog machine on, please. Lighting Q42, go. Places please for the top of Act 2. Standby Lighting Q42. Can someone check the radio mic on track 4? Can I get a work light on stage right? Follow spots, stand by for the blackout.",
+          "reference" : "Fog machine on, please. Lighting cue forty two, go. Places please for the top of act two. Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Follow spots, standby for the blackout."
+        }
+      ],
+      "speechSeconds" : 560.8746666666668,
+      "startSeconds" : 0.15007875,
+      "systemCPU" : 0.370180894105059,
+      "utterances" : 266,
+      "wordErrors" : {
+        "deletions" : 0,
+        "insertions" : 0,
+        "referenceWords" : 1478,
+        "substitutions" : 61
+      }
+    },
+    {
+      "channels" : 1,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.9180556170441427,
+        "mean" : 0.7531728250440034,
+        "p50" : 0.7236108748365311,
+        "p95" : 0.9180556170441427
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "phonon-2",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.9180556170441427,
+        "mean" : 0.7531728250440034,
+        "p50" : 0.7236108748365311,
+        "p95" : 0.9180556170441427
+      },
+      "firstWordLatency" : {
+        "max" : 3.617527069319266,
+        "mean" : 2.881172825044003,
+        "p50" : 2.7953889503774754,
+        "p95" : 3.617527069319266
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 107.40709686279297,
+      "processCPU" : 0.03132474944536097,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by. Stand by for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Stand by sound Q7 and fly Q3 . Front of house clear. You have the show.",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        }
+      ],
+      "speechSeconds" : 17.024,
+      "startSeconds" : 171.800633541,
+      "systemCPU" : 0.3794056848665023,
+      "utterances" : 8,
+      "wordErrors" : {
+        "deletions" : 0,
+        "insertions" : 0,
+        "referenceWords" : 46,
+        "substitutions" : 0
+      }
+    },
+    {
+      "channels" : 8,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.8727184090441433,
+        "mean" : 0.6835923674806786,
+        "p50" : 0.685280691848078,
+        "p95" : 0.7508107359859295
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "phonon-2",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.8727184090441433,
+        "mean" : 0.6835923674806786,
+        "p50" : 0.685280691848078,
+        "p95" : 0.7508107359859295
+      },
+      "firstWordLatency" : {
+        "max" : 3.670670781935101,
+        "mean" : 2.977636811925123,
+        "p50" : 2.98025285553571,
+        "p95" : 3.5866140251814116
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 99.76647186279297,
+      "processCPU" : 0.14683129846005877,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by. Stand by for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Stand by sound Q7 and fly Q3 . Front of house clear. You have the show.",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        },
+        {
+          "hypothesis" : "Fog machine on, please. Lighting Q42 . Good. Place is please for the top of Act2 . Standby lighting Q forty two. Can someone check the radio mic on track four? Can I get a worklight on stage right? Follow spots. Stand by for the blackout.",
+          "reference" : "Fog machine on, please. Lighting cue forty two, go. Places please for the top of act two. Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Follow spots, standby for the blackout."
+        }
+      ],
+      "speechSeconds" : 137.64266666666663,
+      "startSeconds" : 0.9280403340000001,
+      "systemCPU" : 0.25596425568397274,
+      "utterances" : 60,
+      "wordErrors" : {
+        "deletions" : 7,
+        "insertions" : 6,
+        "referenceWords" : 380,
+        "substitutions" : 28
+      }
+    },
+    {
+      "channels" : 16,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.7852094810408135,
+        "mean" : 0.6736098742667762,
+        "p50" : 0.6701370503479467,
+        "p95" : 0.743904534182656
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "phonon-2",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.7852094810408135,
+        "mean" : 0.6736098742667762,
+        "p50" : 0.6701370503479467,
+        "p95" : 0.743904534182656
+      },
+      "firstWordLatency" : {
+        "max" : 3.942491788439682,
+        "mean" : 2.89694320760011,
+        "p50" : 2.9760897678062648,
+        "p95" : 3.7273356390787704
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 103.59459686279297,
+      "processCPU" : 0.24618238410675128,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by. Stand by for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Stand by sound Q7 and fly Q3 . Front of house clear. You have the show.",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        },
+        {
+          "hypothesis" : "Fog machine on, please. Lighting Q42 . Good. Place is please for the top of Act2 . Standby lighting Q forty two. Can someone check the radio mic on track four? Can I get a worklight on stage right? Follow spots. Stand by for the blackout.",
+          "reference" : "Fog machine on, please. Lighting cue forty two, go. Places please for the top of act two. Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Follow spots, standby for the blackout."
+        }
+      ],
+      "speechSeconds" : 284.58666666666664,
+      "startSeconds" : 0.905051042,
+      "systemCPU" : 0.3401393107090981,
+      "utterances" : 128,
+      "wordErrors" : {
+        "deletions" : 13,
+        "insertions" : 33,
+        "referenceWords" : 748,
+        "substitutions" : 60
+      }
+    },
+    {
+      "channels" : 32,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 1.1402730184388759,
+        "mean" : 0.661686773390256,
+        "p50" : 0.6557711291504553,
+        "p95" : 0.7340008814101857
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "phonon-2",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 1.1402730184388759,
+        "mean" : 0.661686773390256,
+        "p50" : 0.6557711291504553,
+        "p95" : 0.7340008814101857
+      },
+      "firstWordLatency" : {
+        "max" : 3.916453131185844,
+        "mean" : 2.7702381518363755,
+        "p50" : 2.8858976762028092,
+        "p95" : 3.701972887029008
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 105.32897186279297,
+      "processCPU" : 0.4328167226146939,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by. Stand by for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Stand by sound Q7 and fly Q3 . Front of house clear. You have the show.",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        },
+        {
+          "hypothesis" : "Fog machine on, please. Lighting Q42 . Good. Place is please for the top of Act2 . Standby lighting Q forty two. Can someone check the radio mic on track four? Can I get a worklight on stage right? Follow spots. Stand by for the blackout.",
+          "reference" : "Fog machine on, please. Lighting cue forty two, go. Places please for the top of act two. Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Follow spots, standby for the blackout."
+        }
+      ],
+      "speechSeconds" : 560.8746666666668,
+      "startSeconds" : 0.896248459,
+      "systemCPU" : 0.3347472313456238,
+      "utterances" : 266,
+      "wordErrors" : {
+        "deletions" : 15,
+        "insertions" : 58,
+        "referenceWords" : 1478,
+        "substitutions" : 106
+      }
+    },
+    {
+      "channels" : 1,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.9254885135576618,
+        "mean" : 0.7940853826690037,
+        "p50" : 0.7543382591422763,
+        "p95" : 0.9254885135576618
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "bark-3-clean",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.9254885135576618,
+        "mean" : 0.7940853826690037,
+        "p50" : 0.7543382591422763,
+        "p95" : 0.9254885135576618
+      },
+      "firstWordLatency" : {
+        "max" : 3.674913611319262,
+        "mean" : 2.922085382669004,
+        "p50" : 2.801546076377477,
+        "p95" : 3.674913611319262
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 94.00082397460938,
+      "processCPU" : 0.027093625099088064,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by. Stand by for the curtain call. stage left loud and clear we are going again from the top of the scene Fog machine on, please. Fog machine on, please. Stand by sound Q seven and fly Q3. Front of house clear, you have the show.",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        }
+      ],
+      "speechSeconds" : 17.024,
+      "startSeconds" : 0.185153375,
+      "systemCPU" : 0.28302170283806344,
+      "utterances" : 8,
+      "wordErrors" : {
+        "deletions" : 0,
+        "insertions" : 0,
+        "referenceWords" : 46,
+        "substitutions" : 1
+      }
+    },
+    {
+      "channels" : 8,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.7991489385357085,
+        "mean" : 0.711189262314013,
+        "p50" : 0.7099444510441462,
+        "p95" : 0.7836441074831573
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "bark-3-clean",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.7991489385357085,
+        "mean" : 0.711189262314013,
+        "p50" : 0.7099444510441462,
+        "p95" : 0.7836441074831573
+      },
+      "firstWordLatency" : {
+        "max" : 3.7121810319351027,
+        "mean" : 3.0052337067584562,
+        "p50" : 3.0050002813829977,
+        "p95" : 3.644973453615865
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 102.78207397460938,
+      "processCPU" : 0.12161813696656452,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by. Stand by for the curtain call. stage left loud and clear we are going again from the top of the scene Fog machine on, please. Fog machine on, please. Stand by sound Q seven and fly Q3. Front of house clear, you have the show.",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        },
+        {
+          "hypothesis" : "Fog machine on, please. lighting Q forty-two, go. Places, please, for the top of Act Two. standby lighting Q42 can someone check the radio mic on track four can I get a work light on stage right Follow spots. Stand by for the blackout.",
+          "reference" : "Fog machine on, please. Lighting cue forty two, go. Places please for the top of act two. Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Follow spots, standby for the blackout."
+        }
+      ],
+      "speechSeconds" : 137.64266666666663,
+      "startSeconds" : 0.20240825,
+      "systemCPU" : 0.32570254971697643,
+      "utterances" : 60,
+      "wordErrors" : {
+        "deletions" : 0,
+        "insertions" : 3,
+        "referenceWords" : 380,
+        "substitutions" : 11
+      }
+    },
+    {
+      "channels" : 16,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.887927216493587,
+        "mean" : 0.7021583537511507,
+        "p50" : 0.6998307043858745,
+        "p95" : 0.7747102928722605
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "bark-3-clean",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.887927216493587,
+        "mean" : 0.7021583537511507,
+        "p50" : 0.6998307043858745,
+        "p95" : 0.7747102928722605
+      },
+      "firstWordLatency" : {
+        "max" : 3.9739966029194633,
+        "mean" : 2.925491687084485,
+        "p50" : 2.962312914384368,
+        "p95" : 3.7080956380290075
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 104.78207397460938,
+      "processCPU" : 0.22827235180044864,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by. Stand by for the curtain call. stage left loud and clear we are going again from the top of the scene Fog machine on, please. Fog machine on, please. Stand by sound Q seven and fly Q3. Front of house clear, you have the show.",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        },
+        {
+          "hypothesis" : "Fog machine on, please. lighting Q forty-two, go. Places, please, for the top of Act Two. standby lighting Q42 can someone check the radio mic on track four can I get a work light on stage right Follow spots. Stand by for the blackout.",
+          "reference" : "Fog machine on, please. Lighting cue forty two, go. Places please for the top of act two. Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Follow spots, standby for the blackout."
+        }
+      ],
+      "speechSeconds" : 284.58666666666664,
+      "startSeconds" : 0.175082667,
+      "systemCPU" : 0.3493867183583436,
+      "utterances" : 128,
+      "wordErrors" : {
+        "deletions" : 0,
+        "insertions" : 11,
+        "referenceWords" : 748,
+        "substitutions" : 31
+      }
+    },
+    {
+      "channels" : 32,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.8186982214836078,
+        "mean" : 0.690688535465444,
+        "p50" : 0.6875169229942131,
+        "p95" : 0.7669792465281873
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "bark-3-clean",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.8186982214836078,
+        "mean" : 0.690688535465444,
+        "p50" : 0.6875169229942131,
+        "p95" : 0.7669792465281873
+      },
+      "firstWordLatency" : {
+        "max" : 3.962462047185843,
+        "mean" : 2.79923991391156,
+        "p50" : 2.9196153421012383,
+        "p95" : 3.741649424801338
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 110.61019897460938,
+      "processCPU" : 0.3939928453908375,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by. Stand by for the curtain call. stage left loud and clear we are going again from the top of the scene Fog machine on, please. Fog machine on, please. Stand by sound Q seven and fly Q3. Front of house clear, you have the show.",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        },
+        {
+          "hypothesis" : "Fog machine on, please. lighting Q forty-two, go. Places, please, for the top of Act Two. standby lighting Q42 can someone check the radio mic on track four can I get a work light on stage right Follow spots. Stand by for the blackout.",
+          "reference" : "Fog machine on, please. Lighting cue forty two, go. Places please for the top of act two. Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Follow spots, standby for the blackout."
+        }
+      ],
+      "speechSeconds" : 560.8746666666668,
+      "startSeconds" : 0.176796666,
+      "systemCPU" : 0.35237952159180064,
+      "utterances" : 266,
+      "wordErrors" : {
+        "deletions" : 0,
+        "insertions" : 15,
+        "referenceWords" : 1478,
+        "substitutions" : 65
+      }
+    },
+    {
+      "channels" : 1,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.8842738548187192,
+        "mean" : 0.7863625177940036,
+        "p50" : 0.7781446494831572,
+        "p95" : 0.8842738548187192
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-unified-offline",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.8842738548187192,
+        "mean" : 0.7863625177940036,
+        "p50" : 0.7781446494831572,
+        "p95" : 0.8842738548187192
+      },
+      "firstWordLatency" : {
+        "max" : 3.6411896113192626,
+        "mean" : 2.914362517794004,
+        "p50" : 2.825607188152052,
+        "p95" : 3.6411896113192626
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 116.34457397460938,
+      "processCPU" : 0.024969976362124408,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by Standby for the curtain call Stage left, loud and clear. We are going again from the top of the scene. Fogg machine on, please. Fog machine on, please Standby sound Q7 and Flight Q3 Front of house clear, you have the show",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        }
+      ],
+      "speechSeconds" : 17.024,
+      "startSeconds" : 0.16713166599999998,
+      "systemCPU" : 0.2960264679343649,
+      "utterances" : 8,
+      "wordErrors" : {
+        "deletions" : 0,
+        "insertions" : 0,
+        "referenceWords" : 46,
+        "substitutions" : 2
+      }
+    },
+    {
+      "channels" : 8,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.7879324122825437,
+        "mean" : 0.7240962890473459,
+        "p50" : 0.7286819162595748,
+        "p95" : 0.7811325739840633
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-unified-offline",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.7879324122825437,
+        "mean" : 0.7240962890473459,
+        "p50" : 0.7286819162595748,
+        "p95" : 0.7811325739840633
+      },
+      "firstWordLatency" : {
+        "max" : 3.761698323935107,
+        "mean" : 3.018140733491791,
+        "p50" : 3.0040243555357122,
+        "p95" : 3.621041319319268
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 148.14147186279297,
+      "processCPU" : 0.1094581704023373,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by Standby for the curtain call Stage left, loud and clear. We are going again from the top of the scene. Fogg machine on, please. Fog machine on, please Standby sound Q7 and Flight Q3 Front of house clear, you have the show",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        },
+        {
+          "hypothesis" : "Fog machine on, please. Lighting Q42, go. Places please for the top of Act II Standby lighting Dew 42 Can someone check the radio mic on track 4? Can I get a work light on stage right? Follow spots, stand by for the blackout.",
+          "reference" : "Fog machine on, please. Lighting cue forty two, go. Places please for the top of act two. Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Follow spots, standby for the blackout."
+        }
+      ],
+      "speechSeconds" : 137.64266666666663,
+      "startSeconds" : 0.17427520800000001,
+      "systemCPU" : 0.36354076250250383,
+      "utterances" : 60,
+      "wordErrors" : {
+        "deletions" : 0,
+        "insertions" : 1,
+        "referenceWords" : 380,
+        "substitutions" : 11
+      }
+    },
+    {
+      "channels" : 16,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.8077937250130836,
+        "mean" : 0.6973322899933393,
+        "p50" : 0.6989853839319835,
+        "p95" : 0.7803116885357042
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-unified-offline",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.8077937250130836,
+        "mean" : 0.6973322899933393,
+        "p50" : 0.6989853839319835,
+        "p95" : 0.7803116885357042
+      },
+      "firstWordLatency" : {
+        "max" : 3.958354372439686,
+        "mean" : 2.9206656233266726,
+        "p50" : 2.960835258347945,
+        "p95" : 3.7149276936936104
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 178.93836975097656,
+      "processCPU" : 0.16738860821938756,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by Standby for the curtain call Stage left, loud and clear. We are going again from the top of the scene. Fogg machine on, please. Fog machine on, please Standby sound Q7 and Flight Q3 Front of house clear, you have the show",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        },
+        {
+          "hypothesis" : "Fog machine on, please. Lighting Q42, go. Places please for the top of Act II Standby lighting Dew 42 Can someone check the radio mic on track 4? Can I get a work light on stage right? Follow spots, stand by for the blackout.",
+          "reference" : "Fog machine on, please. Lighting cue forty two, go. Places please for the top of act two. Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Follow spots, standby for the blackout."
+        }
+      ],
+      "speechSeconds" : 284.58666666666664,
+      "startSeconds" : 0.153897125,
+      "systemCPU" : 0.41537151728627947,
+      "utterances" : 128,
+      "wordErrors" : {
+        "deletions" : 4,
+        "insertions" : 5,
+        "referenceWords" : 748,
+        "substitutions" : 26
+      }
+    },
+    {
+      "channels" : 32,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 1.0447286338013413,
+        "mean" : 0.7203831703301053,
+        "p50" : 0.70899136503607,
+        "p95" : 0.8644109785371583
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-unified-offline",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 1.0447286338013413,
+        "mean" : 0.7203831703301053,
+        "p50" : 0.70899136503607,
+        "p95" : 0.8644109785371583
+      },
+      "firstWordLatency" : {
+        "max" : 3.9569511618106494,
+        "mean" : 2.8289345487762203,
+        "p50" : 2.971803401137649,
+        "p95" : 3.766001800672214
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 210.15714263916016,
+      "processCPU" : 0.2935849046757705,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by Standby for the curtain call Stage left, loud and clear. We are going again from the top of the scene. Fogg machine on, please. Fog machine on, please Standby sound Q7 and Flight Q3 Front of house clear, you have the show",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        },
+        {
+          "hypothesis" : "Fog machine on, please. Lighting Q42, go. Places please for the top of Act II Standby lighting Dew 42 Can someone check the radio mic on track 4? Can I get a work light on stage right? Follow spots, stand by for the blackout.",
+          "reference" : "Fog machine on, please. Lighting cue forty two, go. Places please for the top of act two. Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Follow spots, standby for the blackout."
+        }
+      ],
+      "speechSeconds" : 560.8746666666668,
+      "startSeconds" : 0.149767125,
+      "systemCPU" : 0.6896586228174041,
+      "utterances" : 266,
+      "wordErrors" : {
+        "deletions" : 8,
+        "insertions" : 8,
+        "referenceWords" : 1478,
+        "substitutions" : 59
+      }
+    },
+    {
+      "channels" : 1,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 1.1852248958187168,
+        "mean" : 0.9683935799190042,
+        "p50" : 0.8742238455576619,
+        "p95" : 1.1852248958187168
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "nemotron-1120",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 1.1852248958187168,
+        "mean" : 0.9683935799190042,
+        "p50" : 0.8742238455576619,
+        "p95" : 1.1852248958187168
+      },
+      "firstWordLatency" : {
+        "max" : 2.541978887224328,
+        "mean" : 1.5690343611690056,
+        "p50" : 1.4376280124836143,
+        "p95" : 2.541978887224328
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 1950.502586364746,
+      "processCPU" : 0.24365667319261458,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by Standby for the curtain call Stage left loud and clear We are going again from the top of the scene Fog machine on please Fog machine on please Standby sound Q seven and flight Q three Front of house clear you have the show",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        }
+      ],
+      "speechSeconds" : 17.024,
+      "startSeconds" : 23.980303625,
+      "systemCPU" : 0.43224888506283105,
+      "utterances" : 8,
+      "wordErrors" : {
+        "deletions" : 0,
+        "insertions" : 0,
+        "referenceWords" : 46,
+        "substitutions" : 3
+      }
+    },
+    {
+      "channels" : 8,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 2.751903751447056,
+        "mean" : 1.1701144800973453,
+        "p50" : 1.0562774533858672,
+        "p95" : 2.500691473166017
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "nemotron-1120",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 2.751903751447056,
+        "mean" : 1.1701144800973453,
+        "p50" : 1.0562774533858672,
+        "p95" : 2.500691473166017
+      },
+      "firstWordLatency" : {
+        "max" : 3.6268539805209263,
+        "mean" : 1.5336758571917912,
+        "p50" : 1.4000841668722614,
+        "p95" : 2.4148169782118964
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 11869.245315551758,
+      "processCPU" : 1.1769035238870953,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by Standby for the curtain call Stage left loud and clear We are going again from the top of the scene Fog machine on please Fog machine on please Standby sound Q seven and flight Q three Front of house clear you have the show",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        },
+        {
+          "hypothesis" : "Fog machine on please License Q forty two go Places please for the top of Act Two Standby lighting Q forty two Can someone check the radio mic on track four Can I get a work light on stage right Follow spots, stand by for the blackout",
+          "reference" : "Fog machine on, please. Lighting cue forty two, go. Places please for the top of act two. Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Follow spots, standby for the blackout."
+        }
+      ],
+      "speechSeconds" : 137.64266666666663,
+      "startSeconds" : 88.79672804200001,
+      "systemCPU" : 0.49152234467724354,
+      "utterances" : 60,
+      "wordErrors" : {
+        "deletions" : 1,
+        "insertions" : 0,
+        "referenceWords" : 380,
+        "substitutions" : 26
+      }
+    },
+    {
+      "channels" : 16,
+      "displayBacklog" : 16.74554516699999,
+      "displayLatency" : {
+        "max" : 34.365090642806265,
+        "mean" : 16.556535440696702,
+        "p50" : 15.64160349857336,
+        "p95" : 29.709898341931982
+      },
+      "drainSeconds" : 16.74554516699999,
+      "droppedFrames" : 6456,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "nemotron-1120",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 34.365090642806265,
+        "mean" : 16.556535440696702,
+        "p50" : 15.64160349857336,
+        "p95" : 29.709898341931982
+      },
+      "firstWordLatency" : {
+        "max" : 33.71532730980627,
+        "mean" : 16.738537500855788,
+        "p50" : 17.64133831266539,
+        "p95" : 31.699910777091603
+      },
+      "merged" : 0,
+      "missed" : 40,
+      "peakMemoryMB" : 24565.207321166992,
+      "processCPU" : 3.202310431338905,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by Standby for the curtain call Stage left loud and clear We are going again from the top of the scene Fog machine on please Fog machine on please Standby sound Q seven and flight Q three",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        },
+        {
+          "hypothesis" : "Fog machine on please License Q forty two go Places please for the top of Act Two Standby lighting Q forty two Can someone check the radio mic on track four Can I get a work light on stage right Follow spots",
+          "reference" : "Fog machine on, please. Lighting cue forty two, go. Places please for the top of act two. Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Follow spots, standby for the blackout."
+        }
+      ],
+      "speechSeconds" : 284.58666666666664,
+      "startSeconds" : 164.751827958,
+      "systemCPU" : 0.6040480656602475,
+      "utterances" : 128,
+      "wordErrors" : {
+        "deletions" : 87,
+        "insertions" : 0,
+        "referenceWords" : 748,
+        "substitutions" : 59
+      }
+    },
+    {
+      "channels" : 1,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.8321820544836172,
+        "mean" : 0.7694413250440042,
+        "p50" : 0.7794552840441433,
+        "p95" : 0.8321820544836172
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-unified-1120",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.8321820544836172,
+        "mean" : 0.7694413250440042,
+        "p50" : 0.7794552840441433,
+        "p95" : 0.8321820544836172
+      },
+      "firstWordLatency" : {
+        "max" : 1.851539874503203,
+        "mean" : 1.7998334240440061,
+        "p50" : 1.7886208428089425,
+        "p95" : 1.851539874503203
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 5597.196380615234,
+      "processCPU" : 0.041158505377734474,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by Stand by for the curtain call Stage left, loud and clear. We are going again from the top of the scene. Fogged machine on, please. Fog machine on, please Standby sound Q7 and Flight Q3 Front of house clear, you have the show",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        }
+      ],
+      "speechSeconds" : 17.024,
+      "startSeconds" : 0.250195084,
+      "systemCPU" : 0.32301718247420963,
+      "utterances" : 8,
+      "wordErrors" : {
+        "deletions" : 0,
+        "insertions" : 0,
+        "referenceWords" : 46,
+        "substitutions" : 2
+      }
+    },
+    {
+      "channels" : 8,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 1.4839862496406155,
+        "mean" : 0.7543609328640123,
+        "p50" : 0.7190818514388742,
+        "p95" : 0.927938590979112
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-unified-1120",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 1.4839862496406155,
+        "mean" : 0.7543609328640123,
+        "p50" : 0.7190818514388742,
+        "p95" : 0.927938590979112
+      },
+      "firstWordLatency" : {
+        "max" : 2.217976923645775,
+        "mean" : 1.8092525099084564,
+        "p50" : 1.7915491806133943,
+        "p95" : 1.9487932850505878
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 834.5701675415039,
+      "processCPU" : 0.21634397887865406,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by Stand by for the curtain call Stage left, loud and clear. We are going again from the top of the scene. Fogged machine on, please. Fog machine on, please Standby sound Q7 and Flight Q3 Front of house clear, you have the show",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        },
+        {
+          "hypothesis" : "Fog machine on, please. Lighting Q42, go. Places please for the top of Act II Standby lighting Dew 42 Can someone check the radio mic on track 4? Can I get a work light on stage right? Follow spots, stand by for the blackout.",
+          "reference" : "Fog machine on, please. Lighting cue forty two, go. Places please for the top of act two. Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Follow spots, standby for the blackout."
+        }
+      ],
+      "speechSeconds" : 137.64266666666663,
+      "startSeconds" : 0.20933291699999998,
+      "systemCPU" : 0.2412735455909318,
+      "utterances" : 60,
+      "wordErrors" : {
+        "deletions" : 0,
+        "insertions" : 1,
+        "referenceWords" : 380,
+        "substitutions" : 12
+      }
+    },
+    {
+      "channels" : 16,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.7853375504935869,
+        "mean" : 0.694600006446464,
+        "p50" : 0.6924617684073455,
+        "p95" : 0.7667867938334609
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-unified-1120",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.7853375504935869,
+        "mean" : 0.694600006446464,
+        "p50" : 0.6924617684073455,
+        "p95" : 0.7667867938334609
+      },
+      "firstWordLatency" : {
+        "max" : 1.8781252178904069,
+        "mean" : 1.7537780565844834,
+        "p50" : 1.761031118015346,
+        "p95" : 1.8409159575733582
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 971.6483612060547,
+      "processCPU" : 0.3086835260271671,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by Stand by for the curtain call Stage left, loud and clear. We are going again from the top of the scene. Fogged machine on, please. Fog machine on, please Standby sound Q7 and Flight Q3 Front of house clear, you have the show",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        },
+        {
+          "hypothesis" : "Fog machine on, please. Lighting Q42, go. Places please for the top of Act II Standby lighting Dew 42 Can someone check the radio mic on track 4? Can I get a work light on stage right? Follow spots, stand by for the blackout.",
+          "reference" : "Fog machine on, please. Lighting cue forty two, go. Places please for the top of act two. Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Follow spots, standby for the blackout."
+        }
+      ],
+      "speechSeconds" : 284.58666666666664,
+      "startSeconds" : 0.328851583,
+      "systemCPU" : 0.3373233582709892,
+      "utterances" : 128,
+      "wordErrors" : {
+        "deletions" : 0,
+        "insertions" : 5,
+        "referenceWords" : 748,
+        "substitutions" : 33
+      }
+    },
+    {
+      "channels" : 32,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 2.5664284748113175,
+        "mean" : 0.7743081477849931,
+        "p50" : 0.7055323409791097,
+        "p95" : 1.5388039268694698
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-unified-1120",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 2.5664284748113175,
+        "mean" : 0.7743081477849931,
+        "p50" : 0.7055323409791097,
+        "p95" : 1.5388039268694698
+      },
+      "firstWordLatency" : {
+        "max" : 3.4837618081446493,
+        "mean" : 1.8191133554867476,
+        "p50" : 1.764015403297643,
+        "p95" : 2.5180460867848
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 1250.3204193115234,
+      "processCPU" : 0.5273138422584015,
+      "samples" : [
+        {
+          "hypothesis" : "Standing by Stand by for the curtain call Stage left, loud and clear. We are going again from the top of the scene. Fogged machine on, please. Fog machine on, please Standby sound Q7 and Flight Q3 Front of house clear, you have the show",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        },
+        {
+          "hypothesis" : "Fog machine on, please. Lighting Q42, go. Places please for the top of Act II Standby lighting Dew 42 Can someone check the radio mic on track 4? Can I get a work light on stage right? Follow spots, stand by for the blackout.",
+          "reference" : "Fog machine on, please. Lighting cue forty two, go. Places please for the top of act two. Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Follow spots, standby for the blackout."
+        }
+      ],
+      "speechSeconds" : 560.8746666666668,
+      "startSeconds" : 0.834578459,
+      "systemCPU" : 0.4456066255320553,
+      "utterances" : 266,
+      "wordErrors" : {
+        "deletions" : 0,
+        "insertions" : 8,
+        "referenceWords" : 1478,
+        "substitutions" : 68
+      }
+    },
+    {
+      "channels" : 1,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.6985213154831578,
+        "mean" : 0.6667601424190046,
+        "p50" : 0.6600267359859302,
+        "p95" : 0.6985213154831578
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-eou-320",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.6985213154831578,
+        "mean" : 0.6667601424190046,
+        "p50" : 0.6600267359859302,
+        "p95" : 0.6985213154831578
+      },
+      "firstWordLatency" : {
+        "max" : 1.785366471224327,
+        "mean" : 1.3079450016690042,
+        "p50" : 1.2330858044836148,
+        "p95" : 1.785366471224327
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 853.2578964233398,
+      "processCPU" : 0.06823351487730747,
+      "samples" : [
+        {
+          "hypothesis" : "standing by stand by for the curtain call stage left loud and clear we are going again from the top of the scene fog machine on please fog machine on please stand by sound q seven and flight q three front of house clear you have the show",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        }
+      ],
+      "speechSeconds" : 17.024,
+      "startSeconds" : 0.431844125,
+      "systemCPU" : 0.39286424499535993,
+      "utterances" : 8,
+      "wordErrors" : {
+        "deletions" : 0,
+        "insertions" : 0,
+        "referenceWords" : 46,
+        "substitutions" : 3
+      }
+    },
+    {
+      "channels" : 8,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.72346701248361,
+        "mean" : 0.6465440876973462,
+        "p50" : 0.6506791480408145,
+        "p95" : 0.7043856854388757
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-eou-320",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.72346701248361,
+        "mean" : 0.6465440876973462,
+        "p50" : 0.6506791480408145,
+        "p95" : 0.7043856854388757
+      },
+      "firstWordLatency" : {
+        "max" : 1.8192980225209257,
+        "mean" : 1.2800483904751228,
+        "p50" : 1.211625833872258,
+        "p95" : 1.7761176372243277
+      },
+      "merged" : 0,
+      "missed" : 0,
+      "peakMemoryMB" : 1111.3204879760742,
+      "processCPU" : 0.329141077863371,
+      "samples" : [
+        {
+          "hypothesis" : "standing by stand by for the curtain call stage left loud and clear we are going again from the top of the scene fog machine on please fog machine on please stand by sound q seven and flight q three front of house clear you have the show",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        },
+        {
+          "hypothesis" : "fog machine on please lighting cube forty two go places please for the top of act two stand by lighting q forty two can someone check the radio mic on track for can i get a work light on stage right follow studs stand by for the blackout",
+          "reference" : "Fog machine on, please. Lighting cue forty two, go. Places please for the top of act two. Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Follow spots, standby for the blackout."
+        }
+      ],
+      "speechSeconds" : 137.64266666666663,
+      "startSeconds" : 0.169105917,
+      "systemCPU" : 0.36562937295928566,
+      "utterances" : 60,
+      "wordErrors" : {
+        "deletions" : 8,
+        "insertions" : 0,
+        "referenceWords" : 380,
+        "substitutions" : 33
+      }
+    },
+    {
+      "channels" : 16,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 0.7340496977406019,
+        "mean" : 0.6493703205340209,
+        "p50" : 0.6443259168844797,
+        "p95" : 0.7128630580130837
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-eou-320",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 0.7340496977406019,
+        "mean" : 0.6493703205340209,
+        "p50" : 0.6443259168844797,
+        "p95" : 0.7128630580130837
+      },
+      "firstWordLatency" : {
+        "max" : 2.207695651693612,
+        "mean" : 1.324392190789397,
+        "p50" : 1.2370565228490538,
+        "p95" : 1.779935208469901
+      },
+      "merged" : 0,
+      "missed" : 4,
+      "peakMemoryMB" : 1399.8206253051758,
+      "processCPU" : 0.5955118938277927,
+      "samples" : [
+        {
+          "hypothesis" : "standing by stand by for the curtain call stage left loud and clear we are going again from the top of the scene fog machine on please fog machine on please stand by sound q seven and flight q three front of house clear you have the show",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        },
+        {
+          "hypothesis" : "fog machine on please lighting cube forty two go places please for the top of act two stand by lighting q forty two can someone check the radio mic on track for can i get a work light on stage right follow studs stand by for the blackout",
+          "reference" : "Fog machine on, please. Lighting cue forty two, go. Places please for the top of act two. Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Follow spots, standby for the blackout."
+        }
+      ],
+      "speechSeconds" : 284.58666666666664,
+      "startSeconds" : 0.27946883299999997,
+      "systemCPU" : 0.5418831580281334,
+      "utterances" : 128,
+      "wordErrors" : {
+        "deletions" : 21,
+        "insertions" : 1,
+        "referenceWords" : 748,
+        "substitutions" : 68
+      }
+    },
+    {
+      "channels" : 32,
+      "displayBacklog" : 0,
+      "displayLatency" : {
+        "max" : 1.1649923288793715,
+        "mean" : 0.666983539820347,
+        "p50" : 0.6554830333486805,
+        "p95" : 0.7720313230158311
+      },
+      "drainSeconds" : 0,
+      "droppedFrames" : 0,
+      "duration" : 60,
+      "dutyCycle" : 0.3,
+      "engine" : "parakeet-eou-320",
+      "failures" : [
+
+      ],
+      "finalLatency" : {
+        "max" : 1.1649923288793715,
+        "mean" : 0.666983539820347,
+        "p50" : 0.6554830333486805,
+        "p95" : 0.7720313230158311
+      },
+      "firstWordLatency" : {
+        "max" : 2.2225910523826826,
+        "mean" : 1.3265230788464903,
+        "p50" : 1.2297579485783467,
+        "p95" : 1.7605399047947117
+      },
+      "merged" : 0,
+      "missed" : 11,
+      "peakMemoryMB" : 1951.102195739746,
+      "processCPU" : 1.1327680049512576,
+      "samples" : [
+        {
+          "hypothesis" : "standing by stand by for the curtain call stage left loud and clear we are going again from the top of the scene fog machine on please fog machine on please stand by sound q seven and flight q three front of house clear you have the show",
+          "reference" : "Standing by. Standby for the curtain call. Stage left, loud and clear. We are going again from the top of the scene. Fog machine on, please. Fog machine on, please. Standby sound cue seven and fly cue three. Front of house clear, you have the show."
+        },
+        {
+          "hypothesis" : "fog machine on please lighting cube forty two go places please for the top of act two stand by lighting q forty two can someone check the radio mic on track for can i get a work light on stage right follow studs stand by for the blackout",
+          "reference" : "Fog machine on, please. Lighting cue forty two, go. Places please for the top of act two. Standby lighting cue forty two. Can someone check the radio mic on track four? Can I get a work light on stage right? Follow spots, standby for the blackout."
+        }
+      ],
+      "speechSeconds" : 560.8746666666668,
+      "startSeconds" : 0.432870833,
+      "systemCPU" : 0.4790452269244744,
+      "utterances" : 266,
+      "wordErrors" : {
+        "deletions" : 50,
+        "insertions" : 1,
+        "referenceWords" : 1478,
+        "substitutions" : 144
+      }
+    }
+  ]
+}
