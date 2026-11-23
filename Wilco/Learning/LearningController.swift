@@ -17,6 +17,8 @@ final class LearningController {
     @ObservationIgnored private let ultra: ParakeetModelStore
     @ObservationIgnored private let whisper: WhisperModelStore
     @ObservationIgnored private var task: Task<Void, Never>?
+    /// Counts runs, so a finished run's updates can't touch the next one.
+    @ObservationIgnored private var run = 0
     @ObservationIgnored private var tick: Timer?
     @ObservationIgnored private var afterStop: Timer?
     /// Sessions that failed this run, so a broken file isn't retried every minute.
@@ -47,6 +49,15 @@ final class LearningController {
               LearningSchedule.mayRun(now: .now, capturing: isCapturing(), lastCaptureStop: lastCaptureStop())
         else { return }
         let ultra = ultra, whisper = whisper, skipped = skipped
+        run += 1
+        let thisRun = run
+        // One stream per run keeps progress in order and lets us drop late updates.
+        let (updates, progress) = AsyncStream.makeStream(of: (Int, Int).self)
+        let reader = Task { @MainActor [weak self] in
+            for await (done, total) in updates where self?.run == thisRun && self?.task != nil {
+                self?.status = "Labelling clips: \(done) of \(total)"
+            }
+        }
         task = Task.detached(priority: .background) { [weak self] in
             // Models may have been installed since the last check.
             let voters = await ClipVoters.installed(ultra: ultra, whisper: whisper)
@@ -57,9 +68,11 @@ final class LearningController {
                     .filter { !skipped.contains($0) }
                 for transcript in sessions {
                     if Task.isCancelled { break }
+                    // Belt and braces: never label while capture is running or about to.
+                    if await self?.mayContinue() != true { break }
                     do {
                         try await Self.label(transcript, with: labeller) { done, total in
-                            Task { @MainActor in self?.status = "Labelling clips: \(done) of \(total)" }
+                            progress.yield((done, total))
                         }
                     } catch is CancellationError {
                         break
@@ -68,7 +81,9 @@ final class LearningController {
                     }
                 }
             }
-            await self?.finished()
+            progress.finish()
+            await reader.value
+            await self?.finished(run: thisRun)
         }
     }
 
@@ -89,7 +104,12 @@ final class LearningController {
 
     private func skip(_ url: URL) { skipped.insert(url) }
 
-    private func finished() {
+    private func mayContinue() -> Bool {
+        LearningSchedule.mayRun(now: .now, capturing: isCapturing(), lastCaptureStop: lastCaptureStop())
+    }
+
+    private func finished(run finishedRun: Int) {
+        guard run == finishedRun else { return }
         task = nil
         status = nil
     }

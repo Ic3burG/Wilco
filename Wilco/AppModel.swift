@@ -253,6 +253,9 @@ final class AppModel {
         }
         // A second press while the access check was pending.
         guard !isCapturing else { return }
+        // The microphone prompt may have let labelling start meanwhile; stop it,
+        // with no await before capture state is set.
+        learning.captureStarted()
         let start = Date()
         sessionStart = start
         // One zone for the file name and every line, so the session reads
