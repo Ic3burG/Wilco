@@ -30,7 +30,7 @@ struct MarkerSettingsView: View {
     var body: some View {
         HStack(spacing: 0) {
             list
-                .frame(width: 230)
+                .frame(width: 300)
                 .padding([.leading, .vertical], 20)
             editor
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -82,6 +82,7 @@ struct MarkerSettingsView: View {
                     .buttonStyle(.borderless)
                     .disabled(selectedLabelID == nil)
                 Spacer()
+                MarkerPresetsMenu()
                 Button("Restore Defaults…") { confirmingRestore = true }
                     .disabled(model.document.markers == nil)
                     .help("Go back to Wilco's built-in marker lists for this show")
