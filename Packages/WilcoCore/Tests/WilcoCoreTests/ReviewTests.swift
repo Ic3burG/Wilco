@@ -163,3 +163,99 @@ struct ShowFixTests {
         }
     }
 }
+
+@Suite("Show review")
+struct ShowReviewTests {
+    let band = ChannelConfig(name: "Band TB")
+    let sm = ChannelConfig(name: "ShowCall PL")
+    let quiet = ChannelConfig(name: "BOD")
+    let audio = HighlightRule(name: "Audio Related", phrases: ["hear"])
+
+    var show: ShowDocument { ShowDocument(channels: [band, sm, quiet], highlights: [audio]) }
+
+    /// `count` lines on a channel, spread evenly over `seconds`.
+    func many(_ count: Int, on channel: UUID, over seconds: Double, text: String = "Standby for the next cue.",
+              confidence: Double = 0.9, delay: Double = 1, from: Double = 0,
+              highlights: [SegmentHighlight] = []) -> [TranscriptSegment] {
+        (0..<count).map { i in
+            reviewLine(text, channel: channel, at: from + seconds * Double(i) / Double(max(count, 1)),
+                       delay: delay, confidence: confidence, highlights: highlights)
+        }
+    }
+
+    @Test func busyChannelIsFoundWithMuteFix() throws {
+        let hear = [SegmentHighlight(phrase: "hear", tint: .yellow)]
+        let lines = many(400, on: band.id, over: 7200, text: "Can you hear me?", highlights: hear)
+            + many(250, on: sm.id, over: 7200)
+        let review = ShowReview.make(segments: lines, show: show)
+        let busy = try #require(review.findings.first { $0.id == "busy:\(band.id)" })
+        #expect(busy.channelID == band.id)
+        #expect(busy.fixes.map(\.fix) == [.keepHighlight(audio.id, offChannel: band.id), .muteChannel(band.id)])
+        #expect(!review.findings.contains { $0.id == "busy:\(sm.id)" })
+    }
+
+    @Test func quietChannelNeedsABusySession() {
+        let busy = many(900, on: sm.id, over: 3 * 3600) + many(3, on: quiet.id, over: 3 * 3600)
+        let ids = ShowReview.make(segments: busy, show: show).findings.map(\.id)
+        #expect(ids.contains("quiet:\(quiet.id)"))
+        // A channel in the show that never spoke is quiet too.
+        #expect(ids.contains("quiet:\(band.id)"))
+
+        let calm = many(100, on: sm.id, over: 3 * 3600) + many(3, on: quiet.id, over: 3 * 3600)
+        #expect(!ShowReview.make(segments: calm, show: show).findings.contains { $0.id.hasPrefix("quiet:") })
+    }
+
+    @Test func unclearChannelIsAWarning() throws {
+        let lines = many(40, on: sm.id, over: 3600, confidence: 0.6) + many(40, on: band.id, over: 3600)
+        let finding = try #require(ShowReview.make(segments: lines, show: show).findings.first { $0.id == "unclear:\(sm.id)" })
+        #expect(finding.severity == .warning)
+        #expect(finding.evidence.count == 3)
+    }
+
+    @Test func cutLongTalkIsCounted() {
+        let lines = many(12, on: sm.id, over: 3600, delay: 20.5) + many(50, on: sm.id, over: 3600, delay: 1, from: 1)
+        #expect(ShowReview.make(segments: lines, show: show).findings.contains { $0.id == "cut" })
+    }
+
+    @Test func fallingBehindIsFound() {
+        let lines = many(60, on: sm.id, over: 1000, delay: 1) + many(60, on: sm.id, over: 1000, delay: 1, from: 1000)
+            + many(60, on: sm.id, over: 1000, delay: 9, from: 2000)
+        #expect(ShowReview.make(segments: lines, show: show).findings.contains { $0.id == "behind" })
+    }
+
+    @Test func leftoverNotificationTitleIsAProblem() throws {
+        var withRule = show
+        let rule = AutomationRule(name: "Omar Notifications", actions: [.notify(title: "New Rule", bodyTemplate: "{text}")])
+        withRule.rules = [rule]
+        let finding = try #require(ShowReview.make(segments: many(5, on: sm.id, over: 60), show: withRule)
+            .findings.first { $0.id == "setup:\(rule.id)" })
+        #expect(finding.severity == .problem)
+        #expect(finding.fixes.map(\.fix) == [.useRuleNameAsTitle(rule: rule.id)])
+    }
+
+    @Test func commonHighlightPhraseOffersRemoval() throws {
+        let hear = [SegmentHighlight(phrase: "hear", tint: .yellow)]
+        let lines = many(30, on: sm.id, over: 3600, text: "I can hear you.", highlights: hear) + many(30, on: band.id, over: 3600)
+        let finding = try #require(ShowReview.make(segments: lines, show: show).findings.first { $0.id.hasPrefix("phrase:") })
+        #expect(finding.fixes.map(\.fix) == [.removePhrase("hear", fromHighlight: audio.id)])
+        #expect(finding.title.contains("hear"))
+    }
+
+    @Test func tinySessionHasOnlySetupFindings() {
+        var withRule = show
+        withRule.rules = [AutomationRule(name: "Holds", actions: [.notify(title: "", bodyTemplate: "{text}")])]
+        let lines = many(15, on: sm.id, over: 120, confidence: 0.3, delay: 20)
+        let findings = ShowReview.make(segments: lines, show: withRule).findings
+        #expect(findings.map(\.severity) == [.problem])
+    }
+
+    @Test func findingIDsAreStable() {
+        let lines = many(400, on: band.id, over: 7200) + many(300, on: sm.id, over: 7200)
+        #expect(ShowReview.make(segments: lines, show: show).findings.map(\.id)
+            == ShowReview.make(segments: lines, show: show).findings.map(\.id))
+    }
+
+    @Test func emptySessionHasNoFindings() {
+        #expect(ShowReview.make(segments: [], show: show).findings.isEmpty)
+    }
+}
