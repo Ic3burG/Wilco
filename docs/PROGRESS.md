@@ -1499,3 +1499,69 @@ Tested: all on `say` speech only; nothing changed in the app.
   comms recordings before treating the decision as final.
 - If preview CPU at 32 long-talking channels becomes a problem, revisit
   Parakeet Unified streaming as the preview path for English shows.
+
+## 2026-11-23 — Learning from shows, part 1: clips and labels
+
+Show review stage 3. Design:
+[`superpowers/specs/2026-11-23-real-show-clips-design.md`](superpowers/specs/2026-11-23-real-show-clips-design.md);
+plan:
+[`superpowers/plans/2026-11-23-learning-clips-part1.md`](superpowers/plans/2026-11-23-learning-clips-part1.md).
+Decisions: labelling is automatic with no manual review, nothing leaves
+the Mac, it lives in the app, and the goal is steering the models
+(vocabulary, fix-ups), not retraining them.
+
+### Features
+
+- **Clips during capture** (Settings › Learning, off by default): each
+  session keeps up to 100 unclear lines (below the channel's running
+  25th-percentile confidence) and 20 exchanges (3–12 back-to-back lines),
+  sampled across the whole night. They go in a `Session … .clips` folder
+  beside the transcript: `clips.json`, `labels.json` and 16 kHz WAVs.
+  Saving happens off the audio thread; a failed write stops that
+  session's clips without growing memory.
+- **Labelling after the show:** runs in the background 2 minutes after
+  capture stops, at launch and every minute after; never during capture,
+  and starting capture stops it between model calls. Voters are Parakeet
+  Ultra, Apple Long-form and Whisper large-v3; a channel's own engine
+  sits out. Two must agree on the words (three: any two). Two speaker
+  models (the offline pipeline and Sortformer) group the voices; only
+  groupings both agree on count.
+- **Settings › Learning:** the switch, clip folder size, Delete All
+  Clips, a row per voter and for voice grouping with download/remove,
+  and labelling status.
+- **Review:** an "Accuracy on the hardest lines" card per channel (10+
+  scored clips) with last show's figure, and a "Hard-line errors" trend
+  column.
+- The text normaliser reads a lone "Q" before a number as "cue", so
+  "Q 42" and "cue 42" agree.
+
+### Tooling
+
+- `wilco-bench --real-show` scores engines on the labelled clips, with a
+  "live on the night" row and a voter-fairness line; `--transcripts`
+  picks the sessions folder. Output is numbers only, never clip text.
+- `WordErrorRate` moved into WilcoCore so the app and bench share it.
+
+### Testing
+
+Tested: 714 package tests pass and the app builds without warnings.
+Built task by task with a review per task and a whole-branch review.
+Not tested on real models: only Apple Long-form is installed here, so
+the end-to-end labelling test got "not enough voters" on every clip;
+the Ultra and Whisper-large voters have never run. Not verified in the
+app.
+
+### Next steps / where we left off
+
+- Download Parakeet Ultra (and Sortformer for voices) in Settings ›
+  Learning, then run `WILCO_ASR_TESTS=1 swift test` for the voter and
+  labelling tests.
+- Hand check in the app: switch Learning on, capture a few minutes,
+  check the `.clips` folder appears, labelling starts 2 minutes after
+  stopping and stops when capture starts.
+- Part 2: names-to-add and fix-up cards in the Review, the show's
+  `fixUps` field (applied before rules and highlights) and `heard`.
+- Part 3: Check Clips.
+- Known gaps: `--conversation` real-show runs can repeat an exchange
+  near the end; before macOS 26 there's no third voter, so labelling
+  needs both Ultra and Whisper large.

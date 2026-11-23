@@ -26,6 +26,7 @@ The core app works and is in testing; it is not yet released. See
 | Voice letters: who's speaking within an exchange, in the transcript and reports (new) | |
 | Report markers editable per show, with presets (built-in Concert, Corporate, Theatre) and a Talkback category (new) | |
 | Post-show Review: findings, one-click fixes, vocabulary suggestions and trends across shows; per-minute session diagnostics (levels, dropouts, music/singing) behind its quiet, music, level and lost-audio checks (new) | |
+| Learning from shows (opt-in): keeps unclear lines and exchanges as clips, labels them on the Mac after the show by model agreement, and scores the hardest lines in the Review and `wilco-bench --real-show` (new; tested, not yet tried in the app) | |
 
 ## Files
 
