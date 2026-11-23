@@ -8,7 +8,8 @@ is built first.
 The user recorded a full 6-hour session on 2026-11-21 to gather data and
 asked what we can learn from it for the next show, and whether the app
 could get better on its own from past shows. Reading that session by hand
-found real problems (half the lines were chatter or lyrics, sentences cut
+found real problems (one channel carried 30% of the lines, a common
+highlight word fired 12 times an hour, sentences cut
 mid-word at the 20 s limit, radio channels recognised worse, a
 notification titled "New Rule"). None of that is visible in the app today.
 The goal is that the app finds these itself after every show and offers
@@ -19,10 +20,11 @@ the fix, so each show is set up a little better than the last.
 - Kept up all night: delay did not grow with load (p90 7–8 s whether 2 or
   14 channels were talking); short calls settled about 1.7 s after the
   start. Long delays are only long sentences.
-- 49% of lines came from two channels that are not crew comms: the band
-  talkback (1,403 lines, 181 one-word fillers) and the artist vocal mic
-  (855 lines, mostly lyrics). They also caused 50 of the 76 "hear"
-  highlight hits.
+- The band talkback was by far the busiest channel (1,403 lines, 30% of
+  the session). It is real band–monitor talk: 9% fillers, like the other
+  channels. The artist vocal mic (855 lines) was mostly lyrics.
+- The "hear" highlight fired 76 times (12 an hour), at about the same
+  rate on every channel: the word is simply too common.
 - 56 lines hit the 20 s cap and 46 continued straight into the next line,
   splitting words. Fixed 2026-11-22 (cut between words).
 - Radio channels median confidence 0.64–0.77 vs 0.86–0.90 wired; names
@@ -93,13 +95,12 @@ sessions in a locally gated test):
 
 | Check | Signal | Fix offered |
 |---|---|---|
-| Chatter channel | ≥100 lines and ≥25% are fillers (≤2 words from a filler list, or one word under 0.5 confidence) | Mute channel; keep highlights off it |
-| Sounds like music | many long lines, repeated phrases, few comms words (copy, go, standby, clear, check…) | Mute channel |
+| Busy channel | ≥300 lines and ≥25% of the session's lines | Keep busy highlights off it; mute channel |
 | Unclear channel | median confidence < 0.8 with ≥30 lines | Name suggestions from that channel; check input |
-| Quiet channel | < 1 line/hour while the session is busy | None (info: check patch/level) |
+| Quiet channel | < 4 lines/hour while the session is busy | None (info: check patch/level) |
 | Cut long talk | lines that settled ≥19 s after they started | None (info; should fall after the fix) |
 | Falling behind | delay p90 rising across the session | None (info: fewer channels or lighter profile) |
-| Noisy highlight/rule | >50% of its hits from chatter/music channels, or hits/hour very high | Keep it off those channels |
+| Common phrase | a highlight or rule phrase hitting ≥10 times an hour | Remove the phrase (highlights) |
 | Name suggestions | capitalised words/pairs seen ≥3 times (this and past sessions), not in vocabulary; near-misses of vocabulary or channel names ("T Time" ~ "Tea Time") | Add to show vocabulary |
 | Show setup | notification title that's a plain leftover ("New Rule") | Set title to `{rule}` |
 
@@ -107,9 +108,9 @@ Delay per line is `timestamp − (session start + sessionOffset)`; session
 start is the minimum of `timestamp − sessionOffset` (whole-second
 timestamps, so ±1 s).
 
-`ShowFix` is an enum (`muteChannel`, `excludeChannel(fromHighlight:)`,
-`excludeChannel(fromRule:)`, `addVocabulary([String])`,
-`setNotificationTitle(rule:)`) with a pure, tested
+`ShowFix` is an enum (`muteChannel`, `keepHighlight(_:offChannel:)`,
+`removePhrase(_:fromHighlight:)`, `addVocabulary([String])`,
+`useRuleNameAsTitle(rule:)`) with a pure, tested
 `ShowDocument.applying(_:)`. Keeping a highlight off a channel sets its
 `channelIDs` to every other channel (empty means all channels), so a
 channel added later starts excluded; the fix says so.
@@ -127,7 +128,7 @@ in the show, so dismissing works whichever show is open and doesn't mark
 the show edited. [builder's call; the draft said the show file]
 
 Trends: a table of the last five sessions of the same show, newest first:
-lines, chatter share, unclear share, delay p90. "Same show" means the same
+lines, filler share, unclear share, delay p90. "Same show" means the same
 show name (session copy, else best match), so YE Phoenix and YE Dallas
 stay apart even though they share channel IDs. Summaries are worked out
 in the background when the Review tab first opens and kept in memory; no
@@ -151,6 +152,12 @@ report become ground truth, and `wilco-bench` gains a "real show" set so
 models and settings are scored on real comms audio.
 
 ## Calls made while building (check these)
+
+- No "sounds like music" or "chatter" check in stage 1. On the 2026-11-21
+  session, text signals didn't separate those channels from crew comms:
+  the vocal mic had 6% crew-call words and lasers 8%; the band talkback
+  had 9% fillers and safety 10%. A check built on them would cry wolf.
+  Music detection moves to stage 2, where the audio is available.
 
 - Fix availability by target IDs in the open show, not by show identity.
 - Dismissals in `UserDefaults`.
