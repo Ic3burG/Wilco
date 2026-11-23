@@ -542,7 +542,7 @@ struct DiagnosticsReviewTests {
         let diagnostics = SessionDiagnostics.make(rows(stranger) { _, row in
             row.classified = SoundShares(speech: 0, music: 0.9, singing: 0)
         })
-        let review = ShowReview.make(segments: session(20, on: sm.id), show: show(), diagnostics: diagnostics)
+        let review = ShowReview.make(segments: session(20, on: sm.id), show: show(), showIsKnown: false, diagnostics: diagnostics)
         let finding = try #require(review.findings.first { $0.id == "music:\(stranger)" })
         #expect(finding.fixes.isEmpty)
     }
@@ -696,5 +696,53 @@ struct DiagnosticsReviewTests {
         let missing = try #require(ShowReview.make(segments: lines, show: show(sm, never), diagnostics: fine)
             .findings.first { $0.id == "quiet" }).detail
         #expect(missing.contains("Never (none, not captured)"))
+    }
+
+    @Test func hotNeedsThreeClippedMinutes() {
+        func review(minutes: Int, clipped: Int) -> ShowReview {
+            let diagnostics = SessionDiagnostics.make(rows(sm.id, minutes: minutes) { minute, row in row.clipped = minute < clipped ? 5 : 0 })
+            return ShowReview.make(segments: session(900, on: sm.id), show: show(), diagnostics: diagnostics)
+        }
+        #expect(!ids(review(minutes: 20, clipped: 2)).contains("hot:\(sm.id)"))
+        #expect(ids(review(minutes: 40, clipped: 3)).contains("hot:\(sm.id)"))
+    }
+
+    @Test func faintInputIsNotCalledFine() throws {
+        let faint = ChannelConfig(name: "Faint")
+        let loud = ChannelConfig(name: "Loud")
+        let lines = session(900, on: sm.id)
+        let diagnostics = SessionDiagnostics.make(
+            rows(faint.id, sound: 0, rms: nil, peak: -38) + rows(loud.id, sound: 0, rms: nil, peak: -10) + rows(sm.id))
+        let both = try #require(ShowReview.make(segments: lines, show: show(sm, faint, loud), diagnostics: diagnostics)
+            .findings.first { $0.id == "quiet" }).detail
+        #expect(both.contains("Faint (none, too faint)"))
+        #expect(both.contains("Loud (none)"))
+        #expect(both.contains("below the speech level"))
+        #expect(both.contains("measured fine"))
+        let onlyLoud = try #require(ShowReview.make(segments: lines, show: show(sm, loud), diagnostics: diagnostics)
+            .findings.first { $0.id == "quiet" }).detail
+        #expect(onlyLoud.contains("measured fine"))
+        #expect(!onlyLoud.contains("too faint"))
+    }
+
+    @Test func cutCombinesExactAndEstimatedCounts() throws {
+        // sm has exact cuts (4); band has no cuts field, but six lines ran the full 20 seconds.
+        let diagnostics = SessionDiagnostics.make(rows(sm.id) { minute, row in row.cuts = minute < 4 ? 1 : 0 }
+            + rows(band.id))
+        let capped = (0..<6).map { reviewLine("Go.", channel: band.id, at: Double($0) * 30, delay: 20) }
+        let review = ShowReview.make(segments: session(900, on: sm.id) + capped, show: show(), diagnostics: diagnostics)
+        #expect(try #require(review.findings.first { $0.id == "cut" }).title.contains("10"))
+    }
+
+    @Test func channelsMissingFromAKnownShowGetNoDiagnosticFindings() {
+        let stranger = UUID()
+        let diagnostics = SessionDiagnostics.make(
+            rows(stranger, rms: -45) { minute, row in
+                row.clipped = 5
+                row.classified = SoundShares(speech: 0, music: 0.9, singing: 0)
+                if minute == 3 { row.audio = 10 }
+            })
+        let review = ShowReview.make(segments: session(900, on: sm.id), show: show(), diagnostics: diagnostics)
+        #expect(!review.findings.contains { $0.id.hasSuffix(stranger.uuidString) })
     }
 }

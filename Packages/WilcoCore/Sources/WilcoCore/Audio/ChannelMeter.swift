@@ -172,7 +172,9 @@ public struct ChannelMeter: Sendable {
     }
 
     private mutating func measure(_ samples: [Float], sampleRate: Double) {
+        // Take the minute out so mutating it doesn't copy its histogram.
         guard var m = minute else { return }
+        minute = nil
         let frameLength = max(1, Int(sampleRate * Self.frameSeconds))
         let all = carry.isEmpty ? samples : carry + samples
         let clipTarget = Int(clipSeconds * sampleRate)

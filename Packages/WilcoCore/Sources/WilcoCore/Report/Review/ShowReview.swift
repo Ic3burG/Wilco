@@ -44,6 +44,10 @@ public enum ReviewThresholds {
     public static let musicShare = 0.6
     /// Hot: clipping in this share of sound minutes.
     public static let hotClipShare = 0.05
+    /// Hot also needs clipping in at least this many sound minutes, so one pop isn't a pattern.
+    public static let hotMinimumMinutes = 3
+    /// A channel whose loudest sample stayed below this (dBFS) reached the input but not the speech level.
+    public static let faintPeak = -30.0
     /// Low level needs this many sound minutes to be a pattern, not a quiet spell.
     public static let lowLevelMinimumMinutes = 30
     /// Lost: this many seconds dropped over the session.
@@ -77,7 +81,7 @@ public struct ShowReview: Sendable {
         for summary in history { names.add(summary.names) }
         let suggestions = stats.lines >= ReviewThresholds.minimumLines
             ? VocabularySuggestions.suggest(counts: names, show: show) : []
-        var builder = Builder(segments: segments, show: show, stats: stats, diagnostics: diagnostics)
+        var builder = Builder(segments: segments, show: show, stats: stats, diagnostics: diagnostics, showIsKnown: showIsKnown)
         if showIsKnown { builder.checkSetup() }
         var quiet: [QuietChannel] = []
         if stats.lines >= ReviewThresholds.minimumLines {
@@ -126,11 +130,12 @@ public struct FindingFix: Hashable, Sendable {
 
 /// Why a quiet channel was quiet, as far as its measurements say.
 private enum QuietReason {
-    case noInput, lowLevel, notSpeech, notCaptured
+    case noInput, faint, lowLevel, notSpeech, notCaptured
 
     var text: String {
         switch self {
         case .noInput: "no input"
+        case .faint: "too faint"
         case .lowLevel: "low level"
         case .notSpeech: "not speech"
         case .notCaptured: "not captured"
@@ -149,11 +154,15 @@ private struct Builder {
     let show: ShowDocument
     let stats: SessionStats
     var diagnostics: SessionDiagnostics?
+    var showIsKnown = true
     var found: [(finding: Finding, weight: Int)] = []
 
     var hours: Double { stats.duration / 3600 }
 
     func name(_ channel: UUID) -> String { show.channel(id: channel)?.name ?? "Unknown channel" }
+    /// Whether a diagnostics check should leave a channel out: the show is
+    /// known and doesn't have it.
+    func isOutsideKnownShow(_ channel: UUID) -> Bool { showIsKnown && show.channel(id: channel) == nil }
     func lines(on channel: UUID) -> [TranscriptSegment] { segments.filter { $0.channelID == channel } }
     func percent(_ share: Double) -> String { "\(Int((share * 100).rounded()))%" }
 
@@ -264,7 +273,7 @@ private struct Builder {
         guard let d = diagnostics.channels[id] else { return .notCaptured }
         guard let peak = d.peak, peak >= ReviewThresholds.noInputPeak else { return .noInput }
         let hasSound = Double(d.soundMinutes) >= ReviewThresholds.quietSoundShare * Double(d.minutes)
-        guard hasSound else { return nil }
+        guard hasSound else { return peak < ReviewThresholds.faintPeak ? .faint : nil }
         if let rms = d.medianRMS, rms < ReviewThresholds.lowLevelRMS { return .lowLevel }
         if d.classifiedSoundMinutes > 0, d.speechMinutes * 2 < d.classifiedSoundMinutes { return .notSpeech }
         return nil
@@ -279,6 +288,9 @@ private struct Builder {
         var advice: [String] = []
         if quiet.contains(where: { $0.reason == .noInput }) {
             advice.append("Nothing reached the input of the channels marked no input; check the patch.")
+        }
+        if quiet.contains(where: { $0.reason == .faint }) {
+            advice.append("The signal reached the input of the channels marked too faint but stayed below the speech level; raise the gain or check the source.")
         }
         if quiet.contains(where: { $0.reason == .lowLevel }) {
             advice.append("Raise the input level of the channels marked low level.")
@@ -305,8 +317,10 @@ private struct Builder {
     }
 
     mutating func checkCut() {
-        var capped = stats.channels.values.reduce(0) { $0 + $1.capped }
-        if let exact = diagnostics?.channels.values.compactMap(\.cuts), !exact.isEmpty { capped = exact.reduce(0, +) }
+        // Exact counts where a channel has them, the text estimate elsewhere.
+        var capped = 0
+        for (id, channel) in stats.channels { capped += diagnostics?.channels[id]?.cuts ?? channel.capped }
+        for (id, d) in diagnostics?.channels ?? [:] where stats.channels[id] == nil { capped += d.cuts ?? 0 }
         guard capped >= ReviewThresholds.cutMinimum else { return }
         let examples = segments
             .filter { SessionStats.delay(of: $0, sessionStart: stats.start) >= SessionStats.cappedDelay }
@@ -339,7 +353,7 @@ private struct Builder {
     mutating func checkMusic() {
         guard let diagnostics else { return }
         for (id, d) in diagnostics.channels {
-            guard d.classifiedSoundMinutes >= ReviewThresholds.musicMinimumMinutes,
+            guard !isOutsideKnownShow(id), d.classifiedSoundMinutes >= ReviewThresholds.musicMinimumMinutes,
                   Double(d.musicMinutes) / Double(d.classifiedSoundMinutes) >= ReviewThresholds.musicShare else { continue }
             let mine = lines(on: id)
             let (fixes, hitText) = keepOffAndMuteFixes(for: id, lines: mine)
@@ -355,7 +369,10 @@ private struct Builder {
     mutating func checkHot() {
         guard let diagnostics else { return }
         for (id, d) in diagnostics.channels {
-            guard d.soundMinutes > 0, d.clippedSoundMinuteShare >= ReviewThresholds.hotClipShare else { continue }
+            guard !isOutsideKnownShow(id), d.soundMinutes > 0,
+                  d.clippedSoundMinuteShare >= ReviewThresholds.hotClipShare,
+                  Int((d.clippedSoundMinuteShare * Double(d.soundMinutes)).rounded()) >= ReviewThresholds.hotMinimumMinutes
+            else { continue }
             add(Finding(
                 id: "hot:\(id)", severity: .warning,
                 title: "\(name(id)) is too loud",
@@ -368,7 +385,7 @@ private struct Builder {
     mutating func checkLowLevel(excluding listed: Set<UUID>) {
         guard let diagnostics else { return }
         for (id, d) in diagnostics.channels where !listed.contains(id) {
-            guard d.soundMinutes >= ReviewThresholds.lowLevelMinimumMinutes,
+            guard !isOutsideKnownShow(id), d.soundMinutes >= ReviewThresholds.lowLevelMinimumMinutes,
                   let rms = d.medianRMS, rms < ReviewThresholds.lowLevelRMS else { continue }
             add(Finding(
                 id: "low:\(id)", severity: .warning,
@@ -386,7 +403,7 @@ private struct Builder {
         clock.dateFormat = "HH:mm"
         for (id, d) in diagnostics.channels {
             let dropped = d.droppedSeconds >= ReviewThresholds.lostDroppedSeconds
-            guard dropped || !d.lostMinutes.isEmpty else { continue }
+            guard !isOutsideKnownShow(id), dropped || !d.lostMinutes.isEmpty else { continue }
             var parts: [String] = []
             if !d.lostMinutes.isEmpty {
                 // With no lines there is no session start to count from.
