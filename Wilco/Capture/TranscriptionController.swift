@@ -34,6 +34,8 @@ final class TranscriptionController {
     private var running: [ChannelConfig.ID: Running] = [:]
     /// Where channels send their level meter minutes; set while a session records.
     var diagnostics: DiagnosticsTap?
+    /// Where channels send audio clips of unclear lines; set while a session keeps clips.
+    var clips: ClipTap?
     private let whisperModels = WhisperModelStore()
     private let parakeetModels: ParakeetModelStore
     /// The voice model, loaded once and shared by every channel that detects
@@ -112,7 +114,7 @@ final class TranscriptionController {
         let startedWith = ParakeetAvailability(store: parakeetModels)
         let transcriber = ChannelTranscribers.make(
             configuration: configuration,
-            source: AudioSource(ring: ring, sampleRate: { capture.sampleRate(for: id) }, diagnostics: diagnostics),
+            source: AudioSource(ring: ring, sampleRate: { capture.sampleRate(for: id) }, diagnostics: diagnostics, clips: clips),
             sessionOffset: Date().timeIntervalSince(sessionStart),
             whisperModels: whisperModels,
             parakeetModels: parakeetModels,

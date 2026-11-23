@@ -103,6 +103,10 @@ final class AppModel {
     /// One sound classifier for the app's lifetime; each session's recorder shares it.
     @ObservationIgnored private let soundClassifier = SoundClassifierQueue()
     @ObservationIgnored private var diagnostics: DiagnosticsRecorder?
+    /// Keeps short audio clips beside the session when the preference was on at capture start.
+    @ObservationIgnored private var clipKeeper: ClipKeeper?
+    /// When capture last stopped; labelling waits a while after this.
+    private(set) var lastCaptureStop: Date?
     @ObservationIgnored private var reportedWriteFailure = false
     @ObservationIgnored private var evaluator = AutomationEvaluator()
     /// Keywords of recognised lines, kept until their annotated pieces arrive.
@@ -241,6 +245,11 @@ final class AppModel {
             sessionStart: start, classifier: soundClassifier)
         diagnostics = recorder
         transcription.diagnostics = recorder.tap
+        if UserDefaults.standard.bool(forKey: "learning.keepClips") {
+            let keeper = ClipKeeper(folder: ClipsFolder.url(forTranscript: transcriptURL))
+            clipKeeper = keeper
+            transcription.clips = keeper.tap
+        }
         reportedWriteFailure = false
         evaluator.reset()
         pendingLines = PendingLines()
@@ -256,6 +265,7 @@ final class AppModel {
     /// hearing, and it still reaches the session file.
     func stopCapture() {
         sessionStart = nil
+        lastCaptureStop = Date()
         capture.stop()
         meterTimer?.invalidate()
         meterTimer = nil
@@ -265,10 +275,14 @@ final class AppModel {
         let recorder = diagnostics
         diagnostics = nil
         transcription.diagnostics = nil
+        let keeper = clipKeeper
+        clipKeeper = nil
+        transcription.clips = nil
         // Likewise the writer: a restart during the recorder's wait must not skip this one's end copy.
         let finishing = writer
         Task {
             await transcription.stopAll()
+            await keeper?.finish()
             if sessionStart == nil, let finishing {
                 finishing.finish(show: document)
                 if writer === finishing { writer = nil }
