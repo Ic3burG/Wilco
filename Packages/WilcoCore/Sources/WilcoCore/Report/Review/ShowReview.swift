@@ -24,9 +24,13 @@ public enum ReviewThresholds {
 public struct ShowReview: Sendable {
     public var stats: SessionStats
     public var findings: [Finding]
+    /// Words to offer for the show vocabulary; the "vocabulary" finding lists them.
+    public var suggestions: [VocabularySuggestion]
 
     public static func make(segments: [TranscriptSegment], show: ShowDocument) -> ShowReview {
         let stats = SessionStats.make(segments)
+        let suggestions = stats.lines >= ReviewThresholds.minimumLines
+            ? VocabularySuggestions.suggest(counts: NameCounts.make(segments), show: show) : []
         var builder = Builder(segments: segments, show: show, stats: stats)
         builder.checkSetup()
         if stats.lines >= ReviewThresholds.minimumLines {
@@ -36,11 +40,12 @@ public struct ShowReview: Sendable {
             builder.checkCut()
             builder.checkBehind()
             builder.checkCommonPhrases()
+            builder.checkVocabulary(suggestions)
         }
         let findings = builder.found
             .sorted { ($0.finding.severity, -$0.weight) < ($1.finding.severity, -$1.weight) }
             .map(\.finding)
-        return ShowReview(stats: stats, findings: findings)
+        return ShowReview(stats: stats, findings: findings, suggestions: suggestions)
     }
 }
 
@@ -234,6 +239,21 @@ private struct Builder {
                 ), weight: hits.count)
             }
         }
+    }
+
+    mutating func checkVocabulary(_ suggestions: [VocabularySuggestion]) {
+        guard !suggestions.isEmpty else { return }
+        let misheard = suggestions.filter { $0.heardAs != nil }
+        let detail = misheard.isEmpty
+            ? "Names heard often that the vocabulary doesn’t know yet. Adding them helps the speech model spell them."
+            : misheard.map { "“\($0.term)” was heard as “\($0.heardAs!)” \($0.count) times." }.joined(separator: " ")
+                + " Adding names to the vocabulary helps the speech model hear them."
+        add(Finding(
+            id: "vocabulary", severity: .info, title: "Words to add to the vocabulary", detail: detail,
+            channelID: nil, evidence: [],
+            fixes: misheard.isEmpty ? [] : [FindingFix(fix: .addVocabulary(misheard.map(\.term)),
+                                                       label: "Add \(misheard.count) to vocabulary")]
+        ), weight: suggestions.count)
     }
 
     /// One line each for the channel's most repeated texts.

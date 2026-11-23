@@ -259,3 +259,50 @@ struct ShowReviewTests {
         #expect(ShowReview.make(segments: [], show: show).findings.isEmpty)
     }
 }
+
+@Suite("Vocabulary suggestions")
+struct VocabularySuggestionTests {
+    let tea = ChannelConfig(name: "Tea Time")
+    var show: ShowDocument { ShowDocument(channels: [tea], globalVocabulary: ["Omar"]) }
+
+    func said(_ texts: [String]) -> NameCounts {
+        NameCounts.make(texts.enumerated().map { reviewLine($1, channel: tea.id, at: Double($0)) })
+    }
+
+    @Test func channelNameHeardWrongIsSuggested() throws {
+        let counts = said(Array(repeating: "Omar on T Time.", count: 3) + ["Hey, Dana. Dana here, Dana."])
+        let first = try #require(VocabularySuggestions.suggest(counts: counts, show: show).first)
+        #expect(first == VocabularySuggestion(term: "Tea Time", heardAs: "T Time", count: 3))
+    }
+
+    @Test func sentenceStartIsNotAName() {
+        let counts = said(Array(repeating: "Lights. Stand by.", count: 5))
+        #expect(counts.counts["Lights"] == nil)
+        #expect(counts.counts["Stand"] == nil)
+    }
+
+    @Test func knownTermsAreNotSuggested() {
+        let counts = said(Array(repeating: "Is that Omar on comms?", count: 4))
+        #expect(!VocabularySuggestions.suggest(counts: counts, show: show).contains { $0.term == "Omar" })
+    }
+
+    @Test func acronymsAndRepeatedNamesCount() throws {
+        let counts = said(["NPC is open.", "The NPC is open.", "Open the NPC now.", "Go to NPC.",
+                           "Ask Dana.", "Copy Dana.", "Where is Dana?"])
+        let terms = VocabularySuggestions.suggest(counts: counts, show: show).map(\.term)
+        #expect(terms.contains("NPC"))
+        #expect(terms.contains("Dana"))
+    }
+
+    @Test func pronounsAndFillersAreNotNames() {
+        let counts = said(Array(repeating: "Yes I think so, Okay, I'm here.", count: 5))
+        #expect(VocabularySuggestions.suggest(counts: counts, show: show).isEmpty)
+    }
+
+    @Test func findingOffersNearMissesAsTheFix() throws {
+        let lines = (0..<60).map { reviewLine("Omar on T Time.", channel: tea.id, at: Double($0)) }
+        let finding = try #require(ShowReview.make(segments: lines, show: show).findings.first { $0.id == "vocabulary" })
+        #expect(finding.fixes.map(\.fix) == [.addVocabulary(["Tea Time"])])
+        #expect(finding.fixes.first?.label == "Add 1 to vocabulary")
+    }
+}
