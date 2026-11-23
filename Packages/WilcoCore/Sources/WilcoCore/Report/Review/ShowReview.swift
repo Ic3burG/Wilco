@@ -28,6 +28,10 @@ public enum ReviewThresholds {
     public static let soundFloor: Float = 0.005
     /// A sample at or above this magnitude is clipped.
     public static let clipLevel: Float = 0.999
+    /// A minute with at least this many seconds of sound counts as a sound minute.
+    public static let soundMinuteSeconds = 1.0
+    /// A full minute with less audio than this lost some (a stuck or starved engine).
+    public static let lostMinuteAudio = 50.0
 }
 
 /// What went wrong in one session, with fixes to offer.
