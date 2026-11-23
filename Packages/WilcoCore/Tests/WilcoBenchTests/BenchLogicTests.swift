@@ -370,6 +370,8 @@ struct BenchRunnerTests {
         let utterances: [ScheduledUtterance]
         let texts: [String]
         var pump: Task<Void, Never>?
+        /// Meters the audio like the real transcribers do, when diagnostics are on.
+        var meter: ChannelMeter?
 
         init(channel: BenchChannel, utterances: [ScheduledUtterance], texts: [String]) {
             self.channel = channel
@@ -379,12 +381,16 @@ struct BenchRunnerTests {
 
         func start() async {
             channel.onStatus(.listening)
+            if let tap = channel.source.diagnostics {
+                meter = ChannelMeter(channelID: channel.id, tap: tap, countsUtterances: false)
+            }
             pump = Task { await self.run() }
         }
 
         func stop() async {
             pump?.cancel()
             await pump?.value
+            meter?.finish(at: Date())
         }
 
         func updateVoiceSettings(_ settings: VoiceChangeSettings) async {}
@@ -393,8 +399,12 @@ struct BenchRunnerTests {
             var heard = 0.0
             var next = 0
             while !Task.isCancelled {
-                heard += Double(channel.source.ring.read(maxCount: channel.source.ring.availableToRead).count)
-                    / channel.source.sampleRate()
+                let samples = channel.source.ring.read(maxCount: channel.source.ring.availableToRead)
+                meter?.add(
+                    samples, sampleRate: channel.source.sampleRate(),
+                    droppedFrames: channel.source.ring.droppedFrames, at: Date()
+                )
+                heard += Double(samples.count) / channel.source.sampleRate()
                 while next < utterances.count, utterances[next].end <= heard {
                     channel.onEvent(TranscriptionEvent(
                         channelID: channel.id, text: texts[utterances[next].clip], isFinal: true,
@@ -447,12 +457,15 @@ struct BenchRunnerTests {
         var runner = BenchRunner(clips: clips, sampleRate: 16_000)
         let off = await runner.run(engine: engine, scenario: scenario, drainTimeout: 2)
         #expect(off.droppedClips == nil)
+        #expect(off.diagnosticsRows == nil && off.classifiedRows == nil)
 
         runner.diagnostics = true
         let on = await runner.run(engine: engine, scenario: scenario, drainTimeout: 2)
         #expect(on.droppedClips == 0)
-        #expect(BenchReport.tableHeader(longTalk: false, diagnostics: true).contains("| Dropped | Clips dropped | Keeps up |"))
-        #expect(BenchReport.tableRow(on, diagnostics: true).contains("| 0 | 0 | yes |"))
+        #expect((on.diagnosticsRows ?? 0) >= 2, "rows \(String(describing: on.diagnosticsRows))")
+        #expect(on.classifiedRows != nil)
+        #expect(BenchReport.tableHeader(longTalk: false, diagnostics: true).contains("| Dropped | Clips dropped | Rows (classified) | Keeps up |"))
+        #expect(BenchReport.tableRow(on, diagnostics: true).contains("| 0 | 0 | \(on.diagnosticsRows!) (\(on.classifiedRows!)) | yes |"))
     }
 
     @Test func reportsAnEngineThatFailsToStart() async {

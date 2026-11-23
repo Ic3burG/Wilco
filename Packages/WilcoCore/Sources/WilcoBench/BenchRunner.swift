@@ -142,7 +142,15 @@ public struct BenchRunner: Sendable {
         // part of what the run is measuring.
         await diagnosticsRecorder?.finish()
         let droppedClips = await classifier?.droppedClips
-        if diagnostics { try? FileManager.default.removeItem(at: diagnosticsURL) }
+        // Read the file back, so "no clips dropped" can be told from "no clips".
+        var diagnosticsRows: Int?
+        var classifiedRows: Int?
+        if diagnostics {
+            let rows = (try? Data(contentsOf: diagnosticsURL)).map(DiagnosticsFile.rows(in:)) ?? []
+            diagnosticsRows = rows.count
+            classifiedRows = rows.filter { $0.classified != nil }.count
+            try? FileManager.default.removeItem(at: diagnosticsURL)
+        }
 
         let texts = clips.map(\.text)
         let scores = scenario.channels.enumerated().map { index, utterances in
@@ -180,7 +188,9 @@ public struct BenchRunner: Sendable {
             voiceThreshold: engine.detectsVoiceChanges ? voiceChanges.threshold : nil,
             merged: scores.map(\.merged).reduce(0, +),
             longTalk: scenario.longTalk ? true : nil,
-            droppedClips: droppedClips
+            droppedClips: droppedClips,
+            diagnosticsRows: diagnosticsRows,
+            classifiedRows: classifiedRows
         )
     }
 

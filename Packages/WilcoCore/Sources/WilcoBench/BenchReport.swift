@@ -49,6 +49,10 @@ public struct RunResult: Codable, Equatable, Sendable {
     /// Diagnostics clips the sound classifier's queue dropped because it was
     /// full. Nil when the run had no diagnostics (and in older reports).
     public var droppedClips: Int?
+    /// Rows the run's diagnostics file held after the run, and how many of
+    /// them carry a sound classification. Nil without diagnostics.
+    public var diagnosticsRows: Int?
+    public var classifiedRows: Int?
 
     public struct Sample: Codable, Equatable, Sendable {
         public var reference: String
@@ -122,7 +126,7 @@ public struct BenchReport: Codable, Equatable, Sendable {
     /// diagnostics get a "Clips dropped" column after Dropped.
     public static func tableHeader(longTalk: Bool, diagnostics: Bool = false) -> String {
         let lost = longTalk ? (" Words lost |", "---:|") : ("", "")
-        let clips = diagnostics ? (" Clips dropped |", "---:|") : ("", "")
+        let clips = diagnostics ? (" Clips dropped | Rows (classified) |", "---:|---:|") : ("", "")
         return """
             | Engine | Ch | WER |\(lost.0) Missed | Final delay p50 / p95 / max | Display p95 | First words p50 | Backlog | Start | CPU (us) | CPU (Mac) | Memory | Dropped |\(clips.0) Keeps up |
             |---|---:|---:|\(lost.1)---:|---|---:|---:|---:|---:|---:|---:|---:|---:|\(clips.1):---:|
@@ -132,12 +136,15 @@ public struct BenchReport: Codable, Equatable, Sendable {
     public static func tableRow(_ r: RunResult, diagnostics: Bool = false) -> String {
         func s(_ value: Double?) -> String { value.map { String(format: "%.2f s", $0) } ?? "–" }
         let delay = r.finalLatency.map { String(format: "%.2f / %.2f / %.2f s", $0.p50, $0.p95, $0.max) } ?? "–"
-        let cells = [
+        var cells: [String] = [
             r.engine,
             "\(r.channels)",
             String(format: "%.1f%%", r.wordErrorRate * 100),
-        ] + (r.longTalk == true ? [String(format: "%.1f%%", r.wordsLost * 100)] : []) + [
-            "\(r.missed)/\(r.utterances)" + ((r.merged ?? 0) > 0 ? " (\(r.merged!) merged)" : ""),
+        ]
+        if r.longTalk == true { cells.append(String(format: "%.1f%%", r.wordsLost * 100)) }
+        let merged = (r.merged ?? 0) > 0 ? " (\(r.merged ?? 0) merged)" : ""
+        cells += [
+            "\(r.missed)/\(r.utterances)" + merged,
             delay,
             s(r.displayLatency?.p95),
             s(r.firstWordLatency?.p50),
@@ -147,9 +154,12 @@ public struct BenchReport: Codable, Equatable, Sendable {
             String(format: "%.0f%%", r.systemCPU * 100),
             String(format: "%.0f MB", r.peakMemoryMB),
             "\(r.droppedFrames)",
-        ] + (diagnostics ? [r.droppedClips.map(String.init) ?? "–"] : []) + [
-            r.keepsUp ? "yes" : "**no**",
         ]
+        if diagnostics {
+            cells.append(r.droppedClips.map(String.init) ?? "–")
+            cells.append(r.diagnosticsRows.map { "\($0) (\(r.classifiedRows ?? 0))" } ?? "–")
+        }
+        cells.append(r.keepsUp ? "yes" : "**no**")
         return "| " + cells.joined(separator: " | ") + " |"
     }
 
@@ -206,7 +216,9 @@ public struct BenchReport: Codable, Equatable, Sendable {
         if diagnostics {
             lines += [
                 "",
-                "Clips dropped: sound clips the classifier's queue dropped because 64 were already waiting. The run "
+                "Clips dropped: sound clips the classifier's queue dropped because 64 were already waiting. Rows "
+                    + "(classified): rows the run's diagnostics file held afterwards, and how many carry a "
+                    + "classification; zero classified rows would make \"no clips dropped\" mean nothing. The run "
                     + "recorded session diagnostics (the per-minute meter and sound classifier) in every channel.",
             ]
         }

@@ -104,9 +104,9 @@ Later versions add fields and raise `v`.
 | `minute` | Minute of the session: `floor(offset / 60)`, offset from the session start |
 | `audio` | Seconds of audio the engine read this minute. Well under 60 means capture stalled or the engine wasn't reading |
 | `sound` | Seconds of 20 ms frames above -46 dBFS (the segmenter's speech floor) |
-| `rms` | RMS level of the sound frames in dBFS; null if `sound` is 0 |
-| `peak` | Highest sample in dBFS (silence written as null) |
-| `floor` | 10th-percentile frame level in dBFS: the hiss of an open ring |
+| `rms` | RMS level of the sound frames in dBFS; key omitted if `sound` is 0 |
+| `peak` | Highest sample in dBFS (key omitted when the input is digital silence) |
+| `floor` | 10th-percentile frame level in dBFS: the hiss of an open ring; key omitted for digital silence |
 | `clipped` | Samples at or above 0.999 |
 | `dropped` | Frames the ring dropped this minute because the engine fell behind |
 | `droppedSeconds` | The same in seconds, at the rate the frames were captured |

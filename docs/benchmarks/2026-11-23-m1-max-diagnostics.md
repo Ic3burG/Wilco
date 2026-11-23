@@ -26,10 +26,18 @@ With `--diagnostics` every channel runs the per-minute meter in its read loop an
 | parakeet-v3 | 16 | 2.6% | 0/268 | 0.69 / 0.76 / 0.82 s | 0.76 s | 2.91 s | 0.00 s | 0.16 s | 20% | 45% | 232 MB | 0 | 0 | yes |
 | parakeet-v3 | 32 | 2.9% | 0/537 | 0.66 / 0.73 / 0.79 s | 0.73 s | 2.88 s | 0.00 s | 0.17 s | 35% | 35% | 289 MB | 0 | 0 | yes |
 
+## With --diagnostics, 32 channels again, counting rows
+
+The first with-diagnostics run could not show that clips were classified, because "clips dropped: 0" also holds when none were taken. This run reads the diagnostics file back after the run and counts its rows and the ones carrying a classification (`Rows (classified)`). Only 32 channels was re-run.
+
+| Engine | Ch | WER | Missed | Final delay p50 / p95 / max | Display p95 | First words p50 | Backlog | Start | CPU (us) | CPU (Mac) | Memory | Dropped | Clips dropped | Rows (classified) | Keeps up |\n|---|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|:---:|\n| parakeet-v3 | 32 | 2.9% | 0/537 | 0.69 / 0.78 / 1.13 s | 0.78 s | 2.90 s | 0.00 s | 0.19 s | 41% | 35% | 296 MB | 0 | 0 | 96 (64) | yes |
+
+96 rows is 3 per channel (minutes 0 and 1, plus the last, partial minute written when the run stopped). 64 are classified: 2 per channel, the two full minutes. None were dropped.
+
 ## Reading it
 
 - Keeps up at every count, with and without. At 32 channels p95 final delay is 0.76 s without and 0.73 s with; no frames dropped; no calls missed; WER unchanged (2.9%).
 - CPU (us), the cores this process used: 38% without and 35% with at 32 channels, 20% and 20% at 16. The difference is inside run-to-run noise (the background load differed between the runs); the meter and classifier did not add a measurable amount.
-- Peak memory rises by about 50 to 80 MB with diagnostics (the sound classifier's model), 289 MB against 210 MB at 32 channels.
-- Clips dropped is 0 at every count.
+- Peak memory rises with diagnostics by +50 MB at 1 channel (110 to 160), +73 MB at 16 (159 to 232) and +79 MB at 32 (210 to 289); the 32-channel re-run read 296 MB. Mostly the sound classifier's model.
+- Clips dropped is 0 at every count, and the 32-channel re-run confirms clips were classified (64 classified rows).
 - Short runs: a minute closes by wall clock and a clip is taken only from a minute with at least 3 s of sound, so a 120 s run exercises the clip path about twice per channel. A longer run would load the classifier more times, not harder: the queue takes one clip at a time and a channel adds one clip a minute.
