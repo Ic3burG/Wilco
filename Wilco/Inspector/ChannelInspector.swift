@@ -262,7 +262,8 @@ private struct ChannelForm: View {
     }
 }
 
-private extension SpeechEngine {
+extension SpeechEngine {
+    /// The name the engine pickers show.
     var displayName: String {
         switch self {
         case .longForm: "Long-form (macOS 26)"

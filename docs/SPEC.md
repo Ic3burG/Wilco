@@ -86,6 +86,8 @@ struct ShowDocument {            // formatVersion == 1
   var destinations: [OSCDestination]
   var globalVocabulary: [String]
   var whisperModel: String       // WhisperModel raw value
+  var defaultEngine: SpeechEngine? // new in the rebuild; engine for added channels (Settings › Languages › New Channels); absent/unknown = platform default; an Apple engine falls back to Whisper before macOS 26
+  var defaultLocaleIdentifier: String? // new in the rebuild; language for added channels; absent = "en_US"; "" (detect) becomes "en_US" on Apple engines
   var mcpEnabled: Bool;  var mcpPort: UInt16      // default 8787
   var networkEnabled: Bool; var peerName: String
   var mosEnabled: Bool;  var mosHost: String; var mosPort: UInt16 // default 10540

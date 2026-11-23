@@ -26,6 +26,12 @@ public struct ShowDocument: Codable, Equatable, Sendable {
     /// Raw value of ``WhisperModel``. Kept as a string so an
     /// unknown model name from a newer file does not fail the whole show.
     public var whisperModel: String
+    /// The engine a channel added to this show starts on. `nil` (older
+    /// shows, and new ones until it is changed) means ``SpeechEngine/platformDefault``.
+    public var defaultEngine: SpeechEngine? = nil
+    /// The language a channel added to this show starts on, as stored in
+    /// ``ChannelConfig/localeIdentifier``. `nil` means "en_US".
+    public var defaultLocaleIdentifier: String? = nil
     public var mcpEnabled: Bool
     public var mcpPort: UInt16
     public var networkEnabled: Bool
@@ -41,6 +47,23 @@ public struct ShowDocument: Codable, Equatable, Sendable {
     /// built-in lists, so an unedited show's file has no `markers` key and
     /// picks up improvements to the built-in lists.
     public var markers: MarkerSettings? = nil
+
+    /// The engine ``addChannel(engine:)`` uses. An Apple engine chosen on a
+    /// newer Mac falls back to the platform default on one before macOS 26.
+    public var newChannelEngine: SpeechEngine {
+        guard let defaultEngine else { return .platformDefault }
+        if defaultEngine.isApple, SpeechEngine.platformDefault == .whisper { return .platformDefault }
+        return defaultEngine
+    }
+
+    /// The language ``addChannel(engine:)`` uses for a channel on `engine`.
+    /// Detect Automatically becomes US English on Apple's engines, which
+    /// must be told the language.
+    public func newChannelLocale(for engine: SpeechEngine) -> String {
+        let stored = defaultLocaleIdentifier ?? "en_US"
+        if engine.isApple, stored == ChannelConfig.detectLanguageAutomatically { return "en_US" }
+        return stored
+    }
 
     /// The marker lists the report uses for this show.
     public var markerSettings: MarkerSettings { markers ?? .standard }
@@ -89,7 +112,7 @@ public struct ShowDocument: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case formatVersion, name, deviceUID, channels, groups, sidebarOrder, rules, highlights,
-             destinations, globalVocabulary, whisperModel, mcpEnabled, mcpPort,
+             destinations, globalVocabulary, whisperModel, defaultEngine, defaultLocaleIdentifier, mcpEnabled, mcpPort,
              networkEnabled, peerName, mosEnabled, mosHost, mosPort, mosID, mosNCSID, voiceChanges, markers
     }
 
@@ -111,6 +134,9 @@ public struct ShowDocument: Codable, Equatable, Sendable {
         destinations = try c.decodeIfPresent([OSCDestination].self, forKey: .destinations) ?? d.destinations
         globalVocabulary = try c.decodeIfPresent([String].self, forKey: .globalVocabulary) ?? d.globalVocabulary
         whisperModel = try c.decodeIfPresent(String.self, forKey: .whisperModel) ?? d.whisperModel
+        // An engine this build does not know falls back to the platform default.
+        defaultEngine = try c.decodeIfPresent(String.self, forKey: .defaultEngine).flatMap(SpeechEngine.init(rawValue:))
+        defaultLocaleIdentifier = try c.decodeIfPresent(String.self, forKey: .defaultLocaleIdentifier)
         mcpEnabled = try c.decodeIfPresent(Bool.self, forKey: .mcpEnabled) ?? d.mcpEnabled
         mcpPort = try c.decodeIfPresent(UInt16.self, forKey: .mcpPort) ?? d.mcpPort
         networkEnabled = try c.decodeIfPresent(Bool.self, forKey: .networkEnabled) ?? d.networkEnabled

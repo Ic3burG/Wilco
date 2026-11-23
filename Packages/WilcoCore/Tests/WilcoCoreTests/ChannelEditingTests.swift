@@ -27,6 +27,54 @@ struct ChannelEditingTests {
         #expect(try !JSONDecoder().decode(ChannelConfig.self, from: old).detectsVoiceChanges)
     }
 
+    @Test func newChannelUsesTheShowsDefaultEngine() {
+        var show = ShowDocument()
+        #expect(show.addChannel().engine == .platformDefault)
+        show.defaultEngine = .parakeet
+        #expect(show.addChannel().engine == .parakeet)
+        // An explicit engine still wins.
+        #expect(show.addChannel(engine: .whisper).engine == .whisper)
+    }
+
+    @Test func defaultEngineRoundTripsAndOlderShowsHaveNone() throws {
+        var show = ShowDocument()
+        show.defaultEngine = .dictation
+        let decoded = try JSONDecoder().decode(ShowDocument.self, from: JSONEncoder().encode(show))
+        #expect(decoded.defaultEngine == .dictation)
+
+        let old = try JSONDecoder().decode(ShowDocument.self, from: Data(#"{"name":"Old"}"#.utf8))
+        #expect(old.defaultEngine == nil)
+        #expect(old.newChannelEngine == .platformDefault)
+
+        // An engine this build doesn't know falls back to the platform default.
+        let newer = try JSONDecoder().decode(ShowDocument.self, from: Data(#"{"defaultEngine":"quantum"}"#.utf8))
+        #expect(newer.defaultEngine == nil)
+    }
+
+    @Test func newChannelUsesTheShowsDefaultLanguage() throws {
+        var show = ShowDocument()
+        #expect(show.addChannel().localeIdentifier == "en_US")
+        show.defaultLocaleIdentifier = "en_GB"
+        #expect(show.addChannel().localeIdentifier == "en_GB")
+
+        let decoded = try JSONDecoder().decode(ShowDocument.self, from: JSONEncoder().encode(show))
+        #expect(decoded.defaultLocaleIdentifier == "en_GB")
+        let old = try JSONDecoder().decode(ShowDocument.self, from: Data(#"{"name":"Old"}"#.utf8))
+        #expect(old.defaultLocaleIdentifier == nil)
+    }
+
+    @Test func detectAutomaticallyIsOnlyKeptForEnginesThatCanDetect() {
+        var show = ShowDocument()
+        show.defaultLocaleIdentifier = ChannelConfig.detectLanguageAutomatically
+        show.defaultEngine = .whisper
+        #expect(show.addChannel().localeIdentifier == "")
+        // Apple's engines must be told the language.
+        show.defaultEngine = .longForm
+        if show.newChannelEngine.isApple {
+            #expect(show.addChannel().localeIdentifier == "en_US")
+        }
+    }
+
     @Test func newChannelTintsCycleSoNeighboursDiffer() {
         var show = ShowDocument()
         let first = show.addChannel()

@@ -1196,3 +1196,39 @@ show checks and fixes), both fixed. Not yet verified in the app.
   speech time, dropouts) so quiet channels can be told from low levels,
   and music/lyrics detection from audio. Stage 3: opt-in clips of
   unclear lines as a real-show test set for `wilco-bench`.
+
+## 2026-11-23 — Default engine and language for new channels
+
+### Features
+
+- **Settings › Languages › New Channels** picks the engine (Long-form,
+  Dictation, Whisper, Parakeet) and language a channel starts on when it
+  is added. Saved with the show, beside the Whisper model, as two new
+  optional fields, `defaultEngine` and `defaultLocaleIdentifier`. A show
+  without them (every older file) still gets the platform default engine
+  and US English; an engine name this build doesn't know falls back the
+  same way. Existing channels keep their own settings.
+- Choices that can't run are corrected rather than refused: an Apple
+  engine default becomes Whisper before macOS 26, and Detect
+  Automatically becomes US English on Apple's engines, which must be told
+  the language.
+- The language list follows the chosen engine. Apple's engines offer
+  regional English (United Kingdom, Australia, Canada, Ireland, India, New
+  Zealand, Singapore, South Africa; checked on this Mac); Whisper and
+  Parakeet have one English. Asked by the user: UK English needs
+  Long-form or Dictation.
+- The engine pickers in the inspector and Settings share one set of names.
+
+Tested: 4 new package tests (default engine and language used, explicit
+engine still wins, round trip, older shows, unknown engine, detect on
+Apple engines); 510 package tests in all; app builds without warnings.
+Not yet verified in the app.
+
+### Next steps / where we left off
+
+- Try New Channels in the app: set Long-form and English (United
+  Kingdom), add a channel, and check its inspector shows both.
+- The Review tab items from 2026-11-22 still stand (quick session
+  switching, fixes disabled during capture).
+- Stage 2 of the show review design (per-minute diagnostics file) is
+  planned in `docs/superpowers/plans/` and not started.

@@ -4,17 +4,20 @@ import Foundation
 /// on reorder and delete, and holding one across an edit crashes when the
 /// array shrinks under it.
 extension ShowDocument {
-    /// Appends a channel named "Channel N", patched to the lowest unused input.
-    /// New channels detect voice changes (channels in older shows decode with
-    /// it off).
+    /// Appends a channel named "Channel N", patched to the lowest unused input,
+    /// on `engine` or else the show's ``newChannelEngine``, in the show's
+    /// default language (see ``newChannelLocale(for:)``). New channels
+    /// detect voice changes (channels in older shows decode with it off).
     @discardableResult
-    public mutating func addChannel(engine: SpeechEngine = .longForm) -> ChannelConfig {
+    public mutating func addChannel(engine: SpeechEngine? = nil) -> ChannelConfig {
         let usedInputs = Set(channels.compactMap(\.deviceChannel))
         let freeInput = (0...).first { !usedInputs.contains($0) }
+        let engine = engine ?? newChannelEngine
         let channel = ChannelConfig(
             name: "Channel \(channels.count + 1)",
             tint: ChannelTint.allCases[channels.count % ChannelTint.allCases.count],
             deviceChannel: freeInput,
+            localeIdentifier: newChannelLocale(for: engine),
             engine: engine,
             detectsVoiceChanges: true
         )

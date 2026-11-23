@@ -149,7 +149,7 @@ final class AppModel {
     // MARK: Channels
 
     func addChannel() {
-        let channel = document.addChannel(engine: .platformDefault)
+        let channel = document.addChannel()
         selection = .channel(channel.id)
     }
 

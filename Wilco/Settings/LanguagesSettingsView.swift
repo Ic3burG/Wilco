@@ -15,6 +15,7 @@ struct LanguagesSettingsView: View {
     @State private var parakeetVocabularyInstalled = false
     @State private var appleStatus: [ModelInstaller.Item: SpeechAssetStatus] = [:]
     @State private var reserved: [String] = []
+    @State private var newChannelLanguages: [LanguageOption] = []
 
     var body: some View {
         @Bindable var model = model
@@ -27,6 +28,7 @@ struct LanguagesSettingsView: View {
                 Text("Applied to every channel. Rule phrases are biased in automatically, so there is no need to repeat them here.")
             }
 
+            newChannelSection
             whisperSection
             parakeetSection
             voiceSection
@@ -41,6 +43,46 @@ struct LanguagesSettingsView: View {
                 try? await Task.sleep(for: .seconds(3))
             }
         }
+    }
+
+    // MARK: New channels
+
+    private var newChannelSection: some View {
+        Section {
+            Picker("Engine", selection: Binding(
+                get: { model.document.newChannelEngine },
+                set: { model.document.defaultEngine = $0 }
+            )) {
+                ForEach(SpeechEngine.selectable, id: \.self) { Text($0.displayName).tag($0) }
+            }
+            Picker("Language", selection: newChannelLanguage) {
+                ForEach(newChannelLanguages) { Text($0.name).tag($0.id) }
+                if !newChannelLanguages.contains(where: { $0.id == newChannelLanguage.wrappedValue }) {
+                    // Shown until the list loads, or for a language this engine lacks.
+                    Text(LanguageCatalog.displayName(for: newChannelLanguage.wrappedValue))
+                        .tag(newChannelLanguage.wrappedValue)
+                }
+            }
+            .task(id: model.document.newChannelEngine) {
+                newChannelLanguages = await LanguageCatalog.options(for: model.document.newChannelEngine)
+            }
+        } header: {
+            Text("New Channels")
+        } footer: {
+            Text("The engine and language a channel starts on when it is added to this show. Existing channels keep their own; change one in its inspector. Apple's engines offer regional English (United Kingdom, Australia and others); Whisper and Parakeet have one English.")
+        }
+    }
+
+    private var newChannelLanguage: Binding<String> {
+        Binding(
+            get: {
+                let engine = model.document.newChannelEngine
+                return LanguageCatalog.selection(
+                    for: model.document.newChannelLocale(for: engine), engine: engine, in: newChannelLanguages
+                )
+            },
+            set: { model.document.defaultLocaleIdentifier = $0 }
+        )
     }
 
     // MARK: Whisper
