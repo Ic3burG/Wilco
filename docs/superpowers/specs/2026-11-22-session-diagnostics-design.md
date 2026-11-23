@@ -199,6 +199,17 @@ file and prints what fired. After the next real show, run it and adjust.
 Until then the new findings are in the app but untuned, and PROGRESS.md
 says so.
 
+### Later: voice changes
+
+Voice-change detection gets its own spec after stage 3 (real clips give it
+a test set; it was tuned only on `say` voices). Seen at the 2026-11-21 show
+and in the user's own test: it over-splits. Two people on a channel got
+letters up to K, and one person speaking at the same volume and tone was
+taken for someone else. The user turned it off on every channel. This
+file's `v` field and lenient decoding leave room for per-minute voice
+fields then, and its level, floor and music columns let that spec check
+whether bad letters cluster on poor audio.
+
 ### Docs
 
 `docs/SPEC.md` documents the file format. The show review design doc's

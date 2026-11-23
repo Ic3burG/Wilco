@@ -152,6 +152,14 @@ session) beside the session, deleted with it. Corrections typed in the
 report become ground truth, and `wilco-bench` gains a "real show" set so
 models and settings are scored on real comms audio.
 
+### Stage 4: reliable voice changes (later, after stage 3)
+
+Voice changes over-split on real comms: two people reached letter K, and
+one person at a steady volume and tone was taken for a new voice. It was
+tuned only on `say` voices, which are far more distinct than real people.
+Plan it once stage 3's real clips can score it in `wilco-bench`, using
+stage 2's per-minute audio data to see whether errors follow poor audio.
+
 ## Calls made while building (check these)
 
 - No "sounds like music" or "chatter" check in stage 1. On the 2026-11-21
