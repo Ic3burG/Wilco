@@ -32,6 +32,19 @@ public enum ReviewThresholds {
     public static let soundMinuteSeconds = 1.0
     /// A full minute with less audio than this lost some (a stuck or starved engine).
     public static let lostMinuteAudio = 50.0
+    /// No input: the loudest sample all session was below this (dBFS).
+    public static let noInputPeak = -60.0
+    /// Low level: the median RMS of sound minutes was below this (dBFS).
+    public static let lowLevelRMS = -40.0
+    /// A channel "has sound" when this share of its minutes were sound minutes.
+    public static let quietSoundShare = 0.1
+    public static let musicMinimumMinutes = 30
+    public static let musicShare = 0.6
+    /// Hot: clipping in this share of sound minutes.
+    public static let hotClipShare = 0.05
+    public static let lowLevelMinimumMinutes = 30
+    /// Lost: this many seconds dropped over the session.
+    public static let lostDroppedSeconds = 5.0
 }
 
 /// What went wrong in one session, with fixes to offer.
@@ -55,23 +68,29 @@ public struct ShowReview: Sendable {
     /// only a stand-in (no copy beside the session and no saved show shares
     /// its channels): checks that judge the show itself are skipped.
     public static func make(segments: [TranscriptSegment], show: ShowDocument, history: [SessionSummary] = [],
-                            showIsKnown: Bool = true) -> ShowReview {
+                            showIsKnown: Bool = true, diagnostics: SessionDiagnostics? = nil) -> ShowReview {
         let stats = SessionStats.make(segments)
         var names = NameCounts.make(segments)
         for summary in history { names.add(summary.names) }
         let suggestions = stats.lines >= ReviewThresholds.minimumLines
             ? VocabularySuggestions.suggest(counts: names, show: show) : []
-        var builder = Builder(segments: segments, show: show, stats: stats)
+        var builder = Builder(segments: segments, show: show, stats: stats, diagnostics: diagnostics)
         if showIsKnown { builder.checkSetup() }
+        var quiet: [QuietChannel] = []
         if stats.lines >= ReviewThresholds.minimumLines {
+            if showIsKnown { quiet = builder.quietChannels() }
             builder.checkBusy()
             builder.checkUnclear()
-            if showIsKnown { builder.checkQuiet() }
+            builder.checkQuiet(quiet)
             builder.checkCut()
             builder.checkBehind()
             builder.checkCommonPhrases()
             builder.checkVocabulary(suggestions)
         }
+        builder.checkMusic()
+        builder.checkHot()
+        builder.checkLowLevel(excluding: Set(quiet.map(\.channel.id)))
+        builder.checkLost()
         let findings = builder.found
             .sorted { ($0.finding.severity, -$0.weight) < ($1.finding.severity, -$1.weight) }
             .map(\.finding)
@@ -102,10 +121,30 @@ public struct FindingFix: Hashable, Sendable {
     public var label: String
 }
 
+/// Why a quiet channel was quiet, as far as its measurements say.
+private enum QuietReason {
+    case noInput, lowLevel, notSpeech
+
+    var text: String {
+        switch self {
+        case .noInput: "no input"
+        case .lowLevel: "low level"
+        case .notSpeech: "not speech"
+        }
+    }
+}
+
+private struct QuietChannel {
+    var channel: ChannelConfig
+    var count: Int
+    var reason: QuietReason?
+}
+
 private struct Builder {
     let segments: [TranscriptSegment]
     let show: ShowDocument
     let stats: SessionStats
+    var diagnostics: SessionDiagnostics?
     var found: [(finding: Finding, weight: Int)] = []
 
     var hours: Double { stats.duration / 3600 }
@@ -139,6 +178,32 @@ private struct Builder {
         }
     }
 
+    /// The fixes for a channel that drowns out the rest: keep each highlight
+    /// that fired often on it off the channel, then mute it. Only when the
+    /// channel is in the show. The text says how many lines each highlight hit.
+    func keepOffAndMuteFixes(for id: UUID, lines mine: [TranscriptSegment]) -> (fixes: [FindingFix], hitText: String) {
+        guard show.channel(id: id) != nil else { return ([], "") }
+        var hits: [UUID: Int] = [:]
+        for line in mine {
+            for highlight in Set(line.highlights.flatMap { highlights(withPhrase: $0.phrase) }.map(\.id)) {
+                hits[highlight, default: 0] += 1
+            }
+        }
+        var fixes: [FindingFix] = []
+        var hitText = ""
+        for highlight in show.highlights where (hits[highlight.id] ?? 0) >= ReviewThresholds.busyHighlightHits {
+            fixes.append(FindingFix(fix: .keepHighlight(highlight.id, offChannel: id),
+                                    label: "Keep “\(highlight.name)” off \(name(id))"))
+            hitText += " “\(highlight.name)” highlighted \(hits[highlight.id]!.formatted()) of them."
+        }
+        fixes.append(FindingFix(fix: .muteChannel(id), label: "Mute \(name(id))"))
+        return (fixes, hitText)
+    }
+
+    static func dBText(_ value: Double) -> String {
+        value < 0 ? "−\(Int(abs(value).rounded()))" : "\(Int(value.rounded()))"
+    }
+
     mutating func checkBusy() {
         for (id, channel) in stats.channels {
             let share = Double(channel.lines) / Double(stats.lines)
@@ -146,22 +211,7 @@ private struct Builder {
             guard channel.lines >= ReviewThresholds.busyMinimumLines, share >= ReviewThresholds.busyShare,
                   othersTalking >= ReviewThresholds.busyOtherChannels else { continue }
             let mine = lines(on: id)
-            var hits: [UUID: Int] = [:]
-            for line in mine {
-                for highlight in Set(line.highlights.flatMap { highlights(withPhrase: $0.phrase) }.map(\.id)) {
-                    hits[highlight, default: 0] += 1
-                }
-            }
-            var fixes: [FindingFix] = []
-            var hitText = ""
-            if show.channel(id: id) != nil {
-                for highlight in show.highlights where (hits[highlight.id] ?? 0) >= ReviewThresholds.busyHighlightHits {
-                    fixes.append(FindingFix(fix: .keepHighlight(highlight.id, offChannel: id),
-                                            label: "Keep “\(highlight.name)” off \(name(id))"))
-                    hitText += " “\(highlight.name)” highlighted \(hits[highlight.id]!.formatted()) of them."
-                }
-                fixes.append(FindingFix(fix: .muteChannel(id), label: "Mute \(name(id))"))
-            }
+            let (fixes, hitText) = keepOffAndMuteFixes(for: id, lines: mine)
             add(Finding(
                 id: "busy:\(id)", severity: .info,
                 title: "\(name(id)) carried \(percent(share)) of the session",
@@ -179,36 +229,72 @@ private struct Builder {
                   median <= session - ReviewThresholds.unclearBelowSession else { continue }
             let lowest = lines(on: id).filter { $0.confidence != nil }
                 .sorted { $0.confidence! < $1.confidence! }.prefix(3).map(\.id)
+            var levelText = ""
+            if let rms = diagnostics?.channels[id]?.medianRMS, rms < ReviewThresholds.lowLevelRMS {
+                levelText = " Its level was low (median \(Self.dBText(rms)) dBFS), which may be why."
+            }
             add(Finding(
                 id: "unclear:\(id)", severity: .warning,
                 title: "\(name(id)) is hard to make out",
-                detail: "Median confidence \(String(format: "%.2f", median)) over \(channel.lines.formatted()) lines, against \(String(format: "%.2f", session)) for the session. Names and callsigns suffer most; check the input level and the vocabulary suggestions.",
+                detail: "Median confidence \(String(format: "%.2f", median)) over \(channel.lines.formatted()) lines, against \(String(format: "%.2f", session)) for the session. Names and callsigns suffer most; check the input level and the vocabulary suggestions.\(levelText)",
                 channelID: id, evidence: Array(lowest), fixes: []
             ), weight: channel.lines)
         }
     }
 
-    mutating func checkQuiet() {
+    /// Channels that barely spoke, with a reason where the measurements give
+    /// one. Empty when the session was too short or too calm to judge.
+    func quietChannels() -> [QuietChannel] {
         guard hours >= ReviewThresholds.quietMinimumHours,
-              Double(stats.lines) / hours >= ReviewThresholds.quietSessionLinesPerHour else { return }
-        let quiet = show.channels
+              Double(stats.lines) / hours >= ReviewThresholds.quietSessionLinesPerHour else { return [] }
+        return show.channels
             .filter { !$0.isMuted }
             .map { (channel: $0, count: stats.channels[$0.id]?.lines ?? 0) }
             .filter { Double($0.count) / hours < ReviewThresholds.quietLinesPerHour }
             .sorted { ($0.count, $0.channel.name) > ($1.count, $1.channel.name) }
+            .map { QuietChannel(channel: $0.channel, count: $0.count, reason: quietReason(for: $0.channel.id)) }
+    }
+
+    func quietReason(for id: UUID) -> QuietReason? {
+        guard let d = diagnostics?.channels[id] else { return nil }
+        guard let peak = d.peak, peak >= ReviewThresholds.noInputPeak else { return .noInput }
+        let hasSound = Double(d.soundMinutes) >= ReviewThresholds.quietSoundShare * Double(d.minutes)
+        guard hasSound else { return nil }
+        if let rms = d.medianRMS, rms < ReviewThresholds.lowLevelRMS { return .lowLevel }
+        if d.classifiedSoundMinutes > 0, d.speechMinutes * 2 < d.classifiedSoundMinutes { return .notSpeech }
+        return nil
+    }
+
+    mutating func checkQuiet(_ quiet: [QuietChannel]) {
         guard !quiet.isEmpty else { return }
-        let list = quiet.map { "\($0.channel.name) (\($0.count == 0 ? "none" : "\($0.count)"))" }.joined(separator: ", ")
+        let list = quiet.map { entry in
+            let count = entry.count == 0 ? "none" : "\(entry.count)"
+            return "\(entry.channel.name) (\(count)\(entry.reason.map { ", \($0.text)" } ?? ""))"
+        }.joined(separator: ", ")
+        var advice: [String] = []
+        if quiet.contains(where: { $0.reason == .noInput }) {
+            advice.append("Nothing reached the input of the channels marked no input; check the patch.")
+        }
+        if quiet.contains(where: { $0.reason == .lowLevel }) {
+            advice.append("Raise the input level of the channels marked low level.")
+        }
+        if quiet.contains(where: { $0.reason == .notSpeech }) {
+            advice.append("The channels marked not speech carried mostly music or noise.")
+        }
+        let ending = advice.isEmpty
+            ? "If they should have been talking, check the patch and input level." : advice.joined(separator: " ")
         add(Finding(
             id: "quiet", severity: .info,
             title: quiet.count == 1 ? "\(quiet[0].channel.name) barely spoke" : "\(quiet.count) channels barely spoke",
-            detail: "Lines in \(Self.hoursText(hours)) while the session was busy: \(list). If they should have been talking, check the patch and input level.",
+            detail: "Lines in \(Self.hoursText(hours)) while the session was busy: \(list). \(ending)",
             channelID: quiet.count == 1 ? quiet[0].channel.id : nil,
             evidence: quiet.flatMap { lines(on: $0.channel.id) }.prefix(3).map(\.id), fixes: []
         ), weight: quiet.count)
     }
 
     mutating func checkCut() {
-        let capped = stats.channels.values.reduce(0) { $0 + $1.capped }
+        let exact = diagnostics?.channels.values.compactMap(\.cuts)
+        let capped = exact?.isEmpty == false ? exact!.reduce(0, +) : stats.channels.values.reduce(0) { $0 + $1.capped }
         guard capped >= ReviewThresholds.cutMinimum else { return }
         let examples = segments
             .filter { SessionStats.delay(of: $0, sessionStart: stats.start) >= SessionStats.cappedDelay }
@@ -236,6 +322,75 @@ private struct Builder {
             detail: String(format: "The slowest lines took %.0f s to appear at the start and %.0f s by the end. Try fewer channels or a lighter latency profile.", early, late),
             channelID: nil, evidence: [], fixes: []
         ), weight: Int(late - early))
+    }
+
+    mutating func checkMusic() {
+        guard let diagnostics else { return }
+        for (id, d) in diagnostics.channels {
+            guard d.classifiedSoundMinutes >= ReviewThresholds.musicMinimumMinutes,
+                  Double(d.musicMinutes) / Double(d.classifiedSoundMinutes) >= ReviewThresholds.musicShare else { continue }
+            let mine = lines(on: id)
+            let (fixes, hitText) = keepOffAndMuteFixes(for: id, lines: mine)
+            add(Finding(
+                id: "music:\(id)", severity: .info,
+                title: "\(name(id)) is mostly music",
+                detail: "Music or singing in \(d.musicMinutes.formatted()) of \(d.classifiedSoundMinutes.formatted()) minutes with sound. Speech models turn music into words that aren’t there.\(hitText)",
+                channelID: id, evidence: Self.mostRepeated(mine), fixes: fixes
+            ), weight: d.musicMinutes)
+        }
+    }
+
+    mutating func checkHot() {
+        guard let diagnostics else { return }
+        for (id, d) in diagnostics.channels {
+            guard d.soundMinutes > 0, d.clippedSoundMinuteShare >= ReviewThresholds.hotClipShare else { continue }
+            add(Finding(
+                id: "hot:\(id)", severity: .warning,
+                title: "\(name(id)) is too loud",
+                detail: "The signal clipped in \(percent(d.clippedSoundMinuteShare)) of the minutes with sound. Clipping distorts speech and hurts recognition; lower the input gain.",
+                channelID: id, evidence: [], fixes: []
+            ), weight: Int((d.clippedSoundMinuteShare * Double(d.soundMinutes)).rounded()))
+        }
+    }
+
+    mutating func checkLowLevel(excluding listed: Set<UUID>) {
+        guard let diagnostics else { return }
+        for (id, d) in diagnostics.channels where !listed.contains(id) {
+            guard d.soundMinutes >= ReviewThresholds.lowLevelMinimumMinutes,
+                  let rms = d.medianRMS, rms < ReviewThresholds.lowLevelRMS else { continue }
+            add(Finding(
+                id: "low:\(id)", severity: .warning,
+                title: "\(name(id)) is too quiet",
+                detail: "Its level was low (median \(Self.dBText(rms)) dBFS over \(d.soundMinutes.formatted()) minutes with sound). Raise the input gain so speech reaches the model clearly.",
+                channelID: id, evidence: [], fixes: []
+            ), weight: d.soundMinutes)
+        }
+    }
+
+    mutating func checkLost() {
+        guard let diagnostics else { return }
+        let fellBehind = found.contains { $0.finding.id == "behind" }
+        let clock = DateFormatter()
+        clock.dateFormat = "HH:mm"
+        for (id, d) in diagnostics.channels {
+            let dropped = d.droppedSeconds >= ReviewThresholds.lostDroppedSeconds
+            guard dropped || !d.lostMinutes.isEmpty else { continue }
+            var parts: [String] = []
+            if !d.lostMinutes.isEmpty {
+                let times = d.lostMinutes.sorted().prefix(5)
+                    .map { clock.string(from: Date(timeIntervalSince1970: stats.start + Double($0) * 60)) }
+                let more = d.lostMinutes.count > 5 ? " and \(d.lostMinutes.count - 5) more" : ""
+                parts.append("Audio went missing in \(d.lostMinutes.count == 1 ? "1 minute" : "\(d.lostMinutes.count) minutes"), at \(times.joined(separator: ", "))\(more).")
+            }
+            if dropped { parts.append("\(Int(d.droppedSeconds.rounded())) seconds were dropped because transcription couldn’t keep up.") }
+            if fellBehind { parts.append("Transcription fell behind, which may be why audio was lost.") }
+            add(Finding(
+                id: "lost:\(id)", severity: .warning,
+                title: "\(name(id)) lost audio",
+                detail: parts.joined(separator: " "),
+                channelID: id, evidence: [], fixes: []
+            ), weight: max(d.lostMinutes.count, 1))
+        }
     }
 
     mutating func checkCommonPhrases() {

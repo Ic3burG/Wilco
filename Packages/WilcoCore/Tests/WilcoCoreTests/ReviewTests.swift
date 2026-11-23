@@ -440,6 +440,24 @@ struct RealSessionReviewTests {
         #expect(lastNight.findings.contains { $0.id.hasPrefix("phrase:") && $0.title.contains("hear") })
         #expect(lastNight.suggestions.contains { $0.term == "Tea Time" })
     }
+
+    /// Tuning aid: the diagnostics findings for each saved session that has a
+    /// `.diagnostics` file. Checks no thresholds; passes with none.
+    @Test func reviewsSessionsWithDiagnostics() throws {
+        let store = ConfigurationStore()
+        let candidates = store.list().compactMap { try? store.document($0.id) }
+        let all = try SessionHistory.summaries(in: DataLocations.transcripts, candidates: candidates)
+        let prefixes = ["music:", "hot:", "low:", "lost:"]
+        for summary in all where FileManager.default.fileExists(atPath: DiagnosticsFile.url(forTranscript: summary.id).path) {
+            let segments = TranscriptFile.segments(in: try Data(contentsOf: summary.id))
+            let show = SessionShow.load(forTranscript: summary.id)
+                ?? SessionShow.bestMatch(for: segments, among: candidates) ?? ShowDocument()
+            let review = ShowReview.make(segments: segments, show: show, diagnostics: SessionDiagnostics.load(forTranscript: summary.id))
+            let found = review.findings.filter { finding in prefixes.contains { finding.id.hasPrefix($0) } }
+            print("== \(summary.id.lastPathComponent): \(found.map(\.id).joined(separator: ", "))")
+            for finding in found { print("   \(finding.severity) \(finding.title) — \(finding.detail.prefix(110))") }
+        }
+    }
 }
 
 /// Regressions from the branch review: a session whose show is only a guess.
@@ -463,5 +481,156 @@ struct GuessedShowReviewTests {
         let review = ShowReview.make(segments: lines, show: ShowDocument(channels: [sm]))
         #expect(review.applies(to: ShowDocument(channels: [sm, other])))
         #expect(!review.applies(to: ShowDocument(channels: [other])))
+    }
+}
+
+/// Findings that come from the session's `.diagnostics` measurements.
+@Suite("Review with diagnostics")
+struct DiagnosticsReviewTests {
+    let sm = ChannelConfig(name: "ShowCall PL")
+    let band = ChannelConfig(name: "Band TB")
+    let lasers = ChannelConfig(name: "Lasers")
+    let highlight = HighlightRule(name: "Audio Related", phrases: ["hear"])
+
+    func show(_ channels: ChannelConfig...) -> ShowDocument {
+        ShowDocument(channels: channels.isEmpty ? [sm, band, lasers] : channels, highlights: [highlight])
+    }
+
+    /// Rows for `minutes` full minutes; `shape` adjusts each row.
+    func rows(_ channel: UUID, minutes: Int = 40, sound: Double = 30, rms: Double? = -25, peak: Double? = -6,
+              shape: (Int, inout ChannelMinute) -> Void = { _, _ in }) -> [ChannelMinute] {
+        (0..<minutes).map { minute in
+            var row = ChannelMinute(channel: channel, minute: minute, audio: 60, sound: sound, rms: rms, peak: peak)
+            shape(minute, &row)
+            return row
+        }
+    }
+
+    func session(_ lines: Int, on channel: UUID, text: String = "Standby.", highlights: [SegmentHighlight] = []) -> [TranscriptSegment] {
+        (0..<lines).map { reviewLine(text, channel: channel, at: Double($0) * 12, highlights: highlights) }
+    }
+
+    func ids(_ review: ShowReview) -> Set<String> { Set(review.findings.map(\.id)) }
+
+    @Test func noDiagnosticsKeepsTodaysFindings() {
+        let lines = session(900, on: sm.id)
+        let plain = ShowReview.make(segments: lines, show: show())
+        let empty = ShowReview.make(segments: lines, show: show(), diagnostics: nil)
+        #expect(plain.findings.map(\.id) == empty.findings.map(\.id))
+        #expect(plain.findings.contains { $0.id == "quiet" })
+        let detail = plain.findings.first { $0.id == "quiet" }?.detail ?? ""
+        #expect(detail.hasSuffix("If they should have been talking, check the patch and input level."))
+        #expect(!detail.contains("no input"))
+    }
+
+    @Test func musicChannelOffersMuteAndHighlightFix() throws {
+        let hear = [SegmentHighlight(phrase: "hear", tint: .yellow)]
+        let lines = session(20, on: band.id, text: "I can hear you.", highlights: hear)
+        let diagnostics = SessionDiagnostics.make(rows(band.id) { minute, row in
+            row.classified = SoundShares(speech: 0.1, music: minute < 30 ? 0.8 : 0.0, singing: 0)
+            if minute >= 30 { row.classified = SoundShares(speech: 0.9, music: 0, singing: 0) }
+        })
+        let review = ShowReview.make(segments: lines, show: show(), diagnostics: diagnostics)
+        let finding = try #require(review.findings.first { $0.id == "music:\(band.id)" })
+        #expect(finding.severity == .info)
+        #expect(finding.fixes.map(\.fix).contains(.muteChannel(band.id)))
+        #expect(finding.fixes.map(\.fix).contains(.keepHighlight(highlight.id, offChannel: band.id)))
+    }
+
+    @Test func musicWithoutChannelInShowHasNoFixes() throws {
+        let stranger = UUID()
+        let diagnostics = SessionDiagnostics.make(rows(stranger) { _, row in
+            row.classified = SoundShares(speech: 0, music: 0.9, singing: 0)
+        })
+        let review = ShowReview.make(segments: session(20, on: sm.id), show: show(), diagnostics: diagnostics)
+        let finding = try #require(review.findings.first { $0.id == "music:\(stranger)" })
+        #expect(finding.fixes.isEmpty)
+    }
+
+    @Test func hotChannelFlagged() {
+        func review(clippedMinutes: Int) -> ShowReview {
+            let diagnostics = SessionDiagnostics.make(rows(sm.id) { minute, row in row.clipped = minute < clippedMinutes ? 5 : 0 })
+            return ShowReview.make(segments: session(900, on: sm.id), show: show(), diagnostics: diagnostics)
+        }
+        #expect(ids(review(clippedMinutes: 3)).contains("hot:\(sm.id)"))
+        #expect(!ids(review(clippedMinutes: 1)).contains("hot:\(sm.id)"))
+    }
+
+    @Test func lowLevelFlaggedAndUnclearMentionsIt() throws {
+        let lines = (0..<400).map { reviewLine("Hold please.", channel: sm.id, at: Double($0) * 5, confidence: 0.5) }
+            + (0..<400).map { reviewLine("Hold please.", channel: band.id, at: Double($0) * 5, confidence: 0.95) }
+        let diagnostics = SessionDiagnostics.make(rows(sm.id, rms: -45))
+        let review = ShowReview.make(segments: lines, show: show(sm, band), diagnostics: diagnostics)
+        #expect(ids(review).contains("low:\(sm.id)"))
+        let unclear = try #require(review.findings.first { $0.id == "unclear:\(sm.id)" })
+        #expect(unclear.detail.contains("level was low"))
+    }
+
+    @Test func quietReasons() throws {
+        let silent = ChannelConfig(name: "Silent")
+        let faint = ChannelConfig(name: "Faint")
+        let tune = ChannelConfig(name: "Tune")
+        let calm = ChannelConfig(name: "Calm")
+        let lines = session(900, on: sm.id)
+        let diagnostics = SessionDiagnostics.make(
+            rows(silent.id, sound: 0, rms: nil, peak: nil)
+            + rows(faint.id, rms: -50)
+            + rows(tune.id) { _, row in row.classified = SoundShares(speech: 0, music: 0.9, singing: 0) }
+            + rows(calm.id, sound: 0, rms: nil, peak: -20)
+        )
+        let review = ShowReview.make(segments: lines, show: show(sm, silent, faint, tune, calm), diagnostics: diagnostics)
+        let detail = try #require(review.findings.first { $0.id == "quiet" }).detail
+        #expect(detail.contains("Silent (none, no input)"))
+        #expect(detail.contains("Faint (none, low level)"))
+        #expect(detail.contains("Tune (none, not speech)"))
+        #expect(detail.contains("Calm (none)"))
+        #expect(!detail.contains("If they should have been talking"))
+        // The quiet finding explains Faint, so it doesn't also get "low".
+        #expect(!ids(review).contains("low:\(faint.id)"))
+    }
+
+    @Test func lostAudioFromDropsAndGaps() throws {
+        let dropped = SessionDiagnostics.make(rows(sm.id) { minute, row in if minute == 5 { row.droppedSeconds = 6 } })
+        let review = ShowReview.make(segments: session(900, on: sm.id), show: show(), diagnostics: dropped)
+        #expect(ids(review).contains("lost:\(sm.id)"))
+        #expect(try #require(review.findings.first { $0.id == "lost:\(sm.id)" }).detail.contains("6 seconds"))
+
+        let gap = SessionDiagnostics.make(rows(band.id) { minute, row in if minute == 7 { row.audio = 10 } })
+        let lines = session(900, on: sm.id)
+        let reviewed = ShowReview.make(segments: lines, show: show(), diagnostics: gap)
+        let detail = try #require(reviewed.findings.first { $0.id == "lost:\(band.id)" }).detail
+        let start = SessionStats.make(lines).start
+        let clock = DateFormatter()
+        clock.dateFormat = "HH:mm"
+        #expect(detail.contains(clock.string(from: Date(timeIntervalSince1970: start + 7 * 60))))
+        #expect(!detail.contains("fell behind"))
+    }
+
+    @Test func lostAudioMentionsFallingBehind() throws {
+        let lines = (0..<600).map { reviewLine("Hold.", channel: sm.id, at: Double($0) * 6, delay: $0 < 300 ? 1 : 12) }
+        let diagnostics = SessionDiagnostics.make(rows(sm.id) { minute, row in if minute == 7 { row.audio = 10 } })
+        let review = ShowReview.make(segments: lines, show: show(), diagnostics: diagnostics)
+        #expect(ids(review).contains("behind"))
+        #expect(try #require(review.findings.first { $0.id == "lost:\(sm.id)" }).detail.contains("fell behind"))
+    }
+
+    @Test func cutUsesExactCount() throws {
+        let diagnostics = SessionDiagnostics.make(rows(sm.id) { minute, row in row.cuts = minute < 12 ? 1 : 0 })
+        let review = ShowReview.make(segments: session(900, on: sm.id), show: show(), diagnostics: diagnostics)
+        #expect(try #require(review.findings.first { $0.id == "cut" }).title.contains("12"))
+    }
+
+    @Test func diagnosticsChecksRunUnderFiftyLines() {
+        let diagnostics = SessionDiagnostics.make(rows(band.id) { _, row in
+            row.classified = SoundShares(speech: 0, music: 0.9, singing: 0)
+        })
+        let review = ShowReview.make(segments: session(10, on: band.id), show: show(), diagnostics: diagnostics)
+        #expect(ids(review).contains("music:\(band.id)"))
+    }
+
+    @Test func diagnosticsChecksRunForAGuessedShow() {
+        let diagnostics = SessionDiagnostics.make(rows(sm.id, rms: -45))
+        let review = ShowReview.make(segments: session(900, on: sm.id), show: show(), showIsKnown: false, diagnostics: diagnostics)
+        #expect(ids(review).contains("low:\(sm.id)"))
     }
 }
