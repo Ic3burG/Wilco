@@ -28,6 +28,41 @@ struct ConfigurationStoreTests {
         #expect(list.last?.channelCount == 2)
     }
 
+    @Test func createdDateSurvivesSaves() async throws {
+        let id = try store.create(show("Arena"))
+        let created = try #require(store.list().first?.createdAt)
+        try await Task.sleep(for: .milliseconds(1100))
+        try store.write(show("Arena", channels: 3), id: id)
+
+        let summary = try #require(store.list().first)
+        #expect(abs(summary.createdAt.timeIntervalSince(created)) < 0.01)
+        #expect(summary.savedAt > created)
+    }
+
+    @Test func backfillMovesCreationBackToFirstSession() throws {
+        let sessions = directory.appending(path: "Sessions", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: sessions, withIntermediateDirectories: true)
+        func session(_ stamp: String, _ name: String) throws {
+            try WilcoJSON.encoder().encode(show(name))
+                .write(to: sessions.appending(path: "Session \(stamp).wilco"))
+        }
+        try session("2020-03-04 1530-00", "Phoenix")
+        try session("2020-01-02 0900-00", " phoenix ")   // earliest; name matched loosely
+        try session("2020-01-01 0800-00", "Dallas")      // no such configuration
+        try session("2999-01-01 0000-00", "Arena")       // later than the file: ignored
+
+        let phoenix = try store.create(show("Phoenix"))
+        let arena = try store.create(show("Arena"))
+        let arenaCreated = try #require(store.list().first { $0.id == arena }?.createdAt)
+
+        #expect(store.backfillCreationDates(fromSessionsIn: sessions) == 1)
+        let expected = try #require(SessionHistory.started(fromFileName: URL(filePath: "Session 2020-01-02 0900-00.wilco")))
+        let list = store.list()
+        #expect(list.first { $0.id == phoenix }?.createdAt == expected)
+        #expect(list.first { $0.id == arena }?.createdAt == arenaCreated)
+        #expect(store.backfillCreationDates(fromSessionsIn: sessions) == 0)  // nothing left to move
+    }
+
     @Test func createUniquesNames() throws {
         try store.create(show("Arena"))
         try store.create(show("Arena"))

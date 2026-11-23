@@ -41,6 +41,12 @@ extension AppModel {
         } catch {
             lastMessage = "Could not keep the show as a configuration: \(error.localizedDescription)"
         }
+        // Once: older saves reset each file's creation date, so recover an
+        // estimate from the sessions recorded with each configuration.
+        if !UserDefaults.standard.bool(forKey: Self.createdDatesBackfilledKey) {
+            configurationStore.backfillCreationDates(fromSessionsIn: DataLocations.transcripts)
+            UserDefaults.standard.set(true, forKey: Self.createdDatesBackfilledKey)
+        }
         refreshConfigurations()
     }
 

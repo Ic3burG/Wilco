@@ -1232,3 +1232,43 @@ Not yet verified in the app.
   switching, fixes disabled during capture).
 - Stage 2 of the show review design (per-minute diagnostics file) is
   planned in `docs/superpowers/plans/` and not started.
+
+## 2026-11-23 — Sorting and a Created column in Configurations
+
+### Features
+
+- **Configurations window:** click Name, Channels, Created or Saved to
+  sort by that column; click again to reverse. Names sort the Finder way
+  ("Show 2" before "Show 10", case ignored). Rows that tie fall back to
+  name order. It opens sorted by name, as before; the order isn't kept
+  between openings.
+- **Created column**, beside Saved. It shows the configuration file's
+  creation date. Duplicate and Import count as new; Rename and Save
+  Changes keep the date.
+
+### Fixes
+
+- Every save was resetting a configuration's creation date: an atomic
+  write swaps in a new file. `ConfigurationStore.write` now puts the
+  original creation date back after writing. The show format is
+  unchanged.
+- One-time fill-in at launch (`configurations.createdDatesBackfilled`):
+  a configuration whose date had been reset gets the start of the first
+  session recorded under the same show name, if that is earlier. It only
+  moves dates earlier, and only sessions that have a show copy count. On
+  this Mac only YE Phoenix 2026 has one (Nov 21 16:06). The configurations
+  were backed up first to `~/Library/Application Support/Wilco-backups/`.
+
+Tested: 6 new package tests (sorting by each column and ties, creation
+date surviving a save, the fill-in); full package suite passes; app
+builds. Not yet verified in the app.
+
+### Next steps / where we left off
+
+- Relaunch Wilco and check Configurations: Phoenix should show Created
+  Nov 21 16:06 and Saved Nov 23 00:21; click each header to sort.
+- Maybe keep the chosen sort order between openings of the window.
+- Creation dates rely on the file system, so copying the folder to
+  another Mac may reset them. Storing the date in the show would avoid
+  that but is a format change; left for now.
+- The New Channels and Review tab checks from earlier today still stand.

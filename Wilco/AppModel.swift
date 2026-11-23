@@ -67,6 +67,7 @@ final class AppModel {
     // MARK: Configuration state (changed only by AppModel+Configurations)
 
     static let loadedConfigurationKey = "configurations.loaded"
+    static let createdDatesBackfilledKey = "configurations.createdDatesBackfilled"
     let configurationStore: ConfigurationStore
     /// Every saved configuration, sorted by name.
     var configurations: [ConfigurationSummary] = []

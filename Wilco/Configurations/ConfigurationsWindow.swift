@@ -11,11 +11,13 @@ struct ConfigurationsWindow: View {
     @State private var selection: UUID?
     @State private var renaming: ConfigurationSummary?
     @State private var deleting: ConfigurationSummary?
+    @State private var sortOrder = [ConfigurationSummary.nameOrder]
 
     var body: some View {
         VStack(spacing: 0) {
-            Table(model.configurations, selection: $selection) {
-                TableColumn("Name") { configuration in
+            Table(ConfigurationSummary.sorted(model.configurations, using: sortOrder),
+                  selection: $selection, sortOrder: $sortOrder) {
+                TableColumn("Name", value: \.name, comparator: .localizedStandard) { configuration in
                     HStack(spacing: 6) {
                         Image(systemName: "checkmark")
                             .opacity(configuration.id == model.loadedConfigurationID ? 1 : 0)
@@ -23,9 +25,14 @@ struct ConfigurationsWindow: View {
                         Text(configuration.name)
                     }
                 }
-                TableColumn("Channels") { Text("\($0.channelCount)").monospacedDigit() }
+                TableColumn("Channels", value: \.channelCount) { Text("\($0.channelCount)").monospacedDigit() }
                     .width(70)
-                TableColumn("Saved") {
+                TableColumn("Created", value: \.createdAt) {
+                    Text($0.createdAt.formatted(date: .abbreviated, time: .shortened))
+                        .foregroundStyle(.secondary)
+                }
+                .width(min: 120, ideal: 150)
+                TableColumn("Saved", value: \.savedAt) {
                     Text($0.savedAt.formatted(date: .abbreviated, time: .shortened))
                         .foregroundStyle(.secondary)
                 }
@@ -37,7 +44,7 @@ struct ConfigurationsWindow: View {
             Divider()
             bottomBar
         }
-        .frame(minWidth: 520, minHeight: 320)
+        .frame(minWidth: 640, minHeight: 320)
         // Inside the view, so it sees the AppModel the scene injects.
         .modifier(ConfigurationDialogs())
         .onAppear(perform: model.refreshConfigurations)

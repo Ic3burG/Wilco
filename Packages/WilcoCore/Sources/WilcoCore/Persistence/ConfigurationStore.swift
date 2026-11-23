@@ -7,12 +7,17 @@ public struct ConfigurationSummary: Identifiable, Equatable, Sendable {
     public let channelCount: Int
     /// When the file was last written.
     public let savedAt: Date
+    /// When the configuration was first saved: the file's creation date, which
+    /// ``ConfigurationStore/write(_:id:)`` carries across saves. Copying the
+    /// folder elsewhere may reset it.
+    public let createdAt: Date
 
-    public init(id: UUID, name: String, channelCount: Int, savedAt: Date) {
+    public init(id: UUID, name: String, channelCount: Int, savedAt: Date, createdAt: Date? = nil) {
         self.id = id
         self.name = name
         self.channelCount = channelCount
         self.savedAt = savedAt
+        self.createdAt = createdAt ?? savedAt
     }
 }
 
@@ -57,7 +62,7 @@ public struct ConfigurationStore: Sendable {
     /// or aren't named by a UUID, are skipped and left alone.
     public func list() -> [ConfigurationSummary] {
         let urls = (try? FileManager.default.contentsOfDirectory(
-            at: directory, includingPropertiesForKeys: [.contentModificationDateKey], options: .skipsHiddenFiles
+            at: directory, includingPropertiesForKeys: [.contentModificationDateKey, .creationDateKey], options: .skipsHiddenFiles
         )) ?? []
         let decoder = WilcoJSON.decoder()
         return urls.compactMap { url -> ConfigurationSummary? in
@@ -65,8 +70,12 @@ public struct ConfigurationStore: Sendable {
                   let id = UUID(uuidString: url.deletingPathExtension().lastPathComponent),
                   let data = try? Data(contentsOf: url),
                   let show = try? decoder.decode(ShowDocument.self, from: data) else { return nil }
-            let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
-            return ConfigurationSummary(id: id, name: show.name, channelCount: show.channels.count, savedAt: modified ?? .distantPast)
+            let dates = try? url.resourceValues(forKeys: [.contentModificationDateKey, .creationDateKey])
+            let modified = dates?.contentModificationDate ?? .distantPast
+            return ConfigurationSummary(
+                id: id, name: show.name, channelCount: show.channels.count,
+                savedAt: modified, createdAt: dates?.creationDate ?? modified
+            )
         }
         .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
@@ -84,7 +93,14 @@ public struct ConfigurationStore: Sendable {
 
     public func write(_ document: ShowDocument, id: UUID) throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        try WilcoJSON.encoder().encode(document).write(to: fileURL(id), options: .atomic)
+        let url = fileURL(id)
+        // An atomic write replaces the file, which resets its creation date.
+        // Put the original back so "Created" means when the configuration was made.
+        let created = (try? url.resourceValues(forKeys: [.creationDateKey]))?.creationDate
+        try WilcoJSON.encoder().encode(document).write(to: url, options: .atomic)
+        if let created {
+            try? FileManager.default.setAttributes([.creationDate: created], ofItemAtPath: url.path)
+        }
     }
 
     /// Saves `document` as a new configuration under a unique version of its name.
@@ -154,6 +170,37 @@ public struct ConfigurationStore: Sendable {
     public func migrateIfEmpty(from current: ShowDocument) throws -> UUID? {
         guard list().isEmpty else { return nil }
         return try create(current)
+    }
+
+    /// One-time repair for configurations saved before ``write(_:id:)`` kept
+    /// the creation date, when every save reset it. Moves each one's creation
+    /// date back to the first session recorded with a show of the same name
+    /// (from the show copies beside the transcripts in `sessions`), if that
+    /// is earlier. Only ever moves dates earlier. Returns how many changed.
+    @discardableResult
+    public func backfillCreationDates(fromSessionsIn sessions: URL) -> Int {
+        var firstUse: [String: Date] = [:]
+        let decoder = WilcoJSON.decoder()
+        let files = (try? FileManager.default.contentsOfDirectory(at: sessions, includingPropertiesForKeys: nil)) ?? []
+        for url in files where url.pathExtension == ShowFile.fileExtension {
+            guard let started = SessionHistory.started(fromFileName: url),
+                  let data = try? Data(contentsOf: url),
+                  let show = try? decoder.decode(ShowDocument.self, from: data) else { continue }
+            let key = Self.matchKey(show.name)
+            if started < firstUse[key, default: .distantFuture] { firstUse[key] = started }
+        }
+        var changed = 0
+        for summary in list() {
+            guard let used = firstUse[Self.matchKey(summary.name)], used < summary.createdAt else { continue }
+            if (try? FileManager.default.setAttributes([.creationDate: used], ofItemAtPath: fileURL(summary.id).path)) != nil {
+                changed += 1
+            }
+        }
+        return changed
+    }
+
+    private static func matchKey(_ name: String) -> String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 
     // MARK: Names
