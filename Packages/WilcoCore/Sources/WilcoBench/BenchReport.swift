@@ -1,4 +1,5 @@
 import Foundation
+import WilcoCore
 
 /// One engine at one channel count.
 public struct RunResult: Codable, Equatable, Sendable {
