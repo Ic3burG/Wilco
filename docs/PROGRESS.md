@@ -1449,6 +1449,9 @@ diagnostics file yet. Not yet verified in the app.
 
 ## 2026-11-23 — Benchmarking other Neural Engine speech models
 
+Decision: no changes to the app. Parakeet v3 stays the Parakeet model;
+the candidates stay in `wilco-bench` only, for later re-runs.
+
 ### Research
 
 FluidAudio 0.18.3, the version Wilco pins, already ships about 20 speech
