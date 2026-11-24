@@ -1565,3 +1565,51 @@ app.
 - Known gaps: `--conversation` real-show runs can repeat an exchange
   near the end; before macOS 26 there's no third voter, so labelling
   needs both Ultra and Whisper large.
+
+## 2026-11-24: Security review
+
+### GitHub
+
+- Turned on secret scanning with push protection, Dependabot alerts and
+  security fixes, and private vulnerability reporting. Custom-pattern
+  scanning and validity checks need a paid plan, so they stay off.
+- A "Protect main" ruleset blocks force-pushes and deleting `main`.
+  Ordinary pushes still work; sessions must merge or rebase, not force.
+- Actions: only GitHub's own and verified actions may run, pinned to a
+  commit SHA. `checkout` and `cache` in `ci.yml` are pinned.
+- Added `.github/dependabot.yml` (Actions and SwiftPM weekly; FluidAudio
+  stays pinned) and `SECURITY.md`.
+- History checked: nothing from `reference/`, no keys or tokens, no
+  naming of the reference app.
+
+### App audit
+
+Checked the capture callback, ring buffer, MIDI and HAL memory code,
+OSC/webhook/HTML escaping, file loading and saving, logging (no transcript
+text reaches the system log), data folder permissions, and the signed
+build's entitlements. Two fixes:
+
+- **Imported shows can't quietly send comms elsewhere.** Rules with a
+  webhook, or OSC beyond the local network, come in turned off, with a
+  message naming the rules and hosts (`OutboundRules`, spec §12.2).
+- **Regex rules are bounded.** Long patterns and nested repeats such as
+  `(a+)+` never match, and the rule editor warns; only the first 2,000
+  characters of a line are searched; patterns are compiled once.
+- Spec §12.1 sets the rules for the MCP server and peer sharing before
+  they are built: no wildcard CORS, Host/Origin checks and a token for
+  MCP; pairing and size limits for peers; both off by default.
+
+### Testing
+
+Tested: all package tests pass and the app builds without warnings. None
+of the shows on this Mac use regex rules, so nothing existing changes.
+Not verified in the app.
+
+### Next steps / where we left off
+
+- Hand check: import a show with a webhook rule and see the message and
+  the rule turned off; type `(a+)+` as a regex phrase and see the warning.
+- When release signing is set up: Release build (no `get-task-allow`),
+  notarize, ship updates as zip or dmg, and move to Sparkle 2.11 once out.
+- Build the MCP server and peer sharing to spec §12.1.
+

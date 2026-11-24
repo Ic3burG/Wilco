@@ -170,7 +170,8 @@ private struct RuleEditor: View {
             } header: {
                 Text("Listen For")
             } footer: {
-                Text("Whole words, ignoring case and punctuation. “Stand by” and “standby” match each other.")
+                PhrasesFooter(phrases: rule.phrases, mode: rule.matchMode,
+                              hint: "Whole words, ignoring case and punctuation. “Stand by” and “standby” match each other.")
             }
 
             Section {
@@ -269,7 +270,7 @@ private struct HighlightEditor: View {
             } header: {
                 Text("Words")
             } footer: {
-                Text("Tinted wherever the transcript appears.")
+                PhrasesFooter(phrases: highlight.phrases, mode: highlight.matchMode, hint: "Tinted wherever the transcript appears.")
             }
 
             Section {
@@ -284,6 +285,32 @@ private struct HighlightEditor: View {
 }
 
 // MARK: - Shared pieces
+
+/// The section's usual hint, or a warning naming regular expressions that
+/// will never match because they could stall matching.
+private struct PhrasesFooter: View {
+    let phrases: [String]
+    let mode: KeywordMatchMode
+    let hint: String
+
+    private var refused: [String] {
+        guard mode == .regularExpression else { return [] }
+        return phrases.filter { !KeywordMatcher.isSafePattern($0) }
+    }
+
+    var body: some View {
+        if refused.isEmpty {
+            Text(hint)
+        } else {
+            Label {
+                Text("\(refused.map { "“\($0)”" }.joined(separator: ", ")) will never match. Patterns over \(KeywordMatcher.maximumPatternLength) characters, or with a repeated group that itself repeats, such as (a+)+, could stall the app mid-show.")
+            } icon: {
+                Image(systemName: "exclamationmark.triangle.fill")
+            }
+            .foregroundStyle(.orange)
+        }
+    }
+}
 
 private struct MatchModePicker: View {
     @Binding var mode: KeywordMatchMode

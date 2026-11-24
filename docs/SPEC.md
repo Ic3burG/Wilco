@@ -720,6 +720,21 @@ who can reach them. Wilco does not copy that:
   sanitise it before display, reports and exports.
 - Remote lines still **never fire local automation** (§10.4).
 
+### 12.2 Show files from other people
+
+A `.wilco` file can come from anyone, and its rules run on every line heard.
+
+- **Import turns off rules that send elsewhere.** An imported configuration
+  keeps its rules, but any rule with a webhook (to any host), or OSC to a
+  destination outside the local network (not loopback, 10/8, 172.16/12,
+  192.168/16, 169.254/16, fe80::/10, fc00::/7, `.local` or a single-label
+  name), arrives turned off. A message names the rules and hosts; the person
+  turns on the ones they trust in Settings › Automation. (`OutboundRules`)
+- **Regular expressions are bounded.** Patterns over 500 characters, or with
+  a repeated group that itself repeats (`(a+)+`, `(a*)*`, `(x{2,})+`), never
+  match, and the rule editor says so. Only the first 2,000 characters of a
+  line are searched. Patterns are compiled once, not per line.
+
 ## 13. Open questions / not yet verified
 
 - Confirm the `AutomationAction` JSON shape with a saved show that has rules.

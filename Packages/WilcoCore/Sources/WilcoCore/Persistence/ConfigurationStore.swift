@@ -24,10 +24,14 @@ public struct ConfigurationSummary: Identifiable, Equatable, Sendable {
 public struct ConfigurationImport: Equatable, Sendable {
     public var imported: [UUID] = []
     public var failed: [URL] = []
+    /// Rules that came in turned off because they send what is heard to
+    /// another machine (see ``OutboundRules``).
+    public var turnedOff: [OutboundRules.TurnedOff] = []
 
-    public init(imported: [UUID] = [], failed: [URL] = []) {
+    public init(imported: [UUID] = [], failed: [URL] = [], turnedOff: [OutboundRules.TurnedOff] = []) {
         self.imported = imported
         self.failed = failed
+        self.turnedOff = turnedOff
     }
 }
 
@@ -145,14 +149,23 @@ public struct ConfigurationStore: Sendable {
 
     /// Adds each readable `.wilco` show file as a new
     /// configuration. Unreadable files are reported, not fatal.
+    ///
+    /// A show file may come from anyone, so rules that would send what is
+    /// heard to another machine arrive turned off until the person turns
+    /// them on.
     public func importFiles(_ urls: [URL]) -> ConfigurationImport {
         var result = ConfigurationImport()
         let decoder = WilcoJSON.decoder()
         for url in urls {
             if let data = try? Data(contentsOf: url),
-               let show = try? decoder.decode(ShowDocument.self, from: data),
-               let id = try? create(show) {
+               let show = try? decoder.decode(ShowDocument.self, from: data) {
+                let safe = OutboundRules.turningOff(in: show)
+                guard let id = try? create(safe.show) else {
+                    result.failed.append(url)
+                    continue
+                }
                 result.imported.append(id)
+                result.turnedOff += safe.turnedOff
             } else {
                 result.failed.append(url)
             }
