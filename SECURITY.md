@@ -14,6 +14,9 @@ which version or commit you tried.
   and notifications fired by your automation rules.
 - Text heard on comms is treated as untrusted. It is escaped before it goes
   into OSC addresses, URLs, JSON bodies and HTML reports.
+- Show files can come from anyone. When you import one, rules that would
+  send what's heard to another machine (webhooks, or OSC beyond your local
+  network) arrive turned off until you turn them on.
 
 ## Supported versions
 

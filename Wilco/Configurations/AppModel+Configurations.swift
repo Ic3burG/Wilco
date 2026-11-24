@@ -182,11 +182,25 @@ extension AppModel {
     func importConfigurations(_ urls: [URL]) -> [UUID] {
         let result = configurationStore.importFiles(urls)
         refreshConfigurations()
+        var messages: [String] = []
         if !result.failed.isEmpty {
             let names = result.failed.map(\.lastPathComponent).joined(separator: ", ")
-            lastMessage = "Could not read \(names). Is it a Wilco show file?"
+            messages.append("Could not read \(names). Is it a Wilco show file?")
         }
+        if !result.turnedOff.isEmpty {
+            messages.append(Self.turnedOffMessage(result.turnedOff))
+        }
+        if !messages.isEmpty { lastMessage = messages.joined(separator: "\n\n") }
         return result.imported
+    }
+
+    /// Says which imported rules were turned off and where they would send.
+    static func turnedOffMessage(_ turnedOff: [OutboundRules.TurnedOff]) -> String {
+        let hosts = turnedOff.flatMap(\.hosts).reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
+        let rules = turnedOff.map { "“\($0.rule)”" }.joined(separator: ", ")
+        let count = turnedOff.count == 1 ? "1 rule" : "\(turnedOff.count) rules"
+        return "\(count) that send what's heard to another machine came in turned off: \(rules), sending to \(hosts.joined(separator: ", ")). "
+            + "Turn on the ones you trust in Settings › Automation."
     }
 
     func exportConfiguration(_ id: UUID, to url: URL) {

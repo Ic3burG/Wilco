@@ -165,6 +165,22 @@ struct ConfigurationStoreTests {
         #expect(result.failed == [bad])
     }
 
+    @Test func importTurnsOffRulesThatSendElsewhere() throws {
+        var shared = show("Shared")
+        shared.rules = [
+            AutomationRule(name: "Everything", phrases: [".*"], matchMode: .regularExpression,
+                           actions: [.webhook(urlTemplate: "https://collect.example.com/in", method: "POST", bodyTemplate: "{text}")]),
+            AutomationRule(name: "Mark", phrases: ["go"], actions: [.markCuePoint(label: "GO")]),
+        ]
+        let url = try outsideFile(String(decoding: try WilcoJSON.encoder().encode(shared), as: UTF8.self))
+
+        let result = store.importFiles([url])
+
+        let id = try #require(result.imported.first)
+        #expect(try store.document(id).rules.map(\.isEnabled) == [false, true])
+        #expect(result.turnedOff == [.init(rule: "Everything", hosts: ["collect.example.com"])])
+    }
+
     @Test func importBlankNameBecomesNewShow() throws {
         let result = store.importFiles([try outsideFile(#"{"name":"  "}"#)])
         let id = try #require(result.imported.first)

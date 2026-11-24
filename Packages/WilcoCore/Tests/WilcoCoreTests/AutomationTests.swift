@@ -30,6 +30,31 @@ struct KeywordMatcherTests {
     }
 }
 
+@Suite("Regular expression safety")
+struct RegexSafetyTests {
+    @Test(arguments: [#"(a+)+$"#, #"(a*)*b"#, #"([a-z]+ )*x"#, #"((go)+ )+"#, #"(a{2,})+"#, #"(?:x+y?)*z"#])
+    func nestedRepeatsAreRefused(_ pattern: String) {
+        #expect(KeywordMatcher.isSafePattern(pattern) == false)
+        #expect(KeywordMatcher.matches([pattern], in: String(repeating: "a", count: 40) + "!", mode: .regularExpression).isEmpty)
+    }
+
+    @Test(arguments: [#"q\s?\d+"#, #"(q|cue)\s?\d+"#, #"(go )+"#, #"(x[+*])+"#, #"(a\+)+"#, #"(ab){2,5}"#, #"stand ?by"#, #".*"#])
+    func ordinaryPatternsAreAllowed(_ pattern: String) {
+        #expect(KeywordMatcher.isSafePattern(pattern))
+    }
+
+    @Test func overlongPatternsAreRefused() {
+        let pattern = String(repeating: "a", count: KeywordMatcher.maximumPatternLength + 1)
+        #expect(KeywordMatcher.isSafePattern(pattern) == false)
+    }
+
+    @Test func onlyTheStartOfAVeryLongLineIsSearched() {
+        let text = String(repeating: "x ", count: KeywordMatcher.maximumRegexTextLength) + "Q5"
+        #expect(KeywordMatcher.matches([#"q\d"#], in: text, mode: .regularExpression).isEmpty)
+        #expect(KeywordMatcher.matches([#"q\d"#], in: "Q5 " + text, mode: .regularExpression) == ["Q5"])
+    }
+}
+
 @Suite("Automation evaluation")
 struct AutomationEvaluatorTests {
     private func segment(_ text: String, on channel: UUID) -> TranscriptSegment {
