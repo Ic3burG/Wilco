@@ -1613,3 +1613,24 @@ Not verified in the app.
   notarize, ship updates as zip or dmg, and move to Sparkle 2.11 once out.
 - Build the MCP server and peer sharing to spec §12.1.
 
+
+## 2026-11-24: Settings window keeps one size
+
+### Fixes
+
+- **Settings no longer resizes when switching tabs.** Each tab used to
+  set its own size (540 to 860 wide, and some fit their height to their
+  content), so the window jumped on every click. All tabs now share one
+  size, 860×600, set once in `SettingsView.size`. The shorter forms (Look
+  & Feel, Audio, Learning, Destinations) fill it and scroll if needed. A
+  fixed size was chosen over animating the resize, which SwiftUI's
+  `Settings` scene can't do without rebuilding the window in AppKit.
+
+### Testing
+
+The app builds. Verified: the user clicked through the tabs in the app.
+
+### Next steps / where we left off
+
+- If the short tabs look too sparse at 860 wide, keep their forms narrower
+  and centred inside the same window.
