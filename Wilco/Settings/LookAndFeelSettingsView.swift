@@ -74,8 +74,6 @@ struct LookAndFeelSettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 560)
-        .fixedSize(horizontal: false, vertical: true)
     }
 }
 

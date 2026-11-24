@@ -31,7 +31,6 @@ struct DestinationSettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 560, height: 480)
     }
 
     private func binding(_ id: OSCDestination.ID) -> Binding<OSCDestination>? {

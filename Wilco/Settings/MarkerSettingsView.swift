@@ -35,7 +35,6 @@ struct MarkerSettingsView: View {
             editor
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(width: 860, height: 600)
         .confirmationDialog("Restore the built-in markers?", isPresented: $confirmingRestore) {
             Button("Restore Defaults", role: .destructive) {
                 selection = nil
