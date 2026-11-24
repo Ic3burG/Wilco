@@ -1,11 +1,16 @@
 import SwiftUI
 import WilcoCore
+import WilcoTranscription
 
 @main
 struct WilcoApp: App {
     @State private var look = LookAndFeel()
     @State private var model = AppModel()
     @State private var updater = Updater()
+
+    init() {
+        DownloadEnvironment.lockDown()
+    }
 
     var body: some Scene {
         Window("Wilco", id: "main") {

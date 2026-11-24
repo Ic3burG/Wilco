@@ -76,32 +76,75 @@ public enum KeywordMatcher {
         pattern.count <= maximumPatternLength && !hasNestedRepeat(pattern)
     }
 
+    /// Longest one pattern may spend on one line. Matching runs on the main
+    /// thread, so this is the longest a pattern can hold up the window.
+    public static let regexTimeLimit: Double = 0.05
+
+    /// Patterns that ran past ``regexTimeLimit`` since launch. They never
+    /// match again until the app restarts, so a slow pattern costs one
+    /// short pause, not one per line.
+    public static var stalledPatterns: Set<String> {
+        cache.withLock { cache in Set(cache.filter(\.value.stalled).keys) }
+    }
+
+    /// Stalled patterns not yet reported, for the Activity log. Each is
+    /// returned once.
+    public static func takeNewlyStalled() -> [String] {
+        newlyStalled.withLock { patterns in
+            defer { patterns.removeAll() }
+            return patterns
+        }
+    }
+
     private static func firstMatch(of pattern: String, in text: String) -> String? {
         guard let expression = compiled(pattern) else { return nil }
         let searched = String(text.prefix(maximumRegexTextLength))
-        guard let match = expression.firstMatch(in: searched, range: NSRange(searched.startIndex..., in: searched)),
-              let range = Range(match.range, in: searched)
-        else { return nil }
+        let deadline = clock_gettime_nsec_np(CLOCK_UPTIME_RAW) + UInt64(regexTimeLimit * 1e9)
+        var match: NSTextCheckingResult?
+        var timedOut = false
+        // The static check can't see every slow pattern (overlapping
+        // alternatives such as `(.|..)+!` pass it), so the engine reports
+        // progress and the search is stopped at the deadline.
+        expression.enumerateMatches(
+            in: searched, options: [.reportProgress], range: NSRange(searched.startIndex..., in: searched)
+        ) { result, _, stop in
+            if let result {
+                match = result
+                stop.pointee = true
+            } else if clock_gettime_nsec_np(CLOCK_UPTIME_RAW) > deadline {
+                timedOut = true
+                stop.pointee = true
+            }
+        }
+        if timedOut {
+            cache.withLock { $0[pattern] = Compiled(expression: nil, stalled: true) }
+            newlyStalled.withLock { $0.append(pattern) }
+            return nil
+        }
+        guard let match, let range = Range(match.range, in: searched) else { return nil }
         return String(searched[range])
     }
 
     /// NSRegularExpression is immutable and safe to share between threads.
     private struct Compiled: @unchecked Sendable {
         let expression: NSRegularExpression?
+        var stalled = false
     }
 
     private static let cache = Mutex<[String: Compiled]>([:])
+    private static let newlyStalled = Mutex<[String]>([])
     private static let cacheLimit = 256
 
     /// Compiled once per pattern rather than on every line; `nil` when the
-    /// pattern is unsafe or doesn't compile.
+    /// pattern is unsafe, has stalled or doesn't compile.
     private static func compiled(_ pattern: String) -> NSRegularExpression? {
         if let hit = cache.withLock({ $0[pattern] }) { return hit.expression }
         let expression = isSafePattern(pattern)
             ? try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive])
             : nil
         cache.withLock { cache in
-            if cache.count >= cacheLimit { cache.removeAll() }
+            // Stalled patterns are kept, or a full cache would let them run again.
+            if cache.count >= cacheLimit { cache = cache.filter(\.value.stalled) }
             cache[pattern] = Compiled(expression: expression)
         }
         return expression

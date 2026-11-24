@@ -297,8 +297,22 @@ private struct PhrasesFooter: View {
         return phrases.filter { !KeywordMatcher.isSafePattern($0) }
     }
 
+    /// Patterns stopped at the time limit during this run of the app.
+    private var stalled: [String] {
+        guard mode == .regularExpression else { return [] }
+        let stalled = KeywordMatcher.stalledPatterns
+        return phrases.filter(stalled.contains)
+    }
+
     var body: some View {
-        if refused.isEmpty {
+        if !stalled.isEmpty {
+            Label {
+                Text(verbatim: "\(stalled.map { "“\($0)”" }.joined(separator: ", ")) took too long to check and is switched off until Wilco restarts. Simplify the pattern.")
+            } icon: {
+                Image(systemName: "exclamationmark.triangle.fill")
+            }
+            .foregroundStyle(.orange)
+        } else if refused.isEmpty {
             Text(hint)
         } else {
             Label {

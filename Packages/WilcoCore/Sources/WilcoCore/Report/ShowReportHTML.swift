@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 /// A self-contained HTML page for a show report, laid out like the report
@@ -18,6 +19,7 @@ public enum ShowReportHTML {
         return """
         <!DOCTYPE html>
         <html lang="en"><head><meta charset="utf-8">
+        <meta http-equiv="Content-Security-Policy" content="\(contentSecurityPolicy)">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>\(title) — \(date)</title>
         <style>\(css)\(report.messages.contains { $0.voice != nil } ? voiceCSS : "")\(note.isEmpty ? "" : zoneCSS)</style>
@@ -46,6 +48,15 @@ public enum ShowReportHTML {
         </body></html>
         """
     }
+
+    /// A second line of defence behind escaping: the page may run only the
+    /// script below (named by its hash) and may load or send nothing, so
+    /// even text that slipped through unescaped could not run code or call
+    /// out. Styles stay inline because rows carry their channel colour.
+    static let contentSecurityPolicy: String = {
+        let hash = Data(SHA256.hash(data: Data(script.utf8))).base64EncodedString()
+        return "default-src 'none'; style-src 'unsafe-inline'; script-src 'sha256-\(hash)'; base-uri 'none'; form-action 'none'"
+    }()
 
     // MARK: Sections
 

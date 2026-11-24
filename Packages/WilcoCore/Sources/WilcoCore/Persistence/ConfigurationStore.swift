@@ -157,7 +157,9 @@ public struct ConfigurationStore: Sendable {
         var result = ConfigurationImport()
         let decoder = WilcoJSON.decoder()
         for url in urls {
-            if let data = try? Data(contentsOf: url),
+            if let size = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize,
+               size <= FileLimits.maximumShowFileBytes,
+               let data = try? Data(contentsOf: url),
                let show = try? decoder.decode(ShowDocument.self, from: data) {
                 let safe = OutboundRules.turningOff(in: show)
                 guard let id = try? create(safe.show) else {

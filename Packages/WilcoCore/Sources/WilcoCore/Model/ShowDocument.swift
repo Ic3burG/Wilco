@@ -151,6 +151,7 @@ public struct ShowDocument: Codable, Equatable, Sendable {
         let channelTerms = try c.decodeIfPresent([LegacyChannelVocabulary].self, forKey: .channels)?
             .flatMap { $0.vocabulary ?? [] } ?? []
         globalVocabulary = Self.adding(channelTerms, to: globalVocabulary)
+        repair()
     }
 
     /// Older shows kept vocabulary on each channel as well as on the show.

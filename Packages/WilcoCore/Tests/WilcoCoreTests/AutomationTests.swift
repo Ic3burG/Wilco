@@ -43,6 +43,28 @@ struct RegexSafetyTests {
         #expect(KeywordMatcher.isSafePattern(pattern))
     }
 
+    /// Overlapping alternatives pass the nested-repeat check but take
+    /// exponential time. The time limit stops them, then switches them off.
+    @Test func slowPatternsAreStoppedAtTheTimeLimitThenSwitchedOff() {
+        let pattern = #"(.|..)+!slow-\#(UUID().uuidString)"#
+        let text = String(repeating: "a", count: 60)
+        #expect(KeywordMatcher.isSafePattern(pattern))
+
+        let clock = ContinuousClock()
+        let first = clock.measure {
+            #expect(KeywordMatcher.matches([pattern], in: text, mode: .regularExpression).isEmpty)
+        }
+        #expect(first < .seconds(2))
+        #expect(KeywordMatcher.stalledPatterns.contains(pattern))
+        #expect(KeywordMatcher.takeNewlyStalled().contains(pattern))
+        #expect(!KeywordMatcher.takeNewlyStalled().contains(pattern))
+
+        let second = clock.measure {
+            #expect(KeywordMatcher.matches([pattern], in: text, mode: .regularExpression).isEmpty)
+        }
+        #expect(second < .milliseconds(20))
+    }
+
     @Test func overlongPatternsAreRefused() {
         let pattern = String(repeating: "a", count: KeywordMatcher.maximumPatternLength + 1)
         #expect(KeywordMatcher.isSafePattern(pattern) == false)
@@ -220,6 +242,34 @@ struct TemplateTests {
         let tz = TimeZone(identifier: "America/Chicago")!
         #expect(context.expand("{channel}: {keyword} at {offset}", timeZone: tz) == "Stage Manager: hold at 1:02:05")
         #expect(context.expand("{time}", timeZone: tz) == "20:25:25")
+    }
+
+    @Test(arguments: ["TRACE", "CONNECT", "GET / HTTP/1.1\r\nX-Injected: 1", "POST\nHost: evil.example", "LOL"])
+    func webhooksRefuseMethodsOutsideTheAllowList(_ method: String) {
+        #expect(WebhookRequest.make(urlTemplate: "http://127.0.0.1/x", method: method, bodyTemplate: "", context: context) == nil)
+    }
+
+    @Test(arguments: ["", "post", " PUT ", "GET", "PATCH", "DELETE"])
+    func webhooksAcceptOrdinaryMethods(_ method: String) {
+        #expect(WebhookRequest.make(urlTemplate: "http://127.0.0.1/x", method: method, bodyTemplate: "", context: context) != nil)
+    }
+
+    @Test(arguments: ["file:///etc/passwd", "ftp://example.com/x", "javascript:alert(1)", "//example.com", "http://", "{text}"])
+    func webhooksRefuseAnythingButHTTP(_ url: String) {
+        #expect(WebhookRequest.make(urlTemplate: url, method: "POST", bodyTemplate: "", context: context) == nil)
+    }
+
+    /// What is heard can fill a placeholder but never change where a
+    /// webhook goes.
+    @Test func spokenTextCannotChangeAWebhooksHost() throws {
+        var hostile = context
+        hostile.text = "@evil.example/x?#"
+        hostile.channel = "evil.example:80/"
+        let request = try #require(WebhookRequest.make(
+            urlTemplate: "http://10.0.0.5:8080/cue/{channel}?t={text}", method: "POST", bodyTemplate: "", context: hostile
+        ))
+        #expect(request.url?.host() == "10.0.0.5")
+        #expect(request.url?.port == 8080)
     }
 
     @Test func escapesForJSONAndURLs() throws {

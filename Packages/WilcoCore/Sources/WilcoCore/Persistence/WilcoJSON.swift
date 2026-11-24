@@ -48,9 +48,10 @@ public enum TranscriptFile {
     }
 
     /// Decodes every complete line. A torn final line, left by a crash
-    /// mid-write, is skipped rather than failing the whole session.
+    /// mid-write, is skipped rather than failing the whole session. Lines
+    /// are repaired (see `FileRepair`), so their numbers are safe to use.
     public static func segments(in data: Data) -> [TranscriptSegment] {
         let decoder = WilcoJSON.decoder()
-        return data.split(separator: 0x0A).compactMap { try? decoder.decode(TranscriptSegment.self, from: $0) }
+        return data.split(separator: 0x0A).compactMap { try? decoder.decode(TranscriptSegment.self, from: $0).repaired }
     }
 }
