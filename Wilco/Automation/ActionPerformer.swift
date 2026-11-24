@@ -18,6 +18,7 @@ struct CueMarker: Identifiable, Equatable {
 final class ActionPerformer {
     private let osc = OSCSender()
     private let midi = MIDIOutput()
+    private let webhooks = WebhookSender()
     private var askedForNotifications = false
 
     /// Called for every action with what happened.
@@ -58,16 +59,18 @@ final class ActionPerformer {
 
             case .webhook(let urlTemplate, let method, let bodyTemplate):
                 guard let request = WebhookRequest.make(urlTemplate: urlTemplate, method: method, bodyTemplate: bodyTemplate, context: context) else {
-                    log(.init(kind: .error, ruleName: rule.name, detail: "Webhook URL is not a valid http(s) address"))
+                    log(.init(kind: .error, ruleName: rule.name, detail: "Webhook needs a valid http(s) address and a GET, POST, PUT, PATCH or DELETE method"))
                     continue
                 }
+                let webhooks = webhooks
                 Task {
                     do {
-                        let (_, response) = try await URLSession.shared.data(for: request)
-                        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+                        let status = try await webhooks.send(request)
                         let host = request.url?.host() ?? ""
                         if (200..<300).contains(status) {
                             log(.init(kind: .fired, ruleName: rule.name, detail: "Webhook \(request.httpMethod ?? "") \(host) → \(status)"))
+                        } else if (300..<400).contains(status) {
+                            log(.init(kind: .error, ruleName: rule.name, detail: "Webhook \(host) answered \(status), a redirect. Wilco doesn't follow redirects; use the final address."))
                         } else {
                             log(.init(kind: .error, ruleName: rule.name, detail: "Webhook \(host) answered \(status)"))
                         }

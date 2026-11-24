@@ -165,7 +165,7 @@ public enum DiagnosticsFile {
     /// mid-write, and any other unreadable line are skipped.
     public static func rows(in data: Data) -> [ChannelMinute] {
         let decoder = WilcoJSON.decoder()
-        return data.split(separator: 0x0A).compactMap { try? decoder.decode(ChannelMinute.self, from: $0) }
+        return data.split(separator: 0x0A).compactMap { try? decoder.decode(ChannelMinute.self, from: $0).repaired }
     }
 }
 

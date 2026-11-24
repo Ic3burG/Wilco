@@ -1634,3 +1634,70 @@ The app builds. Verified: the user clicked through the tabs in the app.
 
 - If the short tabs look too sparse at 860 wide, keep their forms narrower
   and centred inside the same window.
+
+## 2026-11-24: Security, deeper pass and guardrails
+
+### Fixes
+
+- **Files can't crash the app.** A transcript line with a negative or huge
+  time offset crashed the report ("Index out of range"); a show with
+  repeated IDs crashed sidebar editing; a diagnostics file with far-apart
+  minutes could exhaust memory. Everything read from disk is now repaired
+  as it is read (`FileRepair.swift`): numbers held within `FileLimits`,
+  IDs made unique. Report columns are capped. `Int(safely:)` converts
+  without trapping.
+- **Regex time limit.** The nested-repeat check missed overlapping
+  alternatives such as `(.|..)+!` (0.3 s on 30 characters, doubling from
+  there). Searches are now stopped at 50 ms; a pattern that hits the
+  limit is switched off until restart, reported in the Activity log and
+  flagged in the rule editor.
+- **Import** also turns off the show's sharing switches (`mcpEnabled`,
+  `networkEnabled`, `mosEnabled`) and refuses files over 20 MB.
+- **Webhooks** go through `WebhookSender`: no cookies, cache or stored
+  credentials, redirects not followed (reported as errors), reply bodies
+  not downloaded, methods from an allow-list.
+- **HTML report** carries a content security policy allowing only its own
+  script, by hash. The fixture has the new line.
+- **Environment.** The app clears the variables its speech libraries
+  would use to change the download host or attach a token.
+
+### Checked, no change needed
+
+On-device speech only (no server-capable API); dependencies contact only
+huggingface.co and have no telemetry; SwiftUI shows interpolated text
+literally (no Markdown links from names); WAV decoding and every delete
+path are bounded.
+
+### Guardrails
+
+- `docs/SECURITY-MODEL.md`: what is trusted, the rules (§4), a checklist
+  for new features (§5), release steps, known limits and findings so far.
+- `CLAUDE.md` has a Security section pointing sessions at it.
+- `SecurityGuardrailTests` reads the source and settings and fails when
+  code listens on the network, makes HTTP calls outside `WebhookSender`,
+  decodes outside `WilcoJSON`, logs, runs programs, uses a server-capable
+  speech API, adds a dependency, entitlement, URL scheme or unpinned CI
+  action, or tracks a private file. Both directions were tried: planted
+  violations fail it.
+- `HostileInputTests`: hand-written hostile files, seeded mutation of the
+  fixtures (400 rounds each), and script-injection payloads through the
+  HTML report.
+- `reference/forbidden-words.txt` (untracked, this Mac only) lists the
+  words the project must never contain; a guardrail checks every tracked
+  file against it when the file is present.
+
+### Testing
+
+Tested: all package tests pass (756) and the app builds without
+warnings. The webhook sender was also run against a local server: a
+redirect's target received nothing and a 2 GB reply returned at once.
+Repair changes nothing in the shows and transcripts on this Mac (5 shows,
+21,220 lines). Not verified in the app.
+
+### Next steps / where we left off
+
+- Hand check: a webhook rule still fires to a local address; the HTML
+  report still opens with tabs, chips and search working in Safari and
+  Chrome (the security policy is new); import of a shared show.
+- Optional: CodeQL for Swift in CI; pinning model files by hash.
+- New features answer the checklist in `docs/SECURITY-MODEL.md` §5.

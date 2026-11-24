@@ -17,6 +17,12 @@ which version or commit you tried.
 - Show files can come from anyone. When you import one, rules that would
   send what's heard to another machine (webhooks, or OSC beyond your local
   network) arrive turned off until you turn them on.
+- Files are checked as they are read, so a damaged or hand-edited show or
+  transcript can't crash the app.
+- Webhooks go only to the address in the rule: redirects are not followed.
+
+The full security model, with the rules new features follow, is in
+[`docs/SECURITY-MODEL.md`](docs/SECURITY-MODEL.md).
 
 ## Supported versions
 

@@ -112,14 +112,19 @@ public struct TemplateContext: Sendable {
 
 /// Builds the HTTP request for a webhook action.
 public enum WebhookRequest {
-    /// `nil` when the expanded URL is not a valid `http` or `https` URL.
+    public static let allowedMethods: Set<String> = ["GET", "POST", "PUT", "PATCH", "DELETE"]
+
+    /// `nil` when the expanded URL is not a valid `http` or `https` URL, or
+    /// the method isn't one of ``allowedMethods``.
     public static func make(urlTemplate: String, method: String, bodyTemplate: String, context: TemplateContext) -> URLRequest? {
         guard let url = URL(string: context.expand(urlTemplate, escaping: .url)),
               let scheme = url.scheme?.lowercased(), ["http", "https"].contains(scheme), url.host != nil
         else { return nil }
 
         var request = URLRequest(url: url, timeoutInterval: 5)
-        let method = method.uppercased()
+        let method = method.trimmingCharacters(in: .whitespaces).uppercased()
+        // The method comes from the show file and goes on the request line.
+        guard method.isEmpty || allowedMethods.contains(method) else { return nil }
         request.httpMethod = method.isEmpty ? "POST" : method
         let trimmed = bodyTemplate.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty, request.httpMethod != "GET" {

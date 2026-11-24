@@ -146,13 +146,16 @@ public struct ShowReport: Sendable {
 public enum ShowReportBuilder {
     /// Repeats of a call further apart than this are separate markers.
     static let repeatWindow: Double = 60
+    /// Most traffic columns a report ever has. A session whose first line
+    /// comes long after its start would otherwise get one per minute.
+    static let maximumBuckets = 2_000
 
     /// `transcript` is the session file, used to work out the capture zone
     /// of lines written before it was recorded on each line.
     public static func build(
         segments: [TranscriptSegment], show: ShowDocument, sourceName: String, generated: Date, transcript: URL? = nil
     ) -> ShowReport {
-        let lines = segments.filter(\.isFinal).sorted { $0.sessionOffset < $1.sessionOffset }
+        let lines = segments.filter(\.isFinal).map(\.repaired).sorted { $0.sessionOffset < $1.sessionOffset }
         let first = lines.first
         let sessionStart = first.map { $0.timestamp.addingTimeInterval(-$0.sessionOffset) } ?? generated
         let lastOffset = lines.last?.sessionOffset ?? 0
@@ -227,11 +230,15 @@ public enum ShowReportBuilder {
 
         // Whole minutes, at most about 120 columns.
         let bucketSeconds = max(1, (duration / 60 / 120).rounded(.up)) * 60
-        var buckets = (0...Int(lastOffset / bucketSeconds)).map {
+        // Columns run from the session's start, so the count stays near 120
+        // however late the first line is; the index is held in range.
+        let lastBucket = max(0, min(Int(safely: lastOffset / bucketSeconds), Self.maximumBuckets - 1))
+        var buckets = (0...lastBucket).map {
             ShowReport.Bucket(start: Double($0) * bucketSeconds, counts: [:])
         }
         for line in lines {
-            buckets[Int(line.sessionOffset / bucketSeconds)].counts[line.channelID, default: 0] += 1
+            let index = max(0, min(Int(safely: line.sessionOffset / bucketSeconds), lastBucket))
+            buckets[index].counts[line.channelID, default: 0] += 1
         }
 
         let groups = show.groups.compactMap { group -> ShowReport.Group? in

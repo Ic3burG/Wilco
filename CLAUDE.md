@@ -8,6 +8,8 @@ clean rebuild of a reference app that shipped only as a compiled binary. Read th
   truth for behaviour.
 - `docs/PROGRESS.md`: the session log. Its last "Next steps" section says
   where we stopped.
+- `docs/SECURITY-MODEL.md`: what Wilco trusts, the security rules and the
+  checklist every new feature answers.
 
 ## Build and test
 
@@ -71,8 +73,41 @@ gets tests. A bug fix gets a regression test.
   starts, not inside the callback.
 - **Strings from speech are untrusted.** Sanitise transcript text before it
   goes into OSC addresses, URLs or templates.
+- **Files are untrusted too.** Shows, transcripts and everything else on
+  disk can be corrupt or written by someone else. See Security below.
 - Swift 6 language mode with strict concurrency. Fix warnings; don't silence
   them.
+
+## Security
+
+Wilco hears private comms and fires real cues, so security is part of
+every feature, not a pass afterwards. `docs/SECURITY-MODEL.md` is the source
+of truth: what is trusted, the rules, and a checklist for new features.
+
+- **Before designing a feature**, answer the checklist in §5 of the
+  security model, in the spec or plan. If the feature reads something new,
+  sends something, listens, or acts on what was heard, say how the rules
+  in §4 are met.
+- **Guardrail tests are not obstacles.** `SecurityGuardrailTests` reads the
+  source and fails when code listens on the network, makes HTTP calls
+  outside `WebhookSender`, decodes files outside `WilcoJSON`, logs, runs
+  programs, adds a dependency or entitlement, and so on. When one fails,
+  do the work its message names (and its tests) before widening its
+  allowed list, and say in the commit message why the list changed. Never
+  widen a list just to make the test pass.
+- **New file format or new number in a file:** repair it in
+  `FileRepair.swift` and add it to `HostileInputTests`. A file must never
+  be able to crash or stall the app.
+- **New way to send data or reach another machine:** add it to
+  `OutboundRules` so an imported show can't switch it on.
+- **Network listeners** (MCP server, peer sharing) follow spec §12.1: off
+  by default, authenticated, size-limited, never firing automation.
+- **Before merging a feature** that touches files, the network, automation
+  or exported pages, run `/security-review` on the change and fix what it
+  finds. Add a row to §8 of the security model for any real finding.
+- **Tell the user** when a security rule shapes a design (for example,
+  "this arrives off after import"), and ask before choosing the less safe
+  of two designs.
 
 ## Testing in the app
 

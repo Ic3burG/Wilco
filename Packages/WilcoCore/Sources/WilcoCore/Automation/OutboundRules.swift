@@ -28,6 +28,11 @@ public enum OutboundRules {
     /// The show with every such rule turned off, and what was turned off.
     public static func turningOff(in show: ShowDocument) -> Result {
         var show = show
+        // Sharing with other machines is this Mac's choice, never the file's:
+        // an imported show must not open a listener or start sending.
+        show.mcpEnabled = false
+        show.networkEnabled = false
+        show.mosEnabled = false
         var turnedOff: [TurnedOff] = []
         for index in show.rules.indices where show.rules[index].isEnabled {
             let hosts = outboundHosts(of: show.rules[index], in: show)

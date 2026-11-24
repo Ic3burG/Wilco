@@ -326,11 +326,24 @@ final class AppModel {
         timeline.clear(channelID: channelID)
     }
 
+    /// Says in the Activity log when a regular expression was stopped at
+    /// the time limit, since it won't match again until Wilco restarts.
+    private func reportStalledPatterns(in show: ShowDocument) {
+        for pattern in KeywordMatcher.takeNewlyStalled() {
+            let rule = show.rules.first { $0.matchMode == .regularExpression && $0.phrases.contains(pattern) }
+            log(ActivityEntry(
+                kind: .error, ruleName: rule?.name ?? "Highlight",
+                detail: "The pattern “\(pattern)” took too long to check and is switched off until Wilco restarts. Simplify it in Settings › Automation."
+            ))
+        }
+    }
+
     private func apply(_ update: TranscriptionController.Update) {
         switch update {
         case .event(let event):
             let show = document
             let now = Date()
+            defer { reportStalledPatterns(in: show) }
             switch event.stage {
             case .complete:
                 // One stage: rules, display and file all get the line now.
