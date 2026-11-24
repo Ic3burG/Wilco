@@ -2,33 +2,41 @@ import SwiftUI
 import WilcoCore
 
 struct SettingsView: View {
+    /// Every tab shares one size so the window doesn't jump when switching
+    /// tabs. Sized for the list-and-editor tabs (Automation, Markers); the
+    /// shorter forms scroll inside it.
+    static let size = CGSize(width: 860, height: 600)
+
     var body: some View {
         TabView {
             Tab("Look & Feel", systemImage: "textformat.size") {
-                LookAndFeelSettingsView()
+                LookAndFeelSettingsView().settingsPane()
             }
             Tab("Audio", systemImage: "waveform") {
-                AudioSettingsView()
-                    .frame(width: 540)
+                AudioSettingsView().settingsPane()
             }
             Tab("Languages", systemImage: "character.bubble") {
-                LanguagesSettingsView()
-                    .frame(width: 600, height: 560)
+                LanguagesSettingsView().settingsPane()
             }
             Tab("Learning", systemImage: "graduationcap") {
-                LearningSettingsView()
-                    .frame(width: 540)
+                LearningSettingsView().settingsPane()
             }
             Tab("Automation", systemImage: "bolt") {
-                AutomationSettingsView()
+                AutomationSettingsView().settingsPane()
             }
             Tab("Markers", systemImage: "flag") {
-                MarkerSettingsView()
+                MarkerSettingsView().settingsPane()
             }
             Tab("Destinations", systemImage: "paperplane") {
-                DestinationSettingsView()
+                DestinationSettingsView().settingsPane()
             }
         }
+    }
+}
+
+private extension View {
+    func settingsPane() -> some View {
+        frame(width: SettingsView.size.width, height: SettingsView.size.height)
     }
 }
 
@@ -75,7 +83,5 @@ private struct AudioSettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .scrollDisabled(true)
-        .fixedSize(horizontal: false, vertical: true)
     }
 }

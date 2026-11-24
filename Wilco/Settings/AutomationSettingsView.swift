@@ -23,7 +23,6 @@ struct AutomationSettingsView: View {
             editor
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(width: 860, height: 600)
     }
 
     private var list: some View {
