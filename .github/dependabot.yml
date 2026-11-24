@@ -1,0 +1,20 @@
+# Weekly checks for newer versions of the CI actions and Swift packages.
+# Security fixes arrive as soon as an advisory is published, whatever the schedule.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: swift
+    directory: /Packages/WilcoCore
+    schedule:
+      interval: weekly
+    # FluidAudio is pinned on purpose: its API changes between 0.x releases.
+    ignore:
+      - dependency-name: "github.com/FluidInference/FluidAudio"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]

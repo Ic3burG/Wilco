@@ -696,6 +696,29 @@ notifications (→ `202 Accepted`). Errors: parse error, invalid request,
 - Keep `formatVersion` 1 compatibility for `.wilco` files and `.jsonl` transcripts.
 - Sparkle with a real appcast + EdDSA key; no TurboActivate.
 - Ship a universal (arm64 + x86_64) build only if needed; the reference app was arm64-only.
+- Ship updates as a signed `.zip` or `.dmg`, not a `.pkg` installer. Sparkle
+  does not check `.pkg` updates for downgrades (GHSA-gcjm-h3jh-p2vc, fixed in
+  Sparkle 2.11); move to 2.11 once it is released.
+
+### 12.1 Security for the network features
+
+The reference app's MCP server and peer sharing (§10.4, §10.5) trust anyone
+who can reach them. Wilco does not copy that:
+
+- **MCP server.** Bind to `127.0.0.1` only. Send **no**
+  `Access-Control-Allow-Origin` header: with `*`, any web page open on the
+  show Mac could read live comms. Reject requests whose `Host` isn't
+  `127.0.0.1:<port>` or `localhost:<port>` (DNS rebinding) and any request
+  carrying a browser `Origin`. Require a bearer token generated per install
+  and shown in Settings. Off by default.
+- **Peer sharing.** Peers pair before any text flows: a short code shown on
+  one Mac and typed on the other, used to derive a shared key (CryptoKit) that
+  authenticates every line. Unpaired connections are closed. Off by default.
+- **Bounded input.** Cap each peer line (e.g. 16 KB) and each per-connection
+  buffer; drop the connection when a line is too long or doesn't decode.
+  Limit open inbound connections. Peer text is untrusted like speech:
+  sanitise it before display, reports and exports.
+- Remote lines still **never fire local automation** (§10.4).
 
 ## 13. Open questions / not yet verified
 
