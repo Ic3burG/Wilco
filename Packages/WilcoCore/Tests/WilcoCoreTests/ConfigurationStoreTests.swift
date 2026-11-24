@@ -181,6 +181,16 @@ struct ConfigurationStoreTests {
         #expect(result.turnedOff == [.init(rule: "Everything", hosts: ["collect.example.com"])])
     }
 
+    @Test func importRefusesOversizedFiles() throws {
+        let padding = String(repeating: " ", count: FileLimits.maximumShowFileBytes)
+        let huge = try outsideFile(#"{"name":"Huge"}"# + padding)
+
+        let result = store.importFiles([huge])
+
+        #expect(result.imported.isEmpty)
+        #expect(result.failed == [huge])
+    }
+
     @Test func importBlankNameBecomesNewShow() throws {
         let result = store.importFiles([try outsideFile(#"{"name":"  "}"#)])
         let id = try #require(result.imported.first)

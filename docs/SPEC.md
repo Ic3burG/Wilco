@@ -734,6 +734,26 @@ A `.wilco` file can come from anyone, and its rules run on every line heard.
   a repeated group that itself repeats (`(a+)+`, `(a*)*`, `(x{2,})+`), never
   match, and the rule editor says so. Only the first 2,000 characters of a
   line are searched. Patterns are compiled once, not per line.
+  A search still running after 50 ms is stopped, and that pattern is
+  switched off until restart and reported in the Activity log.
+- **Import also turns off sharing.** `mcpEnabled`, `networkEnabled` and
+  `mosEnabled` are set to off, and files over 20 MB are refused.
+- **Files are repaired as they are read** (`FileRepair`): time offsets,
+  minutes, counts and cooldowns are held within limits and repeated IDs
+  are dropped, so no file can crash a report, an export or the sidebar.
+
+### 12.3 Sending and exported pages
+
+- Webhooks: `http`/`https` only; `GET`, `POST`, `PUT`, `PATCH` or `DELETE`;
+  no cookies, cache or stored credentials; redirects are not followed and
+  are reported as errors; the reply's body is not downloaded.
+- The HTML report carries a content security policy allowing only its own
+  script (by hash) and no loading or sending.
+- At launch the app clears the environment variables its speech libraries
+  would use to change the download host or attach a token.
+
+`docs/SECURITY-MODEL.md` holds the full set of rules and the checklist for
+new features.
 
 ## 13. Open questions / not yet verified
 
