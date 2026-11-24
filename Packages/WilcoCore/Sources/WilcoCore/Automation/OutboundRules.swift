@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 /// Finds the rules in a show that would send what is heard on comms
@@ -68,41 +69,58 @@ public enum OutboundRules {
 
     /// Loopback, private and link-local addresses, `.local` names and
     /// single-label names (which only resolve on the local network).
+    ///
+    /// Addresses are read the way the system resolver reads them
+    /// (`inet_aton`, `inet_pton`), so numeric forms such as `134744072`,
+    /// `0x08080808` or `010.8.8.8` are judged by the address they really
+    /// name, not mistaken for a local name or a private address.
     public static func isLocalNetwork(_ host: String) -> Bool {
         var host = host.trimmingCharacters(in: .whitespaces).lowercased()
         if host.hasPrefix("["), host.hasSuffix("]") { host = String(host.dropFirst().dropLast()) }
         if host.hasSuffix(".") { host.removeLast() }
-        guard !host.isEmpty else { return false }
+        guard !host.isEmpty, !host.contains("\u{0}") else { return false }
 
-        if host.contains(":") { return isLocalIPv6(host) }
-        if let octets = ipv4Octets(host) { return isLocalIPv4(octets) }
-        if host == "localhost" || host.hasSuffix(".local") { return true }
-        return !host.contains(".")
-    }
-
-    private static func ipv4Octets(_ host: String) -> [Int]? {
-        let parts = host.split(separator: ".", omittingEmptySubsequences: false)
-        guard parts.count == 4 else { return nil }
-        let octets = parts.compactMap { part -> Int? in
-            guard !part.isEmpty, part.allSatisfy(\.isASCII), let value = Int(part), (0...255).contains(value) else { return nil }
-            return value
+        if host.contains(":") {
+            let address = host.split(separator: "%", maxSplits: 1).first.map(String.init) ?? host
+            guard let bytes = ipv6Bytes(address) else { return false }
+            return isLocalIPv6(bytes)
         }
-        return octets.count == 4 ? octets : nil
+        if let address = ipv4(host) { return isLocalIPv4(address) }
+        if host == "localhost" || host.hasSuffix(".local") { return true }
+        // A single-label name, but only one that names a host rather than
+        // a number the resolver might still read as an address.
+        return !host.contains(".") && host.contains(where: { $0.isLetter }) && !host.hasPrefix("0x")
     }
 
-    private static func isLocalIPv4(_ o: [Int]) -> Bool {
-        o[0] == 127 || o[0] == 10
-            || (o[0] == 172 && (16...31).contains(o[1]))
-            || (o[0] == 192 && o[1] == 168)
-            || (o[0] == 169 && o[1] == 254)
+    /// The address in host byte order when the resolver would read `host`
+    /// as IPv4, in any of the dotted, decimal, octal or hex forms.
+    private static func ipv4(_ host: String) -> UInt32? {
+        var address = in_addr()
+        guard inet_aton(host, &address) != 0 else { return nil }
+        return UInt32(bigEndian: address.s_addr)
     }
 
-    private static func isLocalIPv6(_ host: String) -> Bool {
-        let address = host.split(separator: "%").first.map(String.init) ?? host
-        if address == "::1" { return true }
-        let first = address.split(separator: ":", omittingEmptySubsequences: false).first ?? ""
-        guard let word = UInt16(first, radix: 16) else { return false }
-        return word & 0xFFC0 == 0xFE80  // link-local fe80::/10
-            || word & 0xFE00 == 0xFC00  // unique local fc00::/7
+    private static func ipv6Bytes(_ host: String) -> [UInt8]? {
+        var address = in6_addr()
+        guard inet_pton(AF_INET6, host, &address) == 1 else { return nil }
+        return withUnsafeBytes(of: address) { Array($0) }
+    }
+
+    private static func isLocalIPv4(_ address: UInt32) -> Bool {
+        let a = address >> 24, b = (address >> 16) & 0xFF
+        return a == 127 || a == 10
+            || (a == 172 && (16...31).contains(b))
+            || (a == 192 && b == 168)
+            || (a == 169 && b == 254)
+    }
+
+    private static func isLocalIPv6(_ bytes: [UInt8]) -> Bool {
+        if bytes == [UInt8](repeating: 0, count: 15) + [1] { return true }  // ::1
+        // IPv4-mapped (::ffff:a.b.c.d): judge the IPv4 address inside.
+        if bytes[0..<10].allSatisfy({ $0 == 0 }), bytes[10] == 0xFF, bytes[11] == 0xFF {
+            return isLocalIPv4(bytes[12..<16].reduce(0) { $0 << 8 | UInt32($1) })
+        }
+        return (bytes[0] == 0xFE && bytes[1] & 0xC0 == 0x80)  // link-local fe80::/10
+            || bytes[0] & 0xFE == 0xFC  // unique local fc00::/7
     }
 }

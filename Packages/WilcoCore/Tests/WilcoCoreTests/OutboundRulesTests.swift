@@ -69,6 +69,7 @@ struct OutboundRulesTests {
     @Test(arguments: [
         "localhost", "127.0.0.1", "127.8.9.10", "10.0.0.4", "172.16.0.1", "172.31.255.2", "192.168.0.10",
         "169.254.3.4", "console.local", "console.local.", "lx-desk", "::1", "[::1]", "fe80::1", "fd12:3456::1",
+        "0177.0.0.1", "2130706433", "0x7f000001", "fe80::1%en0", "::ffff:192.168.1.4",
     ])
     func localHosts(_ host: String) {
         #expect(OutboundRules.isLocalNetwork(host))
@@ -77,6 +78,8 @@ struct OutboundRulesTests {
     @Test(arguments: [
         "203.0.113.5", "8.8.8.8", "172.32.0.1", "192.169.0.1", "example.com", "console.lan.example.org",
         "2001:db8::1", "", "  ",
+        // Forms the system resolver reads as public IPv4 addresses.
+        "134744072", "0x08080808", "010.8.8.8", "8.8.2056", "0x8.0x8.0x8.0x8", "::ffff:8.8.8.8",
     ])
     func remoteHosts(_ host: String) {
         #expect(!OutboundRules.isLocalNetwork(host))
