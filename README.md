@@ -21,7 +21,7 @@ The core app works and is in testing; it is not yet released. See
 | Automation: OSC, MIDI, webhooks, notifications, cue markers | Automatic updates (Sparkle) |
 | Post-show report with HTML, SRT and VTT export | Vor preset |
 | Appearance, including Light / Dark / Match System | |
-| Settings in one sidebar window: This Show (in setup order) and This Mac, with search (new; tested, not yet tried in the app) | |
+| Settings in one sidebar window: This Show (in setup order) and This Mac, with search and back/forward like System Settings (new; tested, not yet tried in the app) | |
 | Show-day safety in Settings › General: the Mac stays awake while capturing, a check before quitting mid-capture, open at login and start capture on open (off by default), old sessions moved to the Trash after a chosen period (new; tested, not yet tried in the app) | |
 | Configurations: saved show setups, load in one click, import/export (new) | |
 | Multichannel transcription benchmark, `wilco-bench` (see `docs/BENCHMARK.md`) | |

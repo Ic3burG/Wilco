@@ -1974,3 +1974,37 @@ warnings. Not yet tried in the app.
 - Still open from earlier: Settings search, the ⓘ popovers and Dark mode
   to hand check; check for updates automatically once Sparkle signing is
   set up.
+
+## 2026-11-25: Settings back and forward, one-row header
+
+### Features
+
+- **Back and forward in Settings**, as in System Settings: a joined
+  ‹ | › capsule left of the page title, with ⌘[ and ⌘]. Every page change
+  counts (sidebar, search result, or another window opening Settings at a
+  page); a new visit after going back drops the forward pages. History
+  lasts while the window is open. The logic is `NavigationHistory` in
+  WilcoCore.
+
+### Fixes
+
+- **One-row Settings header.** A SwiftUI `Settings` window uses the
+  preferences toolbar style, which centred the title and put the arrows on
+  a second row. The window now uses the unified toolbar
+  (`UnifiedToolbarWindow`), so the arrows and the left-aligned page title
+  share one row like System Settings. The scene's `.windowToolbarStyle`
+  modifier is ignored for `Settings`, so it is set on the `NSWindow`.
+
+### Testing
+
+Tested: 5 new `NavigationHistory` tests; all package tests pass and the app
+builds. Checked the header by screenshot in a worktree build, and ⌘[ / ⌘]
+moved between pages when driven through Accessibility. Not yet verified by
+the user.
+
+### Next steps / where we left off
+
+- Look at the header in light and dark mode, and with a long page title
+  (Speech Models) at the minimum window width.
+- Still open from earlier: try Settings › General in the app; Settings
+  search, the ⓘ popovers and Dark mode to hand check.
