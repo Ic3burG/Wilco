@@ -1924,3 +1924,53 @@ lands it on `main` once approved.
   right page, the ⓘ popovers, and Dark mode.
 - Small follow-ups: Speech could say when the chosen Whisper model isn't
   downloaded; empty search shows the system's "No Results" wording.
+
+## 2026-11-25: Settings › General: show-day safety
+
+General had one switch. At the user's request it now has six more, most of
+them about keeping a show safe:
+
+- **The Mac stays awake while capturing.** Nothing held off idle sleep or
+  App Nap before, so a long quiet stretch could stall capture unnoticed.
+  From Start to Stop Wilco now holds a system activity
+  (`GeneralPreferences.captureActivity`). **Keep the display awake while
+  capturing** (off by default) adds the screen and applies mid-show.
+- **Ask before quitting while capturing** (on by default). Quitting
+  mid-show used to end the session without a word. Cancel is the default
+  button; the save question still follows.
+- **Open Wilco at login** (`SMAppService`; macOS holds the state, and
+  Settings offers Login Items when it needs approval) and **Start capture
+  when Wilco opens** (off by default, noted in the Activity log), for a
+  show Mac that has to come back after a power cut.
+- **Keep sessions**: Forever (default), 30 Days, 90 Days or 1 Year. At
+  launch, before labelling or capture can open anything, older sessions go
+  to the Trash with every part (`.jsonl`, `.wilco`, `.diagnostics`,
+  `.clips`). Only names that are exactly `Session yyyy-MM-dd HHmm-ss` count;
+  paths are rebuilt from the name, never read from a file
+  (`SessionRetention`). The page shows the Transcripts folder's session
+  count and size, with Show in Finder.
+- **Dismissed suggestions**: how many Review findings are hidden, and Show
+  All Again. An open Review window reloads, so its next Dismiss can't write
+  the old list back.
+- Settings search knows all of them.
+
+Security: answered the §5 checklist by hand in spec §12.4
+(`/security-review` doesn't run here). `SessionRetention.swift` joined the
+*Deleting files* guardrail list, with tests for hostile names, a symlink
+pointing outside the folder, partial failures and a missing folder.
+
+### Testing
+
+Tested: 14 new tests; all package tests pass and the app builds without
+warnings. Not yet tried in the app.
+
+### Next steps / where we left off
+
+- Try General in the app: keep-awake during a long capture (`pmset -g
+  assertions` shows Wilco's hold), the quit check, and a relaunch with Keep
+  sessions on 1 Year (the Activity log says what moved; the Trash has it).
+- Open at login registers the exact build that turned it on; turn it off
+  before switching between a worktree build and the main one.
+- Still open from earlier: Settings search, the ⓘ popovers and Dark mode
+  to hand check; check for updates automatically once Sparkle signing is
+  set up.
