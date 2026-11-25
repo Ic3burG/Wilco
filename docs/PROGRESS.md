@@ -1595,6 +1595,10 @@ build's entitlements. Two fixes:
 - **Regex rules are bounded.** Long patterns and nested repeats such as
   `(a+)+` never match, and the rule editor warns; only the first 2,000
   characters of a line are searched; patterns are compiled once.
+- **Hosts are read the way the system reads them.** An automated review
+  caught that numeric forms such as `134744072` or `010.8.8.8` name public
+  addresses but passed as local. Hosts are now parsed with `inet_aton` and
+  `inet_pton`.
 - Spec §12.1 sets the rules for the MCP server and peer sharing before
   they are built: no wildcard CORS, Host/Origin checks and a token for
   MCP; pairing and size limits for peers; both off by default.
