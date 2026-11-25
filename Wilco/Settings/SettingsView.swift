@@ -42,6 +42,7 @@ struct SettingsView: View {
                 history.visit(from: from, to: to)
             }
         }
+        .background(UnifiedToolbarWindow())
         // Sidebar plus the 860-wide content area the pages were laid out for.
         .frame(minWidth: 1060, minHeight: 640)
     }
