@@ -1735,11 +1735,11 @@ one-click collapse in the app, and they work.
 
 ### Next steps / where we left off
 
-- Text size shortcuts in the matrix (waiting on the user): a column given
-  its own size from its ••• menu ignores View ▸ Larger/Smaller Text, and
-  ⌘0 doesn't clear column sizes. Proposed: ⌘+/⌘− step every column, ⌘0
-  also clears column sizes. Also check whether plain ⌘= works, since the
-  shortcut is registered as "+".
+- Text size shortcuts in the matrix: decided to leave as they are. The
+  user likes how zoom works now; making ⌘+/⌘−/⌘0 also step or clear
+  columns with their own size would be more complicated than it's worth.
+  A column's own size stays in its ••• menu; Reset Column Text Sizes
+  clears them all.
 
 ### Later the same day: voice changes off by default
 
