@@ -2,9 +2,7 @@ import SwiftUI
 import WilcoCore
 
 struct SettingsView: View {
-    @Environment(AppModel.self) private var model
     @AppStorage(SettingsPage.storageKey) private var storedPage = SettingsPage.audio.rawValue
-    @State private var status = SetupStatus()
 
     private var selection: Binding<SettingsPage> {
         Binding(
@@ -15,7 +13,7 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationSplitView {
-            SettingsSidebar(selection: selection, status: status)
+            SettingsSidebar(selection: selection)
         } detail: {
             VStack(spacing: 0) {
                 SettingsPageHeader(page: selection.wrappedValue)
@@ -24,19 +22,6 @@ struct SettingsView: View {
         }
         // Sidebar plus the 860-wide content area the pages were laid out for.
         .frame(minWidth: 1060, minHeight: 640)
-        .task(id: statusKey) {
-            // The Speech tick follows downloads made here or by a channel
-            // starting, so check again now and then while Settings is open.
-            while !Task.isCancelled {
-                await status.refresh(for: model.document, installer: model.installer)
-                try? await Task.sleep(for: .seconds(3))
-            }
-        }
-    }
-
-    private var statusKey: [String] {
-        [model.document.whisperModel, String(model.installer.generation)]
-            + model.document.channels.map { "\($0.engine.rawValue)|\($0.localeIdentifier)" }
     }
 
     @ViewBuilder

@@ -604,11 +604,11 @@ Single main window (`MainWindowView`) — `NavigationSplitView`:
 **Settings** (`SettingsPage`, persisted `UserDefaults` `settings.selectedPage`;
 missing or unknown → Audio). One window with a sidebar and a search field
 (`SettingsIndex`, a fixed list of setting names; never show text).
-*This Show*, numbered in setup order, each ticked when it looks set up
-(`ShowSetupProgress`): 1 Audio (show device, capture health), 2 Speech
+*This Show*, in setup order: Audio (show device, capture health), Speech
 (global vocabulary, new-channel engine and language, Whisper model choice,
-voice-change tuning), 3 Destinations (OSC), 4 Rules & Highlights (editors,
-test button), 5 Markers. *This Mac*: General, Appearance, Speech Models
+voice-change tuning), Destinations (OSC), Rules & Highlights (editors,
+test button), Markers. Every page has an icon; there are no step numbers
+or set-up ticks. *This Mac*: General, Appearance, Speech Models
 (every download: the show's channel models, and the learning voters
 including Apple long-form en-US), Learning (keep-clips switch, voter count,
 Delete All Clips; see "Session clips folder"). Not built yet, and

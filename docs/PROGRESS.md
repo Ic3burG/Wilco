@@ -1891,3 +1891,23 @@ been checked.
   - Speech could say when the chosen Whisper model isn't downloaded.
   - Empty search shows the system's "No Results" wording.
   - The window title reads "Settings" on every page.
+
+## 2026-11-25: Settings sidebar: icons instead of numbers, no ticks
+
+- At the user's request, the This Show pages in the Settings sidebar now
+  carry icons like the This Mac pages: waveform, speech bubble, paper
+  plane, bolt and flag. The step numbers and the green set-up ticks are
+  gone. The pages stay in setup order.
+- With the ticks gone, their logic went too: `ShowSetupProgress` and its
+  tests, `SettingsPage.setupStep`, and the 3-second model check that fed
+  the Speech tick (`SetupStatus`).
+
+### Testing
+
+Tested: all package tests pass and the app builds without warnings. Not
+verified in the app.
+
+### Next steps / where we left off
+
+- The hand check from the Settings redesign entry still applies, without
+  the ticks.

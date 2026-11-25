@@ -1,14 +1,10 @@
 import SwiftUI
 import WilcoCore
 
-/// The Settings sidebar: show pages numbered in setup order with a tick once
-/// each looks set up, then this Mac's pages. While searching, it lists the
-/// matching settings instead.
+/// The Settings sidebar: show pages in setup order, then this Mac's pages.
+/// While searching, it lists the matching settings instead.
 struct SettingsSidebar: View {
     @Binding var selection: SettingsPage
-    let status: SetupStatus
-
-    @Environment(AppModel.self) private var model
     @State private var query = ""
 
     var body: some View {
@@ -36,7 +32,7 @@ struct SettingsSidebar: View {
         )) {
             Section("This Show") {
                 ForEach(SettingsPage.allCases.filter { $0.area == .show }) { page in
-                    showRow(page).tag(page)
+                    Label(page.title, systemImage: page.symbol).tag(page)
                 }
             }
             Section("This Mac") {
@@ -45,35 +41,6 @@ struct SettingsSidebar: View {
                 }
             }
         }
-    }
-
-    private func showRow(_ page: SettingsPage) -> some View {
-        let done = isSetUp(page)
-        return HStack(spacing: 8) {
-            Text("\(page.setupStep ?? 0)")
-                .font(.caption2.bold())
-                .monospacedDigit()
-                .frame(width: 18, height: 18)
-                .background(Circle().fill(.quaternary))
-            Text(page.title)
-            Spacer(minLength: 4)
-            if done {
-                Image(systemName: "checkmark")
-                    .font(.caption.bold())
-                    .foregroundStyle(.green)
-            }
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(done ? "\(page.title), set up" : page.title)
-    }
-
-    private func isSetUp(_ page: SettingsPage) -> Bool {
-        ShowSetupProgress.isSetUp(
-            page,
-            show: model.document,
-            connectedDeviceUIDs: Set(model.devices.map(\.id)),
-            isInstalled: status.isInstalled
-        )
     }
 
     // MARK: Search
@@ -103,7 +70,7 @@ struct SettingsSidebar: View {
 }
 
 extension SettingsPage {
-    /// Sidebar symbol for a Mac page; show pages carry their step number.
+    /// The symbol beside a page in the sidebar.
     var symbol: String {
         switch self {
         case .general: "gearshape"

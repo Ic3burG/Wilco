@@ -1,7 +1,7 @@
 /// The pages of the Settings window, in sidebar order.
 ///
-/// Show pages hold what is saved in the show and are numbered in the order
-/// a new show is usually set up. Mac pages hold preferences and downloads
+/// Show pages hold what is saved in the show and are listed in the order a
+/// new show is usually set up. Mac pages hold preferences and downloads
 /// shared by every show on this Mac.
 public enum SettingsPage: String, CaseIterable, Sendable, Identifiable {
     case audio
@@ -44,18 +44,6 @@ public enum SettingsPage: String, CaseIterable, Sendable, Identifiable {
         case .appearance: "Appearance"
         case .speechModels: "Speech Models"
         case .learning: "Learning"
-        }
-    }
-
-    /// The step number shown beside a show page; `nil` for Mac pages.
-    public var setupStep: Int? {
-        switch self {
-        case .audio: 1
-        case .speech: 2
-        case .destinations: 3
-        case .rules: 4
-        case .markers: 5
-        case .general, .appearance, .speechModels, .learning: nil
         }
     }
 

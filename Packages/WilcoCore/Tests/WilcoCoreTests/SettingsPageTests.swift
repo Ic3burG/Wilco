@@ -3,11 +3,11 @@ import Testing
 
 @Suite("Settings pages and search")
 struct SettingsPageTests {
-    @Test func showStepsAreNumberedInSetupOrder() {
-        #expect(SettingsPage.allCases.filter { $0.area == .show }.map(\.setupStep) == [1, 2, 3, 4, 5])
+    @Test func showPagesComeInSetupOrderThenMacPages() {
         #expect(SettingsPage.allCases.filter { $0.area == .show }
             == [.audio, .speech, .destinations, .rules, .markers])
-        #expect(SettingsPage.allCases.filter { $0.area == .mac }.allSatisfy { $0.setupStep == nil })
+        #expect(SettingsPage.allCases.filter { $0.area == .mac }
+            == [.general, .appearance, .speechModels, .learning])
     }
 
     @Test func unknownStoredPageFallsBackToAudio() {
