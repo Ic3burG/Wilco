@@ -1762,3 +1762,26 @@ one-click collapse in the app, and they work.
   channel picking it up mid-capture; the app builds. Not verified in the
   app: turn clips on partway through a capture, then check the session's
   `.clips` folder and the Using size.
+
+## 2026-11-25: Post-show report tab order
+
+### Features
+
+- The report's tabs now run Channels, Chat log, Run of show, Review, and
+  the report opens on Channels. The exported HTML page uses the same
+  order (it has no Review tab) and also opens on Channels. The window's
+  order comes from the order of `ReportModel.Tab`'s cases.
+- Typing a search while on Channels still jumps to Chat log, since
+  Channels has no lines to search.
+
+### Testing
+
+Tested: package tests pass and the app builds. The export fixture
+(`report-v1.html`) was updated, including its Content-Security-Policy
+script hash: the hash follows the inline script, which now starts on
+`channels`. Verified: the user tried the new order and the Channels
+start in the app.
+
+### Next steps / where we left off
+
+- Nothing open from this change.
