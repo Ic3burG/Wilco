@@ -1746,7 +1746,19 @@ one-click collapse in the app, and they work.
 - New channels now start with Mark voice changes off; the letters aren't
   accurate enough yet to be on by default. Channels already in a show
   keep whatever they have. Tested; not verified in the app.
-- Learning question from the user: turning on Keep audio clips during a
-  capture does nothing until the next capture. The setting is read once
-  at capture start, and each channel's clip tap is fixed when its
-  transcriber starts.
+- Learning: Keep audio clips used to do nothing when turned on mid-capture
+  (read once at start; each channel's clip tap fixed when it started).
+  Channels now ask a per-session `ClipSwitch` line by line, so it can be
+  turned on or off during a capture. On: lines that start from then on are
+  kept. Off: nothing more is kept; saved clips stay. One folder and
+  manifest per session however often it's switched. The pane's "Using"
+  size updates every few seconds (it showed Zero KB during a capture
+  because it was only measured when the pane opened).
+- Security checklist (§5): local preference only, not in the show file;
+  nothing new read, sent or listened on; the size walk is off the main
+  thread; switching off now stops keeping at once. `/security-review`
+  couldn't run here (no `origin/HEAD`), so the checklist was done by hand.
+- Tested: package tests (761) pass, including the switch and a running
+  channel picking it up mid-capture; the app builds. Not verified in the
+  app: turn clips on partway through a capture, then check the session's
+  `.clips` folder and the Using size.
