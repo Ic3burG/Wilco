@@ -6,6 +6,7 @@ import WilcoTranscription
 struct LearningSettingsView: View {
     @Environment(AppModel.self) private var model
     @AppStorage(AppModel.keepClipsKey) private var keepClips = false
+    @AppStorage(SettingsPage.storageKey) private var selectedPage = SettingsPage.audio.rawValue
 
     @State private var size: Int64 = 0
     @State private var confirmingDelete = false
@@ -72,29 +73,13 @@ struct LearningSettingsView: View {
     // MARK: Voters
 
     /// The models that transcribe kept clips after a show, so their texts can
-    /// be compared. Two must agree before a clip counts.
+    /// be compared. Two must agree before a clip counts. They are downloaded
+    /// in Speech Models; this shows how many are ready.
     private var votersSection: some View {
         Section {
-            LabeledContent {
-                downloadStatus(for: .parakeetUltra, size: ultraSize)
-            } label: {
-                Text("Parakeet Ultra")
-                if let ultraSize { Text(ultraSize.formatted(.byteCount(style: .file))) }
-            }
-            LabeledContent("Apple Long-form") { appleLongFormStatus }
-            LabeledContent {
-                downloadStatus(for: .whisper(.large), size: whisperLargeSize)
-            } label: {
-                Text("Whisper large-v3")
-                Text(whisperLargeSize.map { $0.formatted(.byteCount(style: .file)) } ?? "(optional, about 3 GB)")
-            }
-            LabeledContent {
-                downloadStatus(for: .sortformer, size: sortformerSize)
-            } label: {
-                Text("Voice grouping")
-                Text(sortformerSize.map { $0.formatted(.byteCount(style: .file)) } ?? "Sortformer, about 240 MB")
-                Text("Groups voices after a show. The voice-change model (Languages) is needed too.")
-            }
+            LabeledContent("Installed", value: "\(installedVoters) of 4")
+            Button("Speech Models…") { selectedPage = SettingsPage.speechModels.rawValue }
+                .help("Download or remove the models learning uses")
         } header: {
             Text("Voters")
         } footer: {
@@ -102,41 +87,9 @@ struct LearningSettingsView: View {
         }
     }
 
-    @ViewBuilder
-    private var appleLongFormStatus: some View {
-        switch appleStatus {
-        case .installed:
-            Label("Installed", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
-        case .notInstalled:
-            Text("Install in Languages").foregroundStyle(.secondary)
-        case .downloading:
-            Text("Downloading…").foregroundStyle(.secondary)
-        case .unavailable:
-            Text("Needs macOS 26").foregroundStyle(.secondary)
-        case nil:
-            ProgressView().controlSize(.small)
-        }
-    }
-
-    @ViewBuilder
-    private func downloadStatus(for item: ModelInstaller.Item, size: Int64?) -> some View {
-        if let fraction = installer.progress[item] {
-            HStack {
-                ProgressView(value: fraction).frame(width: 120)
-                Text(fraction.formatted(.percent.precision(.fractionLength(0)))).monospacedDigit()
-            }
-        } else {
-            HStack {
-                if let error = installer.errors[item] {
-                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange).help(error)
-                }
-                if size != nil {
-                    Button("Remove") { installer.remove(item) }
-                } else {
-                    Button("Download") { installer.install(item) }
-                }
-            }
-        }
+    private var installedVoters: Int {
+        [ultraSize != nil, appleStatus == .installed, whisperLargeSize != nil, sortformerSize != nil]
+            .filter { $0 }.count
     }
 
     private func refreshVoters() async {

@@ -18,8 +18,11 @@ struct SettingsView: View {
             Tab("Audio", systemImage: "waveform") {
                 AudioSettingsView().settingsPane()
             }
-            Tab("Languages", systemImage: "character.bubble") {
-                LanguagesSettingsView().settingsPane()
+            Tab("Speech", systemImage: "character.bubble") {
+                SpeechSettingsView().settingsPane()
+            }
+            Tab("Speech Models", systemImage: "arrow.down.circle") {
+                SpeechModelsSettingsView().settingsPane()
             }
             Tab("Learning", systemImage: "graduationcap") {
                 LearningSettingsView().settingsPane()

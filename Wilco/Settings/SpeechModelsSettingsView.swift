@@ -3,9 +3,9 @@ import SwiftUI
 import WilcoCore
 import WilcoTranscription
 
-/// Show vocabulary, the shared Whisper model, and the speech model each
-/// channel's language and engine need, with ways to install and remove them.
-struct LanguagesSettingsView: View {
+/// Every speech model download on this Mac: the ones the current show's
+/// channels need, and the ones learning uses after a show.
+struct SpeechModelsSettingsView: View {
     @Environment(AppModel.self) private var model
 
     @State private var whisperSizes: [WhisperModel: Int64] = [:]
@@ -15,24 +15,20 @@ struct LanguagesSettingsView: View {
     @State private var parakeetVocabularyInstalled = false
     @State private var appleStatus: [ModelInstaller.Item: SpeechAssetStatus] = [:]
     @State private var reserved: [String] = []
-    @State private var newChannelLanguages: [LanguageOption] = []
+    @State private var ultraSize: Int64?
+    @State private var sortformerSize: Int64?
+    @State private var learningAppleStatus: SpeechAssetStatus?
+
+    /// Clips are labelled with the English long-form model.
+    private static let learningApple = ModelInstaller.Item.apple(.longForm, localeIdentifier: "en-US")
 
     var body: some View {
-        @Bindable var model = model
         Form {
-            Section {
-                VocabularySummaryRow(terms: $model.document.globalVocabulary)
-            } header: {
-                Text("Global Vocabulary")
-            } footer: {
-                Text("Applied to every channel. Rule phrases are biased in automatically, so there is no need to repeat them here.")
-            }
-
-            newChannelSection
+            channelModelsSection
             whisperSection
             parakeetSection
-            voiceSection
-            speechModelsSection
+            voiceModelSection
+            learningSection
         }
         .formStyle(.grouped)
         .task(id: refreshKey) {
@@ -45,64 +41,73 @@ struct LanguagesSettingsView: View {
         }
     }
 
-    // MARK: New channels
-
-    private var newChannelSection: some View {
-        Section {
-            Picker("Engine", selection: Binding(
-                get: { model.document.newChannelEngine },
-                set: { model.document.defaultEngine = $0 }
-            )) {
-                ForEach(SpeechEngine.selectable, id: \.self) { Text($0.displayName).tag($0) }
-            }
-            Picker("Language", selection: newChannelLanguage) {
-                ForEach(newChannelLanguages) { Text($0.name).tag($0.id) }
-                if !newChannelLanguages.contains(where: { $0.id == newChannelLanguage.wrappedValue }) {
-                    // Shown until the list loads, or for a language this engine lacks.
-                    Text(LanguageCatalog.displayName(for: newChannelLanguage.wrappedValue))
-                        .tag(newChannelLanguage.wrappedValue)
-                }
-            }
-            .task(id: model.document.newChannelEngine) {
-                newChannelLanguages = await LanguageCatalog.options(for: model.document.newChannelEngine)
-            }
-        } header: {
-            Text("New Channels")
-        } footer: {
-            Text("The engine and language a channel starts on when it is added to this show. Existing channels keep their own; change one in its inspector. Apple's engines offer regional English (United Kingdom, Australia and others); Whisper and Parakeet have one English.")
-        }
-    }
-
-    private var newChannelLanguage: Binding<String> {
-        Binding(
-            get: {
-                let engine = model.document.newChannelEngine
-                return LanguageCatalog.selection(
-                    for: model.document.newChannelLocale(for: engine), engine: engine, in: newChannelLanguages
-                )
-            },
-            set: { model.document.defaultLocaleIdentifier = $0 }
-        )
-    }
-
-    // MARK: Whisper
-
     private var installer: ModelInstaller { model.installer }
 
     private var selectedWhisper: WhisperModel {
         WhisperModel(rawValue: model.document.whisperModel) ?? .base
     }
 
+    // MARK: This show's channels
+
+    /// One row per language and engine the show's channels use, plus any
+    /// long-form language still reserved that no channel needs any more.
+    private struct Requirement: Hashable {
+        var engine: SpeechEngine
+        var localeIdentifier: String
+        var unused = false
+    }
+
+    private var requirements: [Requirement] {
+        var seen = Set<Requirement>()
+        var rows = model.document.channels
+            .map { Requirement(engine: $0.engine, localeIdentifier: $0.localeIdentifier) }
+            .filter { seen.insert($0).inserted }
+        let usedLongForm = Set(rows.filter { $0.engine == .longForm }.map { bcp47($0.localeIdentifier) })
+        rows += reserved
+            .filter { !usedLongForm.contains(bcp47($0)) }
+            .map { Requirement(engine: .longForm, localeIdentifier: $0, unused: true) }
+        return rows
+    }
+
+    private var channelModelsSection: some View {
+        Section {
+            if requirements.isEmpty {
+                Text("No channels configured yet.").foregroundStyle(.secondary)
+            }
+            ForEach(requirements, id: \.self) { row in
+                LabeledContent {
+                    if row.unused {
+                        Button("Remove") { installer.remove(.apple(.longForm, localeIdentifier: row.localeIdentifier)) }
+                            .help("Tell macOS Wilco no longer needs this language. It is deleted once no other app uses it.")
+                    } else if row.engine == .parakeet {
+                        parakeetStatus
+                    } else if !row.engine.isApple {
+                        status(for: .whisper(selectedWhisper), installed: whisperSizes[selectedWhisper] != nil)
+                    } else {
+                        let item = ModelInstaller.Item.apple(row.engine, localeIdentifier: row.localeIdentifier)
+                        status(for: item, apple: appleStatus[item])
+                    }
+                } label: {
+                    Text(languageName(row))
+                    Text(row.unused ? "\(row.engine.shortName) · not used by any channel" : row.engine.shortName)
+                }
+            }
+        } header: {
+            Text("For This Show's Channels")
+        } footer: {
+            Text("Models run entirely on this Mac — no audio leaves the machine. Downloading a model ahead of a show avoids a first-utterance delay. Dictation channels reuse the model macOS already installed for keyboard dictation, and every Whisper channel shares the one model below, so per-language downloads apply to the Apple long-form engine.")
+        }
+    }
+
+    // MARK: Whisper
+
     private var whisperSection: some View {
         Section {
-            Picker("Model", selection: Binding(
-                get: { selectedWhisper },
-                set: { model.document.whisperModel = $0.rawValue }
-            )) {
-                ForEach(WhisperModel.allCases, id: \.self) { Text($0.displayName).tag($0) }
-            }
-            LabeledContent("Download") {
+            LabeledContent {
                 status(for: .whisper(selectedWhisper), installed: whisperSizes[selectedWhisper] != nil)
+            } label: {
+                Text(selectedWhisper.displayName)
+                Text("Chosen for this show in Speech")
             }
             // Others on disk, e.g. a model used before switching. Each can be large.
             ForEach(WhisperModel.allCases.filter { $0 != selectedWhisper && whisperSizes[$0] != nil }, id: \.self) { other in
@@ -115,8 +120,6 @@ struct LanguagesSettingsView: View {
             }
         } header: {
             Text("Open (Whisper) Model")
-        } footer: {
-            Text("\(selectedWhisper.blurb) One multilingual model is shared by every channel on the Whisper engine, so this is the only Whisper download — the language is chosen per channel. This is the engine used on macOS earlier than 26.")
         }
     }
 
@@ -161,26 +164,10 @@ struct LanguagesSettingsView: View {
         }
     }
 
-    // MARK: Voice changes
+    // MARK: Voice model
 
-    private var voiceSection: some View {
-        @Bindable var model = model
-        return Section {
-            LabeledContent("Telling voices apart") {
-                HStack {
-                    Text("Stricter").foregroundStyle(.secondary)
-                    Slider(value: $model.document.voiceChanges.threshold, in: 0.3...0.7)
-                        .frame(width: 160)
-                    Text("Looser").foregroundStyle(.secondary)
-                    Text(model.document.voiceChanges.threshold.formatted(.number.precision(.fractionLength(2))))
-                        .monospacedDigit()
-                        .frame(width: 36, alignment: .trailing)
-                }
-            }
-            Stepper(
-                "New exchange after \(Int(model.document.voiceChanges.exchangeGap)) s",
-                value: $model.document.voiceChanges.exchangeGap, in: 5...60, step: 1
-            )
+    private var voiceModelSection: some View {
+        Section {
             LabeledContent("Voice model") { status(for: .voiceModel, installed: installer.voiceModelInstalled) }
             if installer.voiceModelInstalled {
                 LabeledContent {
@@ -191,64 +178,52 @@ struct LanguagesSettingsView: View {
                     if let voiceSize { Text(voiceSize.formatted(.byteCount(style: .file))) }
                 }
             }
-            Button("Restore Defaults") { model.document.voiceChanges = .standard }
-                .disabled(model.document.voiceChanges == .standard)
         } header: {
             Text("Voice Changes")
         } footer: {
-            Text("Letters mark who is speaking within one exchange, not who they are. Voiceprints are kept in memory only and never saved.")
+            Text("Needed by channels that mark voice changes, and by voice grouping below.")
         }
     }
 
-    // MARK: Apple and per-channel models
+    // MARK: Learning
 
-    /// One row per language and engine the show's channels use, plus any
-    /// long-form language still reserved that no channel needs any more.
-    private struct Requirement: Hashable {
-        var engine: SpeechEngine
-        var localeIdentifier: String
-        var unused = false
-    }
-
-    private var requirements: [Requirement] {
-        var seen = Set<Requirement>()
-        var rows = model.document.channels
-            .map { Requirement(engine: $0.engine, localeIdentifier: $0.localeIdentifier) }
-            .filter { seen.insert($0).inserted }
-        let usedLongForm = Set(rows.filter { $0.engine == .longForm }.map { bcp47($0.localeIdentifier) })
-        rows += reserved
-            .filter { !usedLongForm.contains(bcp47($0)) }
-            .map { Requirement(engine: .longForm, localeIdentifier: $0, unused: true) }
-        return rows
-    }
-
-    private var speechModelsSection: some View {
+    /// The models that transcribe kept clips after a show, so their texts can
+    /// be compared. Two must agree before a clip counts.
+    private var learningSection: some View {
         Section {
-            if requirements.isEmpty {
-                Text("No channels configured yet.").foregroundStyle(.secondary)
+            LabeledContent {
+                downloadStatus(for: .parakeetUltra, size: ultraSize)
+            } label: {
+                Text("Parakeet Ultra")
+                if let ultraSize { Text(ultraSize.formatted(.byteCount(style: .file))) }
             }
-            ForEach(requirements, id: \.self) { row in
-                LabeledContent {
-                    if row.unused {
-                        Button("Remove") { installer.remove(.apple(.longForm, localeIdentifier: row.localeIdentifier)) }
-                            .help("Tell macOS Wilco no longer needs this language. It is deleted once no other app uses it.")
-                    } else if row.engine == .parakeet {
-                        parakeetStatus
-                    } else if !row.engine.isApple {
-                        status(for: .whisper(selectedWhisper), installed: whisperSizes[selectedWhisper] != nil)
-                    } else {
-                        let item = ModelInstaller.Item.apple(row.engine, localeIdentifier: row.localeIdentifier)
-                        status(for: item, apple: appleStatus[item])
-                    }
-                } label: {
-                    Text(languageName(row))
-                    Text(row.unused ? "\(row.engine.shortName) · not used by any channel" : row.engine.shortName)
+            LabeledContent {
+                if learningAppleStatus == .unavailable {
+                    Text("Needs macOS 26").foregroundStyle(.secondary)
+                } else {
+                    status(for: Self.learningApple, apple: learningAppleStatus)
                 }
+            } label: {
+                Text("Apple Long-form")
+                Text("English (US)")
+            }
+            LabeledContent {
+                downloadStatus(for: .whisper(.large), size: whisperSizes[.large])
+            } label: {
+                Text("Whisper large-v3")
+                Text(whisperSizes[.large].map { $0.formatted(.byteCount(style: .file)) } ?? "(optional, about 3 GB)")
+            }
+            LabeledContent {
+                downloadStatus(for: .sortformer, size: sortformerSize)
+            } label: {
+                Text("Voice grouping")
+                Text(sortformerSize.map { $0.formatted(.byteCount(style: .file)) } ?? "Sortformer, about 240 MB")
+                Text("Groups voices after a show. The voice model above is needed too.")
             }
         } header: {
-            Text("Speech Models")
+            Text("For Learning")
         } footer: {
-            Text("Models run entirely on this Mac — no audio leaves the machine. Downloading a model ahead of a show avoids a first-utterance delay. Dictation channels reuse the model macOS already installed for keyboard dictation, and every Whisper channel shares the one model above, so per-language downloads apply to the Apple long-form engine.")
+            Text("Labelling needs at least two. A channel's own engine doesn't vote on its clips.")
         }
     }
 
@@ -262,17 +237,10 @@ struct LanguagesSettingsView: View {
     @ViewBuilder
     private func status(for item: ModelInstaller.Item, apple: SpeechAssetStatus?) -> some View {
         if let fraction = installer.progress[item] {
-            HStack {
-                ProgressView(value: fraction).frame(width: 120)
-                Text(fraction.formatted(.percent.precision(.fractionLength(0)))).monospacedDigit()
-            }
+            progress(fraction)
         } else {
             HStack {
-                if let error = installer.errors[item] {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
-                        .help(error)
-                }
+                errorBadge(for: item)
                 switch apple {
                 case .installed:
                     Label("Installed", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
@@ -286,6 +254,36 @@ struct LanguagesSettingsView: View {
                     ProgressView().controlSize(.small)
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func downloadStatus(for item: ModelInstaller.Item, size: Int64?) -> some View {
+        if let fraction = installer.progress[item] {
+            progress(fraction)
+        } else {
+            HStack {
+                errorBadge(for: item)
+                if size != nil {
+                    Button("Remove") { installer.remove(item) }
+                } else {
+                    Button("Download") { installer.install(item) }
+                }
+            }
+        }
+    }
+
+    private func progress(_ fraction: Double) -> some View {
+        HStack {
+            ProgressView(value: fraction).frame(width: 120)
+            Text(fraction.formatted(.percent.precision(.fractionLength(0)))).monospacedDigit()
+        }
+    }
+
+    @ViewBuilder
+    private func errorBadge(for item: ModelInstaller.Item) -> some View {
+        if let error = installer.errors[item] {
+            Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange).help(error)
         }
     }
 
@@ -315,6 +313,12 @@ struct LanguagesSettingsView: View {
         let voiceState = await Task.detached { (voice.isInstalled(), Self.folderSize(DataLocations.voiceModels)) }.value
         installer.setVoiceModelInstalled(voiceState.0)
         voiceSize = voiceState.0 ? voiceState.1 : nil
+        let ultra = installer.parakeetUltraStore
+        let sortformer = installer.sortformer
+        let learningSizes = await Task.detached { (ultra.sizeOnDisk(), sortformer.sizeOnDisk()) }.value
+        ultraSize = learningSizes.0
+        sortformerSize = learningSizes.1
+        learningAppleStatus = await SpeechAssets.status(engine: .longForm, localeIdentifier: "en-US")
         reserved = await SpeechAssets.reservedLocaleIdentifiers()
         var statuses: [ModelInstaller.Item: SpeechAssetStatus] = [:]
         for row in requirements where row.engine.isApple && !row.unused {
@@ -342,26 +346,6 @@ struct LanguagesSettingsView: View {
 
     private func bcp47(_ identifier: String) -> String {
         Locale(identifier: identifier).identifier(.bcp47)
-    }
-}
-
-private extension WhisperModel {
-    var displayName: String {
-        switch self {
-        case .tiny: "Tiny"
-        case .base: "Base"
-        case .small: "Small"
-        case .large: "Large v3"
-        }
-    }
-
-    var blurb: String {
-        switch self {
-        case .tiny: "Fastest, lowest accuracy. ~75 MB. For a busy rig or a slower Mac."
-        case .base: "A good balance of speed and accuracy on Apple silicon. ~145 MB."
-        case .small: "More accurate, noticeably slower. ~470 MB."
-        case .large: "Most accurate, heaviest. ~1.5 GB and slower to a settled line."
-        }
     }
 }
 
