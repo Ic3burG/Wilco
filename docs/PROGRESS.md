@@ -1829,3 +1829,65 @@ verified in the app.
   the Mac App Store (the GPL doesn't fit the store's terms).
 - First release: tag `v0.3.0` and publish a signed, notarized GitHub
   pre-release.
+
+## 2026-11-25: Settings redesign: sidebar split into This Show and This Mac
+
+Settings was eight toolbar tabs that mixed show settings with this Mac's
+preferences. To make it easier for people setting up their own shows, it
+is now one window with a sidebar and a search field. Design:
+`docs/superpowers/specs/2026-11-25-settings-redesign-design.md`; plan:
+`docs/superpowers/plans/2026-11-25-settings-redesign.md`.
+
+- **This Show**, numbered in setup order: 1 Audio, 2 Speech, 3
+  Destinations, 4 Rules & Highlights (was Automation), 5 Markers. Each
+  gets a green tick once it looks set up (`ShowSetupProgress`, tested):
+  - Audio: a channel, and a device that is System Default or plugged in.
+  - Speech: every channel's model installed. Parakeet needs its
+    vocabulary model too.
+  - Destinations: one switched on.
+  - Rules & Highlights: one rule or highlight switched on.
+  - Markers: never ticked.
+- **This Mac**: General, Appearance (was Look & Feel), Speech Models,
+  Learning.
+- Languages is split. **Speech** has the show's choices: vocabulary,
+  defaults for new channels, the Whisper model choice and voice tuning.
+  **Speech Models** has every download, including the learning voters
+  that were on Learning.
+  - New: an Install button for the English long-form model learning uses.
+    Before, it could only be installed through a channel.
+  - That model is never listed as unused (`SpeechModelNeeds`, tested).
+- Learning shows "N of 3 voters installed" and voice grouping on its own
+  line, with a **Speech Models…** button.
+- **Search** uses a fixed list of setting names (`SettingsIndex`,
+  tested), never text from the show. It matches word starts, ignoring
+  case and accents.
+- Each page opens with a title and a one-line summary. Footers keep their
+  first sentence, and the rest sits behind an ⓘ popover, with the wording
+  unchanged.
+- The window's minimum size is 1060×640 and it asks to be resizable. The
+  selected page is kept in `settings.selectedPage`; an unknown value opens
+  Audio.
+- Messages that named old tabs now say Rules & Highlights or Speech
+  Models. Nothing in `.wilco` files changed.
+
+### Testing
+
+Tested: all package tests pass (776, including 14 new ones) and the app
+builds without warnings. A whole-branch review found five problems, all
+fixed. The §5 security checklist was done by hand, since `/security-review`
+doesn't run in worktrees here. Not verified in the app: this session
+couldn't launch the app safely, so window resizing and the look haven't
+been checked.
+
+### Next steps / where we left off
+
+- Hand check in the app:
+  - Does the Settings window resize?
+  - Do the ticks change as a show is set up?
+  - Does search jump to the right page?
+  - Do the ⓘ popovers open?
+  - Does the header blend with the grouped form, in Dark mode too?
+- Small follow-ups from review:
+  - Speech could say when the chosen Whisper model isn't downloaded.
+  - Empty search shows the system's "No Results" wording.
+  - The window title reads "Settings" on every page.

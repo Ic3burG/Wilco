@@ -20,7 +20,8 @@ The core app works and is in testing; it is not yet released. See
 | On-device transcription (Apple speech on macOS 26+, Whisper, Parakeet with vocabulary and live preview) | MOS |
 | Automation: OSC, MIDI, webhooks, notifications, cue markers | Automatic updates (Sparkle) |
 | Post-show report with HTML, SRT and VTT export | Vor preset |
-| Look & Feel, including Light / Dark / Match System | |
+| Appearance, including Light / Dark / Match System | |
+| Settings in one sidebar window: This Show (numbered setup steps with ticks) and This Mac, with search (new; tested, not yet tried in the app) | |
 | Configurations: saved show setups, load in one click, import/export (new) | |
 | Multichannel transcription benchmark, `wilco-bench` (see `docs/BENCHMARK.md`) | |
 | Voice letters: who's speaking within an exchange, in the transcript and reports (new) | |
