@@ -19,7 +19,10 @@ final class SetupStatus {
         let whisperStore = installer.whisperStore
         let parakeetStore = installer.parakeetStore
         let (whisperOnDisk, parakeetOnDisk) = await Task.detached {
-            (whisperStore.sizeOnDisk(of: whisper) != nil, parakeetStore.isInstalled())
+            // Parakeet counts only with its vocabulary model too, as Speech Models
+            // shows it: a channel with vocabulary fails to start without it.
+            (whisperStore.sizeOnDisk(of: whisper) != nil,
+             parakeetStore.isInstalled() && parakeetStore.isVocabularyInstalled())
         }.value
 
         var found = Set<String>()

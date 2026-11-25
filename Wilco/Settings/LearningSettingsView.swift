@@ -78,7 +78,8 @@ struct LearningSettingsView: View {
     /// in Speech Models; this shows how many are ready.
     private var votersSection: some View {
         Section {
-            LabeledContent("Installed", value: "\(installedVoters) of 4")
+            LabeledContent("Voters installed", value: "\(installedVoters) of 3")
+            LabeledContent("Voice grouping", value: sortformerSize != nil ? "Installed" : "Not installed")
             Button("Speech Models…") { selectedPage = SettingsPage.speechModels.rawValue }
                 .help("Download or remove the models learning uses")
         } header: {
@@ -89,7 +90,7 @@ struct LearningSettingsView: View {
     }
 
     private var installedVoters: Int {
-        [ultraSize != nil, appleStatus == .installed, whisperLargeSize != nil, sortformerSize != nil]
+        [ultraSize != nil, appleStatus == .installed, whisperLargeSize != nil]
             .filter { $0 }.count
     }
 

@@ -10,9 +10,9 @@ public enum ParakeetError: Error, Equatable, LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .notInstalled:
-            "The Parakeet model isn't installed. Install it in Settings → Languages."
+            "The Parakeet model isn't installed. Install it in Settings › Speech Models."
         case .vocabularyNotInstalled:
-            "The Parakeet vocabulary model isn't installed. Install Parakeet again in Settings → Languages."
+            "The Parakeet vocabulary model isn't installed. Install it in Settings › Speech Models."
         }
     }
 }

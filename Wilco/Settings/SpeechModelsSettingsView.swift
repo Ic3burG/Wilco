@@ -20,7 +20,8 @@ struct SpeechModelsSettingsView: View {
     @State private var learningAppleStatus: SpeechAssetStatus?
 
     /// Clips are labelled with the English long-form model.
-    private static let learningApple = ModelInstaller.Item.apple(.longForm, localeIdentifier: "en-US")
+    private static let learningLocale = "en-US"
+    private static let learningApple = ModelInstaller.Item.apple(.longForm, localeIdentifier: learningLocale)
 
     var body: some View {
         Form {
@@ -62,10 +63,12 @@ struct SpeechModelsSettingsView: View {
         var rows = model.document.channels
             .map { Requirement(engine: $0.engine, localeIdentifier: $0.localeIdentifier) }
             .filter { seen.insert($0).inserted }
-        let usedLongForm = Set(rows.filter { $0.engine == .longForm }.map { bcp47($0.localeIdentifier) })
-        rows += reserved
-            .filter { !usedLongForm.contains(bcp47($0)) }
-            .map { Requirement(engine: .longForm, localeIdentifier: $0, unused: true) }
+        // The language learning labels clips with counts as used too, so
+        // installing it under For Learning never offers it for removal here.
+        rows += SpeechModelNeeds.unusedLongFormLocales(
+            reserved: reserved, channels: model.document.channels, alsoNeeded: [Self.learningLocale]
+        )
+        .map { Requirement(engine: .longForm, localeIdentifier: $0, unused: true) }
         return rows
     }
 
@@ -318,7 +321,7 @@ struct SpeechModelsSettingsView: View {
         let learningSizes = await Task.detached { (ultra.sizeOnDisk(), sortformer.sizeOnDisk()) }.value
         ultraSize = learningSizes.0
         sortformerSize = learningSizes.1
-        learningAppleStatus = await SpeechAssets.status(engine: .longForm, localeIdentifier: "en-US")
+        learningAppleStatus = await SpeechAssets.status(engine: .longForm, localeIdentifier: Self.learningLocale)
         reserved = await SpeechAssets.reservedLocaleIdentifiers()
         var statuses: [ModelInstaller.Item: SpeechAssetStatus] = [:]
         for row in requirements where row.engine.isApple && !row.unused {
@@ -342,10 +345,6 @@ struct SpeechModelsSettingsView: View {
             return LanguageCatalog.displayName(for: Locale.current.identifier)
         }
         return LanguageCatalog.displayName(for: row.localeIdentifier)
-    }
-
-    private func bcp47(_ identifier: String) -> String {
-        Locale(identifier: identifier).identifier(.bcp47)
     }
 }
 

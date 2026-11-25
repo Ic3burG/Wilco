@@ -110,7 +110,7 @@ actor ParakeetBooster {
     /// The session, or nil when boosting isn't available. A missing or
     /// broken CTC model never fails transcription: the channel carries on
     /// without boosting. Nothing is logged here because this runs for every
-    /// utterance; the Languages settings show whether the model is installed.
+    /// utterance; Settings › Speech Models shows whether the model is installed.
     func current() async -> VocabularyBoostingSession? {
         if let session { return session }
         if unavailable { return nil }
