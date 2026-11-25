@@ -23,7 +23,8 @@ struct LearningSettingsView: View {
             Section {
                 Toggle("Keep audio clips to learn from shows", isOn: $keepClips)
                     .onChange(of: keepClips) { _, isOn in model.keepingClipsChanged(to: isOn) }
-                Text("Short clips of unclear lines and exchanges, saved beside each session. They never leave this Mac. About 30–50 MB a show. Turned on during a capture, it keeps lines that start from then on; turned off, it stops at once and keeps what's saved.")
+                SettingsFooter("Short clips of unclear lines and exchanges, saved beside each session.",
+                               more: "They never leave this Mac. About 30–50 MB a show. Turned on during a capture, it keeps lines that start from then on; turned off, it stops at once and keeps what's saved.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 LabeledContent("Using", value: ByteCountFormatter.string(fromByteCount: size, countStyle: .file))
@@ -83,7 +84,7 @@ struct LearningSettingsView: View {
         } header: {
             Text("Voters")
         } footer: {
-            Text("Labelling needs at least two. A channel's own engine doesn't vote on its clips.")
+            SettingsFooter("Labelling needs at least two.", more: "A channel's own engine doesn't vote on its clips.")
         }
     }
 

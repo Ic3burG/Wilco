@@ -95,7 +95,7 @@ struct SpeechModelsSettingsView: View {
         } header: {
             Text("For This Show's Channels")
         } footer: {
-            Text("Models run entirely on this Mac — no audio leaves the machine. Downloading a model ahead of a show avoids a first-utterance delay. Dictation channels reuse the model macOS already installed for keyboard dictation, and every Whisper channel shares the one model below, so per-language downloads apply to the Apple long-form engine.")
+            SettingsFooter("Models run entirely on this Mac — no audio leaves the machine.", more: "Downloading a model ahead of a show avoids a first-utterance delay. Dictation channels reuse the model macOS already installed for keyboard dictation, and every Whisper channel shares the one model below, so per-language downloads apply to the Apple long-form engine.")
         }
     }
 
@@ -140,7 +140,7 @@ struct SpeechModelsSettingsView: View {
         } header: {
             Text("Parakeet Model")
         } footer: {
-            Text("Parakeet TDT v3 runs on the Neural Engine. One model serves every Parakeet channel and detects 25 European languages. Vocabulary applies to English channels, and terms shorter than 3 characters are ignored. ~600 MB with the vocabulary model.")
+            SettingsFooter("Parakeet TDT v3 runs on the Neural Engine.", more: "One model serves every Parakeet channel and detects 25 European languages. Vocabulary applies to English channels, and terms shorter than 3 characters are ignored. ~600 MB with the vocabulary model.")
         }
     }
 
@@ -223,7 +223,7 @@ struct SpeechModelsSettingsView: View {
         } header: {
             Text("For Learning")
         } footer: {
-            Text("Labelling needs at least two. A channel's own engine doesn't vote on its clips.")
+            SettingsFooter("Labelling needs at least two.", more: "A channel's own engine doesn't vote on its clips.")
         }
     }
 

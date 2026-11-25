@@ -194,7 +194,7 @@ private struct LabelEditor: View {
             } header: {
                 Text("Listen For")
             } footer: {
-                Text("Whole words, any letter case. Labels are checked top to bottom; the first match in a category wins.")
+                SettingsFooter("Whole words, any letter case.", more: "Labels are checked top to bottom; the first match in a category wins.")
             }
         }
         .formStyle(.grouped)
@@ -232,7 +232,7 @@ private struct DepartmentsEditor: View {
             } header: {
                 Text("Departments")
             } footer: {
-                Text("Matches “rigging go” and “go rigging”. “Cue 12 go” is matched even with no departments listed.")
+                SettingsFooter("Matches “rigging go” and “go rigging”.", more: "“Cue 12 go” is matched even with no departments listed.")
             }
         }
         .formStyle(.grouped)

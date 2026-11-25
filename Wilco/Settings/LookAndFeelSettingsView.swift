@@ -15,7 +15,7 @@ struct LookAndFeelSettingsView: View {
                 }
                 .pickerStyle(.segmented)
             } footer: {
-                Text("Choose Dark for a dark booth even when the rest of this Mac is in Light mode. Also in the View menu.")
+                SettingsFooter("Choose Dark for a dark booth even when the rest of this Mac is in Light mode.", more: "Also in the View menu.")
             }
 
             Section {
@@ -39,7 +39,7 @@ struct LookAndFeelSettingsView: View {
             } header: {
                 Text("Transcript")
             } footer: {
-                Text("With newest first, the most recent line sits at the top of the window and the log reads downward into the past. Auto-scroll applies everywhere, the matrix columns included.")
+                SettingsFooter("With newest first, the most recent line sits at the top of the window and the log reads downward into the past.", more: "Auto-scroll applies everywhere, the matrix columns included.")
             }
         }
         .formStyle(.grouped)

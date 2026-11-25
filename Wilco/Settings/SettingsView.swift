@@ -17,8 +17,10 @@ struct SettingsView: View {
         NavigationSplitView {
             SettingsSidebar(selection: selection, status: status)
         } detail: {
-            detail(for: selection.wrappedValue)
-                .navigationTitle(selection.wrappedValue.title)
+            VStack(spacing: 0) {
+                SettingsPageHeader(page: selection.wrappedValue)
+                detail(for: selection.wrappedValue)
+            }
         }
         .frame(minWidth: 900, minHeight: 600)
         .task(id: statusKey) {
@@ -62,7 +64,7 @@ private struct GeneralSettingsView: View {
             } header: {
                 Text("Quitting")
             } footer: {
-                Text("Quit is ⌥⌘Q. The show on screen is always kept and reopens as you left it; this asks whether to write your changes into the loaded configuration too. It only asks when the title says Edited or Not Saved.")
+                SettingsFooter("Quit is ⌥⌘Q.", more: "The show on screen is always kept and reopens as you left it; this asks whether to write your changes into the loaded configuration too. It only asks when the title says Edited or Not Saved.")
             }
         }
         .formStyle(.grouped)
@@ -85,7 +87,7 @@ private struct AudioSettingsView: View {
                 Button("Refresh Devices", systemImage: "arrow.clockwise", action: model.refreshDevices)
                     .help("Look again for connected audio devices")
             } footer: {
-                Text("Channels use the show's device unless their inspector names another, so several interfaces can be captured at once. Devices are matched by UID, so unplugging and replugging one restores the same patch.")
+                SettingsFooter("Channels use the show's device unless their inspector names another, so several interfaces can be captured at once.", more: "Devices are matched by UID, so unplugging and replugging one restores the same patch.")
             }
 
             Section {
@@ -108,7 +110,7 @@ private struct AudioSettingsView: View {
             } header: {
                 Text("Capture")
             } footer: {
-                Text("Wilco drives the audio device directly and watches for it going quiet. If the driver stalls or the interface is unplugged, capture is rebuilt automatically.")
+                SettingsFooter("Wilco drives the audio device directly and watches for it going quiet.", more: "If the driver stalls or the interface is unplugged, capture is rebuilt automatically.")
             }
         }
         .formStyle(.grouped)

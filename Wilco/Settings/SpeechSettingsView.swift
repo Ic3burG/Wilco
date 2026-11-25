@@ -17,7 +17,7 @@ struct SpeechSettingsView: View {
             } header: {
                 Text("Global Vocabulary")
             } footer: {
-                Text("Applied to every channel. Rule phrases are biased in automatically, so there is no need to repeat them here.")
+                SettingsFooter("Applied to every channel.", more: "Rule phrases are biased in automatically, so there is no need to repeat them here.")
             }
 
             newChannelSection
@@ -51,7 +51,7 @@ struct SpeechSettingsView: View {
         } header: {
             Text("New Channels")
         } footer: {
-            Text("The engine and language a channel starts on when it is added to this show. Existing channels keep their own; change one in its inspector. Apple's engines offer regional English (United Kingdom, Australia and others); Whisper and Parakeet have one English.")
+            SettingsFooter("The engine and language a channel starts on when it is added to this show.", more: "Existing channels keep their own; change one in its inspector. Apple's engines offer regional English (United Kingdom, Australia and others); Whisper and Parakeet have one English.")
         }
     }
 
@@ -84,7 +84,7 @@ struct SpeechSettingsView: View {
         } header: {
             Text("Open (Whisper) Model")
         } footer: {
-            Text("\(selectedWhisper.blurb) One multilingual model is shared by every channel on the Whisper engine, so this is the only Whisper download — the language is chosen per channel. This is the engine used on macOS earlier than 26.")
+            SettingsFooter(selectedWhisper.blurb, more: "One multilingual model is shared by every channel on the Whisper engine, so this is the only Whisper download — the language is chosen per channel. This is the engine used on macOS earlier than 26.")
         }
     }
 
@@ -113,7 +113,7 @@ struct SpeechSettingsView: View {
         } header: {
             Text("Voice Changes")
         } footer: {
-            Text("Letters mark who is speaking within one exchange, not who they are. Voiceprints are kept in memory only and never saved. The voice model is a download in Speech Models.")
+            SettingsFooter("Letters mark who is speaking within one exchange, not who they are.", more: "Voiceprints are kept in memory only and never saved. The voice model is a download in Speech Models.")
         }
     }
 }
