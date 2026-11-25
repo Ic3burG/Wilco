@@ -183,6 +183,23 @@ final class ReportModel {
         UserDefaults.standard.set(Array(keys).sorted(), forKey: Self.dismissedKey)
     }
 
+    /// Posted when Settings › General brings back every dismissed finding.
+    static let dismissedDidReset = Notification.Name("WilcoReviewDismissedDidReset")
+
+    /// How many findings are hidden, across every show.
+    static var dismissedCount: Int { UserDefaults.standard.stringArray(forKey: dismissedKey)?.count ?? 0 }
+
+    /// Brings back every dismissed finding. An open Review window reloads,
+    /// so its next Dismiss doesn't write the old list back.
+    static func resetDismissed() {
+        UserDefaults.standard.removeObject(forKey: dismissedKey)
+        NotificationCenter.default.post(name: dismissedDidReset, object: nil)
+    }
+
+    func reloadDismissed() {
+        dismissed = Set(UserDefaults.standard.stringArray(forKey: Self.dismissedKey) ?? [])
+    }
+
     /// Jumps from a finding to its lines in the chat log.
     func showLines(_ finding: Finding) {
         searchText = ""

@@ -19,6 +19,9 @@ struct ShowReportWindow: View {
             model.show = app.document
             model.refresh()
         }
+        .onReceive(NotificationCenter.default.publisher(for: ReportModel.dismissedDidReset)) { _ in
+            model.reloadDismissed()
+        }
     }
 }
 

@@ -110,6 +110,11 @@ extension AppModel {
     /// no file opens the name sheet and cancels the quit, since naming it
     /// can't happen inside the quit.
     func shouldQuit() -> Bool {
+        if GeneralPreferences.asksBeforeQuitting(
+            capturing: isCapturing, asksWhileCapturing: GeneralPreferences.asksToQuitWhileCapturing()
+        ), !confirmQuitWhileCapturing() {
+            return false
+        }
         refreshConfigurations()
         guard case .askToSave(let needsName) = ConfigurationRules.quitDecision(
             status: configurationStatus, asksToSave: Self.asksToSaveOnQuit
@@ -128,6 +133,21 @@ extension AppModel {
         case .alertSecondButtonReturn: return true
         default: return false
         }
+    }
+
+    /// Settings › General › Ask before quitting while capturing. Cancel is
+    /// the default button, so a stray Return keeps the show running.
+    private func confirmQuitWhileCapturing() -> Bool {
+        let alert = NSAlert()
+        alert.messageText = "Capture is running. Quit Wilco?"
+        alert.informativeText = "Quitting stops listening and ends this session. Rules stop firing until capture starts again. Lines already finished are saved."
+        alert.alertStyle = .warning
+        let quit = alert.addButton(withTitle: "Quit")
+        let cancel = alert.addButton(withTitle: "Cancel")
+        quit.hasDestructiveAction = true
+        quit.keyEquivalent = ""
+        cancel.keyEquivalent = "\r"
+        return alert.runModal() == .alertFirstButtonReturn
     }
 
     // MARK: Saving

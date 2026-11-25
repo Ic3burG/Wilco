@@ -79,7 +79,8 @@ struct SecurityGuardrailTests {
         Rule(name: "Deleting files", pattern: #"removeItem\(|trashItem\("#,
              allowed: [
                 "ClipFiles.swift", "ConfigurationStore.swift", "MarkerPresetStore.swift", "ClipDiarizers.swift",
-                "ClipKeeper.swift", "ParakeetModelStore.swift", "VoiceprintExtractor.swift", "WhisperChannelTranscriber.swift",
+                "ClipKeeper.swift", "ParakeetModelStore.swift", "SessionRetention.swift", "VoiceprintExtractor.swift",
+                "WhisperChannelTranscriber.swift",
              ],
              why: "A delete path must be built from a UUID or a fixed name inside Wilco's own folder, never from text in a file (model §4.1)."),
     ]

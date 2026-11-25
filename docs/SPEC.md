@@ -616,6 +616,35 @@ would join This Show: Integrations (Vor), Network (peers), MOS, MCP.
 License (→ remove). See
 `docs/superpowers/specs/2026-11-25-settings-redesign-design.md`.
 
+**Settings › General** (new in the rebuild; all `UserDefaults` on this Mac,
+none in a show, `GeneralPreferences`):
+
+- *Capture*: while capturing, the Mac is always kept from idle sleep and
+  App Nap (`ProcessInfo.beginActivity`, `.userInitiated` +
+  `.idleSystemSleepDisabled`, held from Start to Stop). **Keep the display
+  awake while capturing** (`capture.keepsDisplayAwake`, default false) adds
+  the display; changing it during a capture takes effect at once.
+- *Opening*: **Open Wilco at login** is `SMAppService.mainApp`; the system
+  holds it, Wilco only reads it back (and offers Login Items when macOS
+  wants approval). **Start capture when Wilco opens**
+  (`launch.startsCapture`, default false) presses Start once at launch and
+  notes it in the Activity log.
+- *Quitting*: **Ask before quitting while capturing**
+  (`quit.asksWhileCapturing`, default true): *"Capture is running. Quit
+  Wilco?"*, Quit / Cancel, Cancel the default. Asked before the save
+  question. Plus the save-on-quit switch (§3).
+- *Transcripts*: **Keep sessions** Forever (default) / 30 Days / 90 Days /
+  1 Year (`transcripts.keepFor`, `SessionRetention`). At launch, before
+  labelling or capture, sessions that started longer ago move to the Trash.
+  A session is every name in `Transcripts/` that is exactly
+  `Session yyyy-MM-dd HHmm-ss` (read as UTC; re-formatted and compared, so
+  near-misses don't count) plus `.jsonl`, `.wilco`, `.diagnostics` or
+  `.clips`; the paths are rebuilt from that name, and nothing else in the
+  folder is touched. Results go to the Activity log. The folder's session
+  count and size, and Show in Finder.
+- *Review*: **Dismissed suggestions** count and **Show All Again**, which
+  clears `review.dismissed`; an open Review window reloads.
+
 All user-facing copy is in `reference/strings.txt`; reuse it where it reads well.
 
 ## 10. Network protocols
@@ -771,6 +800,26 @@ A `.wilco` file can come from anyone, and its rules run on every line heard.
 
 `docs/SECURITY-MODEL.md` holds the full set of rules and the checklist for
 new features.
+
+### 12.4 Settings › General (checklist, model §5)
+
+1. Reads nothing new: retention looks at file *names* only, never contents.
+2. A show can't switch any of it on: every setting is this Mac's
+   `UserDefaults`; Start capture when Wilco opens defaults off.
+3, 4. Sends nothing and listens for nothing.
+5. Auto-start acts on nothing heard; it is the same as pressing Start, so
+   rules can fire with nobody at the Mac. That is the point of it, so it is
+   off by default and said so in its footer and the Activity log.
+6. Shows no text from a show or speech.
+7. Can't stall the main thread on bad input: names are parsed with a fixed
+   formatter; the folder size is measured off the main thread.
+8. Adds `ServiceManagement` (a system framework): no dependency,
+   entitlement or Info.plist key.
+9. Writes nothing new. It *removes*: only Wilco-named session files in
+   `Transcripts/`, to the Trash (so it can be undone), never a path read
+   from a file; a symlink is moved, not what it points to
+   (`SessionRetentionTests`). The *Deleting files* guardrail lists
+   `SessionRetention.swift` for this reason.
 
 ## 13. Open questions / not yet verified
 

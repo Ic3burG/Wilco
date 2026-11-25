@@ -44,23 +44,6 @@ struct SettingsView: View {
     }
 }
 
-private struct GeneralSettingsView: View {
-    @AppStorage(AppModel.asksToSaveOnQuitKey) private var asksToSaveOnQuit = true
-
-    var body: some View {
-        Form {
-            Section {
-                Toggle("Ask to save configuration changes when quitting", isOn: $asksToSaveOnQuit)
-            } header: {
-                Text("Quitting")
-            } footer: {
-                SettingsFooter("Quit is ⌥⌘Q.", more: "The show on screen is always kept and reopens as you left it; this asks whether to write your changes into the loaded configuration too. It only asks when the title says Edited or Not Saved.")
-            }
-        }
-        .formStyle(.grouped)
-    }
-}
-
 private struct AudioSettingsView: View {
     @Environment(AppModel.self) private var model
 

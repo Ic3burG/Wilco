@@ -48,7 +48,14 @@ public enum SettingsIndex {
         Entry("Marker Presets", .markers, keywords: ["preset", "restore", "defaults"]),
         Entry("Department Gos", .markers, keywords: ["departments", "go", "rigging"]),
         // General
+        Entry("Keep the Display Awake", .general, keywords: ["sleep", "screen", "app nap", "awake", "capture"]),
+        Entry("Open at Login", .general, keywords: ["login items", "startup", "launch", "boot"]),
+        Entry("Start Capture When Wilco Opens", .general, keywords: ["automatic", "launch", "power cut", "restart"]),
+        Entry("Ask Before Quitting While Capturing", .general, keywords: ["quit", "capture", "confirm"]),
         Entry("Ask to Save on Quit", .general, keywords: ["configuration", "quit", "save"]),
+        Entry("Keep Sessions", .general, keywords: ["transcripts", "delete", "trash", "old", "retention", "disk"]),
+        Entry("Transcripts Folder", .general, keywords: ["finder", "size", "sessions", "disk"]),
+        Entry("Dismissed Suggestions", .general, keywords: ["review", "findings", "reset", "hidden"]),
         // Appearance
         Entry("Theme", .appearance, keywords: ["dark", "light", "mode", "appearance"]),
         Entry("Text Size", .appearance, keywords: ["font", "bigger", "smaller"]),

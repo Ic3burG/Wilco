@@ -98,6 +98,8 @@ final class AppModel {
     @ObservationIgnored private var capture: MultiDeviceCapture!
     @ObservationIgnored private var deviceWatcher: AudioDevices?
     @ObservationIgnored private var meterTimer: Timer?
+    /// Held from Start to Stop; see `keepAwake()`.
+    @ObservationIgnored private var awakeActivity: (any NSObjectProtocol)?
     @ObservationIgnored private let transcription: TranscriptionController
     @ObservationIgnored private var writer: TranscriptWriter?
     /// One sound classifier for the app's lifetime; each session's recorder shares it.
@@ -177,7 +179,40 @@ final class AppModel {
             isCapturing: { [weak self] in self?.isCapturing ?? true },
             lastCaptureStop: { [weak self] in self?.lastCaptureStop }
         )
+        // Before labelling or capture can open a session's files.
+        moveOldSessionsToTrash()
         learning.start()
+        if GeneralPreferences.startsCaptureOnLaunch() {
+            Task { [weak self] in await self?.startCaptureOnLaunch() }
+        }
+    }
+
+    // MARK: Launch
+
+    /// Settings › General › Keep sessions. Runs only at launch; the result
+    /// goes to the Activity log, since nobody may be at the Mac to dismiss
+    /// an alert.
+    private func moveOldSessionsToTrash() {
+        let period = SessionRetention.Period.restored(from: UserDefaults.standard.string(forKey: SessionRetention.storageKey))
+        guard period != .never else { return }
+        let outcome = SessionRetention.moveExpired(in: DataLocations.transcripts, keepFor: period)
+        if outcome.moved > 0 {
+            let noun = outcome.moved == 1 ? "session" : "sessions"
+            log(ActivityEntry(kind: .info, ruleName: "Transcripts",
+                              detail: "Moved \(outcome.moved) \(noun) older than \(period.title.lowercased()) to the Trash"))
+        }
+        if !outcome.failed.isEmpty {
+            log(ActivityEntry(kind: .error, ruleName: "Transcripts",
+                              detail: "Could not move \(outcome.failed.count) old sessions to the Trash; they were left in place"))
+        }
+    }
+
+    /// Settings › General › Start capture when Wilco opens.
+    private func startCaptureOnLaunch() async {
+        await startCapture()
+        if isCapturing {
+            log(ActivityEntry(kind: .info, ruleName: "Capture", detail: "Started when Wilco opened (Settings › General)"))
+        }
     }
 
     // MARK: Channels
@@ -265,6 +300,7 @@ final class AppModel {
         learning.captureStarted()
         let start = Date()
         sessionStart = start
+        keepAwake()
         // One zone for the file name and every line, so the session reads
         // in local time wherever it's opened later.
         let zone = TimeZone.current
@@ -298,6 +334,7 @@ final class AppModel {
     func stopCapture() {
         sessionStart = nil
         lastCaptureStop = Date()
+        stopKeepingAwake()
         learning.captureStopped()
         capture.stop()
         meterTimer?.invalidate()
@@ -325,6 +362,26 @@ final class AppModel {
             }
             await recorder?.finish()
         }
+    }
+
+    // MARK: Keeping the Mac awake
+
+    /// While capturing, idle sleep and App Nap would stall capture with
+    /// nobody noticing, so the Mac is kept awake from Start to Stop.
+    private func keepAwake() {
+        stopKeepingAwake()
+        let options = GeneralPreferences.captureActivity(keepsDisplayAwake: GeneralPreferences.keepsDisplayAwake())
+        awakeActivity = ProcessInfo.processInfo.beginActivity(options: options, reason: "Capturing comms")
+    }
+
+    private func stopKeepingAwake() {
+        if let awakeActivity { ProcessInfo.processInfo.endActivity(awakeActivity) }
+        awakeActivity = nil
+    }
+
+    /// General's Keep the display awake changed; a running capture follows it.
+    func keepingDisplayAwakeChanged() {
+        if isCapturing { keepAwake() }
     }
 
     static let keepClipsKey = "learning.keepClips"
