@@ -41,14 +41,6 @@ struct LookAndFeelSettingsView: View {
             } footer: {
                 Text("With newest first, the most recent line sits at the top of the window and the log reads downward into the past. Auto-scroll applies everywhere, the matrix columns included.")
             }
-
-            Section("Matrix Columns") {
-                HStack {
-                    Button("Reset Widths") { withAnimation(look.animation) { look.matrix.resetWidths() } }
-                    Button("Reset Text Sizes") { look.matrix.resetFontSizes() }
-                    Button("Expand All") { withAnimation(look.animation) { look.matrix.expandAll() } }
-                }
-            }
         }
         .formStyle(.grouped)
     }

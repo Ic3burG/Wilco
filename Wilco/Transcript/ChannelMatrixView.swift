@@ -2,8 +2,9 @@ import SwiftUI
 import WilcoCore
 
 /// One column per channel, side by side. Columns can be resized by their
-/// right edge, collapsed to a narrow strip, and given their own text size;
-/// all of it is remembered per channel.
+/// right edge, collapsed to a narrow strip (one click on the column's icon),
+/// and given their own text size; all of it is remembered per channel. The
+/// toolbar fits, resets and expands them all at once.
 struct ChannelMatrixView: View {
     @Environment(AppModel.self) private var model
     @Environment(LookAndFeel.self) private var look
@@ -38,9 +39,22 @@ struct ChannelMatrixView: View {
                                 look.matrix.fit(columns.map(\.id), into: geometry.size.width - Double(columns.count))
                             }
                         }
+                        .help("Share the window's width among the open columns")
+                        Button("Reset Column Widths", systemImage: "arrow.uturn.backward.square") {
+                            withAnimation(look.animation) { look.matrix.resetWidths() }
+                        }
+                        .help("Put every column back to the standard width")
+                        .disabled(!look.matrix.hasCustomWidths)
+                        Button("Reset Column Text Sizes", systemImage: "textformat.size") {
+                            look.matrix.resetFontSizes()
+                        }
+                        .help("Columns follow the transcript text size again (View ▸ Larger/Smaller Text)")
+                        .disabled(!look.matrix.hasCustomFontSizes)
                         Button("Expand All Columns", systemImage: "rectangle.expand.vertical") {
                             withAnimation(look.animation) { look.matrix.expandAll() }
                         }
+                        .help("Open every collapsed column")
+                        .disabled(!look.matrix.hasCollapsedColumns)
                     }
                 }
             }
@@ -104,7 +118,9 @@ private struct MatrixColumnView: View {
 
     private var header: some View {
         HStack {
-            icon
+            Button(action: collapse) { icon.contentShape(.rect) }
+                .buttonStyle(.plain)
+                .help("Collapse \(title)")
             Text(title).fontWeight(.semibold).lineLimit(1)
             if case .group(_, let count) = column {
                 Text(count == 1 ? "1 channel" : "\(count) channels")
@@ -120,9 +136,7 @@ private struct MatrixColumnView: View {
                 Button("Larger Text") { look.matrix.setFontSize(fontSize + 1, for: column.id) }
                 Button("Smaller Text") { look.matrix.setFontSize(fontSize - 1, for: column.id) }
                 Divider()
-                Button("Collapse Column") {
-                    withAnimation(look.animation) { look.matrix.setCollapsed(true, for: column.id) }
-                }
+                Button("Collapse Column", action: collapse)
             } label: {
                 Image(systemName: "ellipsis.circle")
             }
@@ -133,6 +147,10 @@ private struct MatrixColumnView: View {
         }
         .padding(8)
         .background(.bar)
+    }
+
+    private func collapse() {
+        withAnimation(look.animation) { look.matrix.setCollapsed(true, for: column.id) }
     }
 
     /// A narrow strip with the channel's name running down it; click to expand.

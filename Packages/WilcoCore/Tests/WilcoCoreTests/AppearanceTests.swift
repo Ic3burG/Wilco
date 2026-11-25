@@ -45,6 +45,21 @@ struct MatrixLayoutTests {
         #expect(layout.fontSize(for: a, default: 15) == 15)
     }
 
+    @Test func reportsWhetherThereIsAnythingToReset() {
+        var layout = MatrixLayout()
+        #expect(!layout.hasCustomWidths && !layout.hasCustomFontSizes && !layout.hasCollapsedColumns)
+
+        layout.setWidth(300, for: a)
+        layout.setFontSize(18, for: b)
+        layout.setCollapsed(true, for: c)
+        #expect(layout.hasCustomWidths && layout.hasCustomFontSizes && layout.hasCollapsedColumns)
+
+        layout.resetWidths()
+        layout.resetFontSizes()
+        layout.expandAll()
+        #expect(!layout.hasCustomWidths && !layout.hasCustomFontSizes && !layout.hasCollapsedColumns)
+    }
+
     @Test func survivesAPropertyListRoundTrip() {
         var layout = MatrixLayout()
         layout.setWidth(321, for: a)

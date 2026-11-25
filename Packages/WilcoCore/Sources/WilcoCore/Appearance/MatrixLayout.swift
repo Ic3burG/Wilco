@@ -38,6 +38,9 @@ public struct MatrixLayout: Equatable, Sendable {
         for id in open { setWidth(each, for: id) }
     }
 
+    /// Whether any column has a width of its own (Reset Widths has work to do).
+    public var hasCustomWidths: Bool { !widths.isEmpty }
+
     public mutating func resetWidths() {
         widths = [:]
     }
@@ -56,6 +59,8 @@ public struct MatrixLayout: Equatable, Sendable {
         if isCollapsed { collapsed.insert(id) } else { collapsed.remove(id) }
     }
 
+    public var hasCollapsedColumns: Bool { !collapsed.isEmpty }
+
     public mutating func expandAll() {
         collapsed = []
     }
@@ -70,6 +75,9 @@ public struct MatrixLayout: Equatable, Sendable {
     public mutating func setFontSize(_ size: Double, for id: UUID) {
         fontSizes[id] = Self.clampedFontSize(size)
     }
+
+    /// Whether any column has a text size of its own.
+    public var hasCustomFontSizes: Bool { !fontSizes.isEmpty }
 
     public mutating func resetFontSizes() {
         fontSizes = [:]
