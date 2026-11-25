@@ -9,6 +9,9 @@ struct SettingsView: View {
 
     var body: some View {
         TabView {
+            Tab("General", systemImage: "gearshape") {
+                GeneralSettingsView().settingsPane()
+            }
             Tab("Look & Feel", systemImage: "textformat.size") {
                 LookAndFeelSettingsView().settingsPane()
             }
@@ -37,6 +40,23 @@ struct SettingsView: View {
 private extension View {
     func settingsPane() -> some View {
         frame(width: SettingsView.size.width, height: SettingsView.size.height)
+    }
+}
+
+private struct GeneralSettingsView: View {
+    @AppStorage(AppModel.asksToSaveOnQuitKey) private var asksToSaveOnQuit = true
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Ask to save configuration changes when quitting", isOn: $asksToSaveOnQuit)
+            } header: {
+                Text("Quitting")
+            } footer: {
+                Text("Quit is ⌥⌘Q. The show on screen is always kept and reopens as you left it; this asks whether to write your changes into the loaded configuration too. It only asks when the title says Edited or Not Saved.")
+            }
+        }
+        .formStyle(.grouped)
     }
 }
 

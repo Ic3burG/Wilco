@@ -30,6 +30,16 @@ struct ConfigurationRulesTests {
         #expect(Rules.loadDecision(target: b, loaded: a, status: .saved, isCapturing: false) == .load)
     }
 
+    @Test func quitDecision() {
+        // Asks only when the setting is on and there is something unsaved.
+        #expect(Rules.quitDecision(status: .saved, asksToSave: true) == .quit)
+        #expect(Rules.quitDecision(status: .edited, asksToSave: false) == .quit)
+        #expect(Rules.quitDecision(status: .notSaved, asksToSave: false) == .quit)
+        #expect(Rules.quitDecision(status: .edited, asksToSave: true) == .askToSave(needsName: false))
+        // No file behind the working copy: saving means naming a new one.
+        #expect(Rules.quitDecision(status: .notSaved, asksToSave: true) == .askToSave(needsName: true))
+    }
+
     @Test func saveNameCheck() {
         let arena = ConfigurationSummary(id: UUID(), name: "Arena", channelCount: 0, savedAt: .now)
         let theatre = ConfigurationSummary(id: UUID(), name: "Theatre", channelCount: 0, savedAt: .now)

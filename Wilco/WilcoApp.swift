@@ -2,8 +2,19 @@ import SwiftUI
 import WilcoCore
 import WilcoTranscription
 
+/// Asks about unsaved configuration changes before the app quits, however
+/// the quit was started (menu, shortcut, Dock or logging out).
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    weak var model: AppModel?
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        model?.shouldQuit() ?? true ? .terminateNow : .terminateCancel
+    }
+}
+
 @main
 struct WilcoApp: App {
+    @NSApplicationDelegateAdaptor private var appDelegate: AppDelegate
     @State private var look = LookAndFeel()
     @State private var model = AppModel()
     @State private var updater = Updater()
@@ -17,6 +28,7 @@ struct WilcoApp: App {
             MainWindowView()
                 .environment(model)
                 .environment(look)
+                .onAppear { appDelegate.model = model }
                 .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
                     model.stopCapture()
                     model.saveNow()
@@ -40,6 +52,12 @@ struct WilcoApp: App {
         .commands {
             CommandGroup(after: .appInfo) {
                 CheckForUpdatesButton(updater: updater)
+            }
+            // ⌥⌘Q rather than ⌘Q, so a slip of the hand can't end a show.
+            // (⌘⇧Q is macOS's Log Out.)
+            CommandGroup(replacing: .appTermination) {
+                Button("Quit Wilco") { NSApplication.shared.terminate(nil) }
+                    .keyboardShortcut("q", modifiers: [.command, .option])
             }
             CommandGroup(after: .sidebar) {
                 ShowReportCommand()

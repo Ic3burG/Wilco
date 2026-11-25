@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 import WilcoCore
 
 /// Saved show setups. `document` (autosaved to `Current.wilco`) is the
@@ -93,6 +93,40 @@ extension AppModel {
         } catch {
             lastMessage = "Could not open that configuration: \(error.localizedDescription)"
             refreshConfigurations()
+        }
+    }
+
+    // MARK: Quitting
+
+    /// Settings › General: ask about unsaved configuration changes on quit.
+    static let asksToSaveOnQuitKey = "quit.asksToSaveConfiguration"
+
+    static var asksToSaveOnQuit: Bool {
+        UserDefaults.standard.object(forKey: asksToSaveOnQuitKey) as? Bool ?? true
+    }
+
+    /// Whether quitting may go ahead now. Asks first when the setting is on
+    /// and the configuration has unsaved changes. Saving a working copy with
+    /// no file opens the name sheet and cancels the quit, since naming it
+    /// can't happen inside the quit.
+    func shouldQuit() -> Bool {
+        refreshConfigurations()
+        guard case .askToSave(let needsName) = ConfigurationRules.quitDecision(
+            status: configurationStatus, asksToSave: Self.asksToSaveOnQuit
+        ) else { return true }
+
+        let alert = NSAlert()
+        alert.messageText = "Save changes to “\(document.name)” before quitting?"
+        alert.informativeText = needsName
+            ? "This show isn't saved as a configuration. If you don't save, Wilco still reopens with it as you left it."
+            : "If you don't save, the configuration keeps its saved version. Wilco still reopens with your changes, marked Edited."
+        alert.addButton(withTitle: needsName ? "Save As New…" : "Save")
+        alert.addButton(withTitle: "Don't Save")
+        alert.addButton(withTitle: "Cancel")
+        switch alert.runModal() {
+        case .alertFirstButtonReturn: return saveConfiguration()
+        case .alertSecondButtonReturn: return true
+        default: return false
         }
     }
 

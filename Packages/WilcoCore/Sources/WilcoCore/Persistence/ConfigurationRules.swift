@@ -33,6 +33,25 @@ public enum ConfigurationRules {
         return .load
     }
 
+    public enum QuitDecision: Equatable, Sendable {
+        case quit
+        /// Ask Save / Don't Save / Cancel. `needsName` when no file backs
+        /// the working copy, so saving means Save As New.
+        case askToSave(needsName: Bool)
+    }
+
+    /// Quitting never loses the working copy (it autosaves), only the
+    /// chance to write it into the configuration, so it asks just when the
+    /// user wants that and there is something unsaved.
+    public static func quitDecision(status: Status, asksToSave: Bool) -> QuitDecision {
+        guard asksToSave else { return .quit }
+        switch status {
+        case .saved: return .quit
+        case .edited: return .askToSave(needsName: false)
+        case .notSaved: return .askToSave(needsName: true)
+        }
+    }
+
     /// Why the working copy can't be saved under its current name, if it can't.
     public static func saveNameCheck(name: String, loaded: UUID?, in summaries: [ConfigurationSummary]) -> ConfigurationError? {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)

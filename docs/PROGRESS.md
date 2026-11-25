@@ -1789,3 +1789,25 @@ start in the app.
 ### Next steps / where we left off
 
 - Nothing open from this change.
+
+## 2026-11-25: Ask to save on quit, Quit moves to ⌥⌘Q
+
+- Settings has a new General tab with **Ask to save configuration changes
+  when quitting** (`quit.asksToSaveConfiguration`, on by default). When the
+  title shows Edited or Not Saved, quitting asks Save / Don't Save / Cancel.
+  Not Saved offers Save As New…, which opens the name sheet and cancels the
+  quit. The working copy autosaves either way, so Don't Save loses nothing:
+  Wilco reopens with the changes, marked Edited. The rule is
+  `ConfigurationRules.quitDecision` (tested); the prompt runs from an app
+  delegate, so it covers the menu, the shortcut, the Dock and logging out.
+- Quit Wilco is ⌥⌘Q; ⌘Q does nothing, so a slip can't end a show. The user
+  asked for ⌘⇧Q, but that's macOS's Log Out, so they chose ⌥⌘Q instead.
+
+Tested: all package tests pass and the app builds without warnings. Not
+verified in the app.
+
+### Next steps / where we left off
+
+- Hand check: ⌥⌘Q quits and ⌘Q doesn't; edit a show and quit (asks), then
+  Don't Save and relaunch (marked Edited); Save; turn the setting off (quits
+  without asking); quit from the Dock.
