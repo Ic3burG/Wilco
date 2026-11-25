@@ -1811,3 +1811,21 @@ verified in the app.
 - Hand check: ⌥⌘Q quits and ⌘Q doesn't; edit a show and quit (asks), then
   Don't Save and relaunch (marked Edited); Save; turn the setting off (quits
   without asking); quit from the Dock.
+
+## 2026-11-25: GPL-3.0 license
+
+- Wilco is licensed GPL-3.0-or-later so every distributed version stays open
+  source. `LICENSE` is the unmodified text from gnu.org, and the README has a
+  License section. All dependencies (WhisperKit and Sparkle under MIT,
+  FluidAudio and Swift Argument Parser under Apache-2.0) are compatible.
+- Why GPL rather than MIT: the goal is that Wilco stays open forever, and
+  only copyleft keeps forks open too. AGPL adds nothing for an app that runs
+  on the user's own Mac.
+
+### Next steps / where we left off
+
+- Before taking outside contributions, decide whether to ask contributors to
+  agree to a short contributor agreement, which keeps the option to ship on
+  the Mac App Store (the GPL doesn't fit the store's terms).
+- First release: tag `v0.3.0` and publish a signed, notarized GitHub
+  pre-release.

@@ -57,3 +57,18 @@ Requires macOS 15 or later and Xcode 26 or later.
 | `Config/` | Info.plist and entitlements |
 | `docs/SPEC.md` | Data formats, protocols, UI and known bugs |
 | `docs/PROGRESS.md` | Work log, updated at the end of every session |
+
+## License
+
+Copyright © 2026 Omar Davis.
+
+Wilco is free software: you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; see [`LICENSE`](LICENSE) for the full terms.
+
+Anyone who distributes Wilco, or a changed version of it, must release the
+source under the same license. Its dependencies (WhisperKit, FluidAudio,
+Sparkle, Swift Argument Parser) are under MIT or Apache-2.0 licenses, which
+are compatible with GPL-3.0.
