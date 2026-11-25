@@ -12,13 +12,17 @@ struct SettingsView: View {
     }
 
     var body: some View {
-        NavigationSplitView {
+        // The sidebar always shows, as in System Settings: no collapse button,
+        // and dragging the divider can't hide it.
+        NavigationSplitView(columnVisibility: .constant(.all)) {
             SettingsSidebar(selection: selection)
+                .toolbar(removing: .sidebarToggle)
         } detail: {
             VStack(spacing: 0) {
                 SettingsPageHeader(page: selection.wrappedValue)
                 detail(for: selection.wrappedValue)
             }
+            .navigationTitle(selection.wrappedValue.title)
         }
         // Sidebar plus the 860-wide content area the pages were laid out for.
         .frame(minWidth: 1060, minHeight: 640)

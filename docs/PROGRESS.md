@@ -1901,6 +1901,11 @@ been checked.
 - With the ticks gone, their logic went too: `ShowSetupProgress` and its
   tests, `SettingsPage.setupStep`, and the 3-second model check that fed
   the Speech tick (`SetupStatus`).
+- A look closer to System Settings: each page's symbol sits white on a
+  coloured rounded tile (`SettingsIcon`; the colours differ between
+  neighbouring pages), search results carry the same tiles, the sidebar
+  collapse button is gone and the sidebar can't be collapsed, and the
+  page name moved to the title bar with the one-line summary under it.
 
 ### Testing
 

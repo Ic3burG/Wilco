@@ -1,20 +1,18 @@
 import SwiftUI
 import WilcoCore
 
-/// The title and one-line summary at the top of each Settings page, so a
-/// newcomer can tell what the page is for before reading its controls.
+/// The one-line summary at the top of each Settings page, so a newcomer can
+/// tell what the page is for before reading its controls. The page's name
+/// is in the title bar, as in System Settings.
 struct SettingsPageHeader: View {
     let page: SettingsPage
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(page.title).font(.title2.bold())
-            Text(page.summary).foregroundStyle(.secondary)
-        }
+        Text(page.summary)
+            .foregroundStyle(.secondary)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 20)
-        .padding(.top, 16)
-        .accessibilityElement(children: .combine)
+        .padding(.top, 12)
     }
 }
 
