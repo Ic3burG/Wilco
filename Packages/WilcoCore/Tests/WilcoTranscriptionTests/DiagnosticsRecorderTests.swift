@@ -99,7 +99,10 @@ import WilcoCore
         for minute in 0..<3 { r.tap.sink(MeterReport(row: row(minute), clip: clip())) }
         let began = Date()
         await r.finish()
-        #expect(Date().timeIntervalSince(began) < 5)
+        // The classifier never answers (an hour), so finish must stop after
+        // the 0.2 s hold. The bound is loose because a busy CI runner has
+        // taken 6 s here; it only has to rule out waiting on the classifier.
+        #expect(Date().timeIntervalSince(began) < 30)
         #expect(fileRows(url).map(\.minute) == [0, 1, 2])
     }
 
