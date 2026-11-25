@@ -1759,9 +1759,12 @@ one-click collapse in the app, and they work.
   thread; switching off now stops keeping at once. `/security-review`
   couldn't run here (no `origin/HEAD`), so the checklist was done by hand.
 - Tested: package tests (761) pass, including the switch and a running
-  channel picking it up mid-capture; the app builds. Not verified in the
-  app: turn clips on partway through a capture, then check the session's
-  `.clips` folder and the Using size.
+  channel picking it up mid-capture; the app builds.
+- Verified (2026-11-25): the user switched clips during a 105 s, 3-channel
+  test capture. Its `.clips` folder shows clips on from the start, off from
+  about 60 s and on again from about 79 s: 65 clips, each with its WAV and
+  manifest entry, none dropped, one folder and manifest for the whole
+  session.
 
 ## 2026-11-25: Post-show report tab order
 
