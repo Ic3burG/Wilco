@@ -1909,10 +1909,18 @@ been checked.
 
 ### Testing
 
-Tested: all package tests pass and the app builds without warnings. Not
-verified in the app.
+Tested: all package tests pass and the app builds without warnings.
+Verified: the user tried the new sidebar look in the app and approved it.
+
+Tooling: `~/Projects/Wilco/Worktrees` is a visible shortcut to
+`.claude/worktrees` (ignored through `.git/info/exclude`), so a branch
+can be built from `Worktrees/<name>/Wilco.xcodeproj` without showing
+hidden files. Work stays on its branch while being tried; `/endsession`
+lands it on `main` once approved.
 
 ### Next steps / where we left off
 
-- The hand check from the Settings redesign entry still applies, without
-  the ticks.
+- Still to hand check from the Settings redesign: search jumping to the
+  right page, the ⓘ popovers, and Dark mode.
+- Small follow-ups: Speech could say when the chosen Whisper model isn't
+  downloaded; empty search shows the system's "No Results" wording.
