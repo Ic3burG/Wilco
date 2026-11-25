@@ -1705,3 +1705,39 @@ Repair changes nothing in the shows and transcripts on this Mac (5 shows,
   Chrome (the security policy is new); import of a shared show.
 - Optional: CodeQL for Swift in CI; pinning model files by hash.
 - New features answer the checklist in `docs/SECURITY-MODEL.md` §5.
+
+## 2026-11-24: Look & Feel trimmed, matrix column controls in the matrix
+
+### Settings
+
+- The Motion setting (Smooth, Snappy, Bouncy, Still) is gone. It added a
+  choice nobody needed, and the sidebar (an `NSOutlineView`) never
+  followed it even though the footer said it did. Animation is now one
+  fixed eased style and still switches off when macOS Reduce Motion is
+  on. The old `transcript.motion` preference is ignored.
+- The Matrix Columns section is gone from Look & Feel; its buttons moved
+  to the matrix.
+
+### Matrix
+
+- The toolbar now has Fit, Reset Column Widths, Reset Column Text Sizes
+  and Expand All. Each reset greys out when there is nothing to reset
+  (`MatrixLayout.hasCustomWidths`, `hasCustomFontSizes`,
+  `hasCollapsedColumns`, with a test).
+- Clicking a column's icon collapses it in one click. Collapse Column
+  stays in the column's ••• menu.
+
+### Testing
+
+Tested: all package tests pass and the app builds without warnings. Not
+verified in the app.
+
+### Next steps / where we left off
+
+- Hand check: the matrix toolbar in a narrow window (detail toolbar items
+  can spill into the `>>` overflow); the icon click collapses a column.
+- Text size shortcuts in the matrix (waiting on the user): a column given
+  its own size from its ••• menu ignores View ▸ Larger/Smaller Text, and
+  ⌘0 doesn't clear column sizes. Proposed: ⌘+/⌘− step every column, ⌘0
+  also clears column sizes. Also check whether plain ⌘= works, since the
+  shortcut is registered as "+".
