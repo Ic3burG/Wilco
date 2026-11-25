@@ -23,9 +23,10 @@ struct SessionFile: Identifiable, Hashable {
 @Observable
 final class ReportModel {
     enum Tab: String, CaseIterable {
-        case runOfShow = "Run of show"
-        case log = "Chat log"
+        // Declaration order is the order of the picker in the window.
         case channels = "Channels"
+        case log = "Chat log"
+        case runOfShow = "Run of show"
         case review = "Review"
     }
 

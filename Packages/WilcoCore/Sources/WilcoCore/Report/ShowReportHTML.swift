@@ -27,7 +27,7 @@ public enum ShowReportHTML {
         <div class="bar">
           <div class="where"><b>Post-Show</b><span>\(session)</span></div>
           <nav class="tabs">
-            <button class="on" data-tab="run">Run of show</button><button data-tab="log">Chat log</button><button data-tab="channels">Channels</button>
+            <button data-tab="channels">Channels</button><button data-tab="log">Chat log</button><button class="on" data-tab="run">Run of show</button>
           </nav>
           <input type="search" id="q" placeholder="Search words, or &quot;an exact phrase&quot;" autocomplete="off">
         </div>

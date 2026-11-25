@@ -511,7 +511,8 @@ A report uses the markers of the show the session was recorded with
 lists: `reference/strings.txt` 18055–18080 and 27440–27490.
 
 `ShowReportWindow` opens any past session (`ReportModel`, sessions =
-`Transcripts/*.jsonl`) with tabs **Run of show / Chat log / Channels**,
+`Transcripts/*.jsonl`) with tabs **Channels / Chat log / Run of show / Review** (in that order;
+the window still opens on Run of show; the HTML export has the first three),
 search (`ShowReportSearch`) with channel and category filters, timeline bars
 (`ShowReport.Bucket`), per-channel message/word stats, and **export to a
 self-contained HTML page** (template with light/dark CSS, `<nav class="tabs">`)
