@@ -3,6 +3,10 @@ import WilcoCore
 
 struct SettingsView: View {
     @AppStorage(SettingsPage.storageKey) private var storedPage = SettingsPage.audio.rawValue
+    @State private var history = NavigationHistory<SettingsPage>()
+    /// The page Back or Forward just moved to, so that move isn't recorded
+    /// as a new visit.
+    @State private var stepTarget: SettingsPage?
 
     private var selection: Binding<SettingsPage> {
         Binding(
@@ -23,9 +27,48 @@ struct SettingsView: View {
                 detail(for: selection.wrappedValue)
             }
             .navigationTitle(selection.wrappedValue.title)
+            .toolbar {
+                ToolbarItem(placement: .navigation) { backForward }
+            }
+        }
+        // Any page change counts: sidebar, search, or another window opening
+        // Settings at a page.
+        .onChange(of: storedPage) { old, new in
+            let from = SettingsPage.restored(from: old)
+            let to = SettingsPage.restored(from: new)
+            if stepTarget == to {
+                stepTarget = nil
+            } else {
+                history.visit(from: from, to: to)
+            }
         }
         // Sidebar plus the 860-wide content area the pages were laid out for.
         .frame(minWidth: 1060, minHeight: 640)
+    }
+
+    /// Back and forward arrows joined in one capsule, left of the page title,
+    /// as in System Settings. ⌘[ and ⌘] work too.
+    private var backForward: some View {
+        ControlGroup {
+            Button("Back", systemImage: "chevron.backward") { step(back: true) }
+                .disabled(!history.canGoBack)
+                .keyboardShortcut("[", modifiers: .command)
+                .help("See the previous page")
+            Button("Forward", systemImage: "chevron.forward") { step(back: false) }
+                .disabled(!history.canGoForward)
+                .keyboardShortcut("]", modifiers: .command)
+                .help("See the next page")
+        }
+        .controlGroupStyle(.navigation)
+        .labelStyle(.iconOnly)
+    }
+
+    private func step(back: Bool) {
+        let current = selection.wrappedValue
+        let target = back ? history.goBack(from: current) : history.goForward(from: current)
+        guard let target, target != current else { return }
+        stepTarget = target
+        storedPage = target.rawValue
     }
 
     @ViewBuilder
