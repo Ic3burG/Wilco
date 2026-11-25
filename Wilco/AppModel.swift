@@ -366,7 +366,7 @@ final class AppModel {
             let rule = show.rules.first { $0.matchMode == .regularExpression && $0.phrases.contains(pattern) }
             log(ActivityEntry(
                 kind: .error, ruleName: rule?.name ?? "Highlight",
-                detail: "The pattern “\(pattern)” took too long to check and is switched off until Wilco restarts. Simplify it in Settings › Automation."
+                detail: "The pattern “\(pattern)” took too long to check and is switched off until Wilco restarts. Simplify it in Settings › Rules & Highlights."
             ))
         }
     }

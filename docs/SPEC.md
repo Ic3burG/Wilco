@@ -226,7 +226,7 @@ A clip's **answer** is `checked`, else `text` when `words` is `agreed`.
 Disputed and `notEnoughVoters` clips have none and are left out of every score.
 
 **Voters.** The live engine is never a voter. Three are possible: Parakeet
-Ultra (`parakeet-ultra`, a download in Settings › Learning), Apple long-form
+Ultra (`parakeet-ultra`, a download in Settings › Speech Models), Apple long-form
 (`apple-longform`, macOS 26 and later, with its English assets installed) and
 Whisper large-v3 (`whisper-large-v3`, optional, about 3 GB, installed as
 other Whisper models are). Before macOS 26 no third voter exists, so labelling
@@ -243,7 +243,7 @@ read as "cue". With two voters both must match; with three, any two. Otherwise t
 **Voices.** Per channel, the clips are joined in session order with 1 s of
 silence between, and two offline diarizers run over the result: the offline
 pipeline (WeSpeaker and VBx) and offline Sortformer (a different model family;
-about 240 MB, a download in Settings › Learning). A clip's voice is `agreed`
+about 240 MB, a download in Settings › Speech Models). A clip's voice is `agreed`
 only for groupings both diarizers share, found by matching their speakers
 one-to-one; anything else is `disputed`. Live voice letters are not used. This
 is weaker than the words, since both can make the same mistake. If either
@@ -284,7 +284,7 @@ struct ShowDocument {            // formatVersion == 1
   var destinations: [OSCDestination]
   var globalVocabulary: [String]
   var whisperModel: String       // WhisperModel raw value
-  var defaultEngine: SpeechEngine? // new in the rebuild; engine for added channels (Settings › Languages › New Channels); absent/unknown = platform default; an Apple engine falls back to Whisper before macOS 26
+  var defaultEngine: SpeechEngine? // new in the rebuild; engine for added channels (Settings › Speech › New Channels); absent/unknown = platform default; an Apple engine falls back to Whisper before macOS 26
   var defaultLocaleIdentifier: String? // new in the rebuild; language for added channels; absent = "en_US"; "" (detect) becomes "en_US" on Apple engines
   var mcpEnabled: Bool;  var mcpPort: UInt16      // default 8787
   var networkEnabled: Bool; var peerName: String
@@ -601,10 +601,20 @@ Single main window (`MainWindowView`) — `NavigationSplitView`:
   `.showTimecode`, `.newestFirst`. Animation is one fixed eased style (no
   setting) and switches off when Reduce Motion is on.
 
-**Settings** (`SettingsTab`, persisted `settings.selectedTab`): Look & Feel,
-Audio, Languages (engine models, Whisper model picker, global vocabulary),
-Learning (keep-clips switch, voter models, Delete All Clips; see "Session clips folder"), Automation (rules + highlights editors, test button), Destinations (OSC),
-Integrations (Vor), Network (peers), MOS, MCP, License (→ remove).
+**Settings** (`SettingsPage`, persisted `UserDefaults` `settings.selectedPage`;
+missing or unknown → Audio). One window with a sidebar and a search field
+(`SettingsIndex`, a fixed list of setting names; never show text).
+*This Show*, numbered in setup order, each ticked when it looks set up
+(`ShowSetupProgress`): 1 Audio (show device, capture health), 2 Speech
+(global vocabulary, new-channel engine and language, Whisper model choice,
+voice-change tuning), 3 Destinations (OSC), 4 Rules & Highlights (editors,
+test button), 5 Markers. *This Mac*: General, Appearance, Speech Models
+(every download: the show's channel models, and the learning voters
+including Apple long-form en-US), Learning (keep-clips switch, voter count,
+Delete All Clips; see "Session clips folder"). Not built yet, and
+would join This Show: Integrations (Vor), Network (peers), MOS, MCP.
+License (→ remove). See
+`docs/superpowers/specs/2026-11-25-settings-redesign-design.md`.
 
 All user-facing copy is in `reference/strings.txt`; reuse it where it reads well.
 
@@ -736,7 +746,7 @@ A `.wilco` file can come from anyone, and its rules run on every line heard.
   destination outside the local network (not loopback, 10/8, 172.16/12,
   192.168/16, 169.254/16, fe80::/10, fc00::/7, `.local` or a single-label
   name), arrives turned off. A message names the rules and hosts; the person
-  turns on the ones they trust in Settings › Automation. (`OutboundRules`)
+  turns on the ones they trust in Settings › Rules & Highlights. (`OutboundRules`)
 - **Regular expressions are bounded.** Patterns over 500 characters, or with
   a repeated group that itself repeats (`(a+)+`, `(a*)*`, `(x{2,})+`), never
   match, and the rule editor says so. Only the first 2,000 characters of a

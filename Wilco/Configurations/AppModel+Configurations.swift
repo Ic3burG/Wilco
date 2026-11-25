@@ -234,7 +234,7 @@ extension AppModel {
         let rules = turnedOff.map { "“\($0.rule)”" }.joined(separator: ", ")
         let count = turnedOff.count == 1 ? "1 rule" : "\(turnedOff.count) rules"
         return "\(count) that send what's heard to another machine came in turned off: \(rules), sending to \(hosts.joined(separator: ", ")). "
-            + "Turn on the ones you trust in Settings › Automation."
+            + "Turn on the ones you trust in Settings › Rules & Highlights."
     }
 
     func exportConfiguration(_ id: UUID, to url: URL) {

@@ -489,7 +489,7 @@ private struct Builder {
                 add(Finding(
                     id: "phrase:\(rule.id):\(phrase)", severity: .warning,
                     title: "“\(phrase)” fires “\(rule.name)” \(perHour) times an hour",
-                    detail: "Matched \(hits.count.formatted()) lines. Edit the rule’s phrases in Settings › Automation if that’s more than you want.",
+                    detail: "Matched \(hits.count.formatted()) lines. Edit the rule’s phrases in Settings › Rules & Highlights if that’s more than you want.",
                     channelID: nil, evidence: hits.prefix(3).map(\.id), fixes: []
                 ), weight: hits.count)
             }

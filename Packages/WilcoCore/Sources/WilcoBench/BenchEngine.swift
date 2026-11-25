@@ -90,7 +90,7 @@ extension BenchEngine {
                 : await SpeechTranscriber.installedLocales
             let wanted = Locale(identifier: benchLocale).identifier(.bcp47)
             guard installed.contains(where: { $0.identifier(.bcp47) == wanted }) else {
-                return "the \(benchLocale) model isn't installed (Wilco › Settings › Languages)"
+                return "the \(benchLocale) model isn't installed (Wilco › Settings › Speech Models)"
             }
             return voices ? voiceModelMissing() : nil
         }, install: voices ? installVoiceModel : nil, detectsVoiceChanges: voices) {
