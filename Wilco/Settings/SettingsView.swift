@@ -2,47 +2,53 @@ import SwiftUI
 import WilcoCore
 
 struct SettingsView: View {
-    /// Every tab shares one size so the window doesn't jump when switching
-    /// tabs. Sized for the list-and-editor tabs (Automation, Markers); the
-    /// shorter forms scroll inside it.
-    static let size = CGSize(width: 860, height: 600)
+    @Environment(AppModel.self) private var model
+    @AppStorage(SettingsPage.storageKey) private var storedPage = SettingsPage.audio.rawValue
+    @State private var status = SetupStatus()
+
+    private var selection: Binding<SettingsPage> {
+        Binding(
+            get: { SettingsPage.restored(from: storedPage) },
+            set: { storedPage = $0.rawValue }
+        )
+    }
 
     var body: some View {
-        TabView {
-            Tab("General", systemImage: "gearshape") {
-                GeneralSettingsView().settingsPane()
-            }
-            Tab("Look & Feel", systemImage: "textformat.size") {
-                LookAndFeelSettingsView().settingsPane()
-            }
-            Tab("Audio", systemImage: "waveform") {
-                AudioSettingsView().settingsPane()
-            }
-            Tab("Speech", systemImage: "character.bubble") {
-                SpeechSettingsView().settingsPane()
-            }
-            Tab("Speech Models", systemImage: "arrow.down.circle") {
-                SpeechModelsSettingsView().settingsPane()
-            }
-            Tab("Learning", systemImage: "graduationcap") {
-                LearningSettingsView().settingsPane()
-            }
-            Tab("Automation", systemImage: "bolt") {
-                AutomationSettingsView().settingsPane()
-            }
-            Tab("Markers", systemImage: "flag") {
-                MarkerSettingsView().settingsPane()
-            }
-            Tab("Destinations", systemImage: "paperplane") {
-                DestinationSettingsView().settingsPane()
+        NavigationSplitView {
+            SettingsSidebar(selection: selection, status: status)
+        } detail: {
+            detail(for: selection.wrappedValue)
+                .navigationTitle(selection.wrappedValue.title)
+        }
+        .frame(minWidth: 900, minHeight: 600)
+        .task(id: statusKey) {
+            // The Speech tick follows downloads made here or by a channel
+            // starting, so check again now and then while Settings is open.
+            while !Task.isCancelled {
+                await status.refresh(for: model.document, installer: model.installer)
+                try? await Task.sleep(for: .seconds(3))
             }
         }
     }
-}
 
-private extension View {
-    func settingsPane() -> some View {
-        frame(width: SettingsView.size.width, height: SettingsView.size.height)
+    private var statusKey: [String] {
+        [model.document.whisperModel, String(model.installer.generation)]
+            + model.document.channels.map { "\($0.engine.rawValue)|\($0.localeIdentifier)" }
+    }
+
+    @ViewBuilder
+    private func detail(for page: SettingsPage) -> some View {
+        switch page {
+        case .audio: AudioSettingsView()
+        case .speech: SpeechSettingsView()
+        case .destinations: DestinationSettingsView()
+        case .rules: AutomationSettingsView()
+        case .markers: MarkerSettingsView()
+        case .general: GeneralSettingsView()
+        case .appearance: LookAndFeelSettingsView()
+        case .speechModels: SpeechModelsSettingsView()
+        case .learning: LearningSettingsView()
+        }
     }
 }
 

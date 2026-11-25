@@ -49,6 +49,7 @@ struct WilcoApp: App {
                 .environment(model)
                 .environment(look)
         }
+        .windowResizability(.contentMinSize)
         .commands {
             CommandGroup(after: .appInfo) {
                 CheckForUpdatesButton(updater: updater)
