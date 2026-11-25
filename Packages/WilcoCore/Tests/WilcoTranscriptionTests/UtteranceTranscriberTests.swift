@@ -162,9 +162,11 @@ struct UtteranceTranscriberTests {
         let channel = UUID()
         let offers = Mutex<[ClipOffer]>([])
         let tap = ClipTap { offer in offers.withLock { $0.append(offer) } }
+        let clips = ClipSwitch()
+        clips.turnOn(tap)
         let log = Log()
         let transcriber = UtteranceChannelTranscriber(
-            channelID: channel, source: AudioSource(ring: ring, sampleRate: { rate }, clips: tap),
+            channelID: channel, source: AudioSource(ring: ring, sampleRate: { rate }, clips: clips),
             sessionOffset: 0, recognizer: FakeRecognizer(),
             onEvent: { event in log.events.withLock { $0.append(event) } }, onStatus: { _ in }
         )
@@ -188,6 +190,44 @@ struct UtteranceTranscriberTests {
             #expect(offer.candidate.channel == channel)
             #expect(offer.candidate.sessionOffset == final.sessionOffset)
         }
+    }
+
+    @Test(.timeLimit(.minutes(1))) func clipsTurnedOnMidCaptureReachARunningChannel() async throws {
+        let rate = 48_000.0
+        let ring = AudioRingBuffer(capacity: Int(rate) * 30)
+        let offers = Mutex<[ClipOffer]>([])
+        let tap = ClipTap { offer in offers.withLock { $0.append(offer) } }
+        let clips = ClipSwitch()
+        let log = Log()
+        let transcriber = UtteranceChannelTranscriber(
+            channelID: UUID(), source: AudioSource(ring: ring, sampleRate: { rate }, clips: clips),
+            sessionOffset: 0, recognizer: FakeRecognizer(),
+            onEvent: { event in log.events.withLock { $0.append(event) } }, onStatus: { _ in }
+        )
+        func finals() -> [TranscriptionEvent] { log.events.withLock { $0 }.filter(\.isFinal) }
+        func waitForFinals(_ count: Int) async throws {
+            for _ in 0..<50 where finals().count < count { try await Task.sleep(for: .milliseconds(100)) }
+        }
+        await transcriber.start()
+
+        // Off: the first line is not offered.
+        try await play(talk(seconds: 1, rate: rate) + quiet(seconds: 1.5, rate: rate), into: ring, rate: rate)
+        try await waitForFinals(1)
+        // On from just after the first line began: the second line is offered.
+        let first = try #require(finals().first)
+        clips.turnOn(tap, from: first.sessionOffset + 0.1)
+        try await play(talk(seconds: 1, rate: rate) + quiet(seconds: 1.5, rate: rate), into: ring, rate: rate)
+        try await waitForFinals(2)
+        // Off again: the third line is not offered.
+        clips.turnOff()
+        try await play(talk(seconds: 1, rate: rate) + quiet(seconds: 1.5, rate: rate), into: ring, rate: rate)
+        try await waitForFinals(3)
+        await transcriber.stop()
+
+        let lines = finals()
+        try #require(lines.count == 3)
+        let got = offers.withLock { $0 }
+        #expect(got.map(\.candidate.sessionOffset) == [lines[1].sessionOffset])
     }
 
     @Test(.timeLimit(.minutes(1))) func meteredChannelReportsUtterances() async throws {

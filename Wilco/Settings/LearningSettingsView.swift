@@ -5,7 +5,7 @@ import WilcoTranscription
 /// Whether to keep short audio clips of unclear lines, and how much space they use.
 struct LearningSettingsView: View {
     @Environment(AppModel.self) private var model
-    @AppStorage("learning.keepClips") private var keepClips = false
+    @AppStorage(AppModel.keepClipsKey) private var keepClips = false
 
     @State private var size: Int64 = 0
     @State private var confirmingDelete = false
@@ -21,7 +21,8 @@ struct LearningSettingsView: View {
         Form {
             Section {
                 Toggle("Keep audio clips to learn from shows", isOn: $keepClips)
-                Text("Short clips of unclear lines and exchanges, saved beside each session. They never leave this Mac. About 30–50 MB a show. Takes effect at the next capture.")
+                    .onChange(of: keepClips) { _, isOn in model.keepingClipsChanged(to: isOn) }
+                Text("Short clips of unclear lines and exchanges, saved beside each session. They never leave this Mac. About 30–50 MB a show. Turned on during a capture, it keeps lines that start from then on; turned off, it stops at once and keeps what's saved.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 LabeledContent("Using", value: ByteCountFormatter.string(fromByteCount: size, countStyle: .file))
@@ -46,9 +47,11 @@ struct LearningSettingsView: View {
         .formStyle(.grouped)
         .onAppear(perform: refreshSize)
         .task(id: installer.generation) {
-            // Re-check now and then: macOS can add or remove its speech models.
+            // Re-check now and then: macOS can add or remove its speech
+            // models, and clips are written while a capture runs.
             while !Task.isCancelled {
                 await refreshVoters()
+                await refreshSizeInBackground()
                 try? await Task.sleep(for: .seconds(3))
             }
         }
@@ -152,5 +155,13 @@ struct LearningSettingsView: View {
 
     private func refreshSize() {
         size = ClipsFolder.totalSize(in: DataLocations.transcripts)
+    }
+
+    /// The same, with the folder walk off the main thread: it runs every few
+    /// seconds while the pane is open, captures included, and a season of
+    /// clips is thousands of files.
+    private func refreshSizeInBackground() async {
+        let transcripts = DataLocations.transcripts
+        size = await Task.detached(priority: .utility) { ClipsFolder.totalSize(in: transcripts) }.value
     }
 }

@@ -196,10 +196,10 @@ func deliverFinalLine(
 ) {
     let hasText = !line.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     var fetched: [Float]?
-    if let clips, hasText {
+    if let clips, hasText, let tap = clips.clipSwitch.tap(forLineStartingAt: lineStart) {
         let samples = audio()
         fetched = samples
-        clips.tap.offer(ClipOffer(
+        tap.offer(ClipOffer(
             candidate: ClipCandidate(
                 id: UUID(), channel: clips.channel, sessionOffset: lineStart,
                 duration: lineEnd - lineStart, confidence: line.confidence
@@ -232,7 +232,8 @@ struct UnavailableVoiceprints: VoiceprintExtractor {
 
 /// Where and as what a channel's final lines are offered as clips.
 struct ChannelClips: Sendable {
-    var tap: ClipTap
+    /// Asked per line, since clip keeping can be turned on or off mid-capture.
+    var clipSwitch: ClipSwitch
     var channel: UUID
     /// `SpeechEngine` raw value.
     var engine: String

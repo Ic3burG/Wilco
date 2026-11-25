@@ -107,7 +107,8 @@ actor AppleChannelTranscriber: ChannelTranscriber {
 
         clips = source.clips.map {
             ChannelClips(
-                tap: $0, channel: configuration.channelID, engine: configuration.engine.rawValue, whisperModel: nil
+                clipSwitch: $0, channel: configuration.channelID, engine: configuration.engine.rawValue,
+                whisperModel: nil
             )
         }
         if annotator != nil || clips != nil { history = AudioHistory() }
@@ -144,10 +145,11 @@ actor AppleChannelTranscriber: ChannelTranscriber {
                     // fed, even when this resampler fails (silence is kept
                     // instead) or nothing needs the audio (the voice model
                     // isn't usable and clips are off, so nothing is kept),
-                    // so later lines still find their own audio.
+                    // so later lines still find their own audio. Clips can
+                    // come on mid-capture; lines from then on have audio.
                     let rate = source.sampleRate()
                     let seconds = Double(samples.count) / rate
-                    if annotator?.isUsable == true || clips != nil {
+                    if annotator?.isUsable == true || clips?.clipSwitch.isOn == true {
                         if voiceConverter == nil { voiceConverter = SampleRateConverter.whisper() }
                         history?.append(try? voiceConverter?.convertToSamples(samples, sampleRate: rate), lasting: seconds)
                     } else {

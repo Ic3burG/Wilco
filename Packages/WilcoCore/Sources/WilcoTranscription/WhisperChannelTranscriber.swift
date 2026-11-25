@@ -171,7 +171,7 @@ actor WhisperChannelTranscriber: ChannelTranscriber {
         voices = annotator.map { VoiceAnnotationQueue(annotator: $0, onEvent: onEvent) }
         clips = source.clips.map {
             ChannelClips(
-                tap: $0, channel: configuration.channelID, engine: SpeechEngine.whisper.rawValue,
+                clipSwitch: $0, channel: configuration.channelID, engine: SpeechEngine.whisper.rawValue,
                 whisperModel: configuration.whisperModel.rawValue
             )
         }

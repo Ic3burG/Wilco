@@ -104,7 +104,14 @@ final class AppModel {
     @ObservationIgnored private let soundClassifier = SoundClassifierQueue()
     @ObservationIgnored private var diagnostics: DiagnosticsRecorder?
     /// Keeps short audio clips beside the session when the preference was on at capture start.
+    /// This session's clip keeper, made the first time clips are turned on
+    /// and kept until capture stops, so turning clips off and on again adds
+    /// to the same folder rather than starting a new manifest over it.
     @ObservationIgnored private var clipKeeper: ClipKeeper?
+    /// This session's switch for clip keeping; channels ask it line by line.
+    @ObservationIgnored private var clipSwitch: ClipSwitch?
+    /// The session file, for the clip keeper's folder beside it.
+    @ObservationIgnored private var sessionTranscriptURL: URL?
     /// When capture last stopped; labelling waits a while after this.
     private(set) var lastCaptureStop: Date?
     @ObservationIgnored private var reportedWriteFailure = false
@@ -268,10 +275,12 @@ final class AppModel {
             sessionStart: start, classifier: soundClassifier)
         diagnostics = recorder
         transcription.diagnostics = recorder.tap
-        if UserDefaults.standard.bool(forKey: "learning.keepClips") {
-            let keeper = ClipKeeper(folder: ClipsFolder.url(forTranscript: transcriptURL))
-            clipKeeper = keeper
-            transcription.clips = keeper.tap
+        sessionTranscriptURL = transcriptURL
+        let clipSwitch = ClipSwitch()
+        self.clipSwitch = clipSwitch
+        transcription.clips = clipSwitch
+        if UserDefaults.standard.bool(forKey: Self.keepClipsKey) {
+            clipSwitch.turnOn(keeper(for: transcriptURL).tap)
         }
         reportedWriteFailure = false
         evaluator.reset()
@@ -299,6 +308,9 @@ final class AppModel {
         let recorder = diagnostics
         diagnostics = nil
         transcription.diagnostics = nil
+        clipSwitch?.turnOff()
+        clipSwitch = nil
+        sessionTranscriptURL = nil
         let keeper = clipKeeper
         clipKeeper = nil
         transcription.clips = nil
@@ -313,6 +325,27 @@ final class AppModel {
             }
             await recorder?.finish()
         }
+    }
+
+    static let keepClipsKey = "learning.keepClips"
+
+    /// Learning's Keep audio clips changed. During a capture it takes effect
+    /// at once: on, lines that start from now are kept; off, nothing more is
+    /// kept, and clips already saved stay.
+    func keepingClipsChanged(to isOn: Bool) {
+        guard let sessionStart, let clipSwitch, let sessionTranscriptURL else { return }
+        if isOn {
+            clipSwitch.turnOn(keeper(for: sessionTranscriptURL).tap, from: Date().timeIntervalSince(sessionStart))
+        } else {
+            clipSwitch.turnOff()
+        }
+    }
+
+    private func keeper(for transcriptURL: URL) -> ClipKeeper {
+        if let clipKeeper { return clipKeeper }
+        let keeper = ClipKeeper(folder: ClipsFolder.url(forTranscript: transcriptURL))
+        clipKeeper = keeper
+        return keeper
     }
 
     /// A model finished installing: channels that failed or run without

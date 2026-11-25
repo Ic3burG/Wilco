@@ -10,13 +10,14 @@ public struct AudioSource: Sendable {
     /// Where the channel's per-minute level and speech figures go. Nil for none.
     public var diagnostics: DiagnosticsTap?
 
-    /// Where each final line's 16 kHz audio is offered for keeping as a
-    /// clip. Nil for none.
-    public var clips: ClipTap?
+    /// Whether, and where, each final line's 16 kHz audio is offered for
+    /// keeping as a clip. Asked per line, so it can change mid-capture. Nil
+    /// for never.
+    public var clips: ClipSwitch?
 
     public init(
         ring: AudioRingBuffer, sampleRate: @escaping @Sendable () -> Double, diagnostics: DiagnosticsTap? = nil,
-        clips: ClipTap? = nil
+        clips: ClipSwitch? = nil
     ) {
         self.ring = ring
         self.sampleRate = sampleRate

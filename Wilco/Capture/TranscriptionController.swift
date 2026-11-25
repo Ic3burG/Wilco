@@ -34,8 +34,9 @@ final class TranscriptionController {
     private var running: [ChannelConfig.ID: Running] = [:]
     /// Where channels send their level meter minutes; set while a session records.
     var diagnostics: DiagnosticsTap?
-    /// Where channels send audio clips of unclear lines; set while a session keeps clips.
-    var clips: ClipTap?
+    /// Where channels ask whether to keep audio clips of their lines; one per
+    /// session, turned on and off as the Learning setting changes.
+    var clips: ClipSwitch?
     private let whisperModels = WhisperModelStore()
     private let parakeetModels: ParakeetModelStore
     /// The voice model, loaded once and shared by every channel that detects

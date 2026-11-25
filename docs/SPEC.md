@@ -123,10 +123,16 @@ finds 64 others waiting is dropped.
 
 Wilco addition (design: `docs/superpowers/specs/2026-11-23-real-show-clips-design.md`).
 With **Settings › Learning › Keep audio clips to learn from shows** on
-(`UserDefaults` `learning.keepClips`, Bool, default false, read once when
-capture starts), Wilco saves short clips of the lines that matter for testing
+(`UserDefaults` `learning.keepClips`, Bool, default false), Wilco saves short clips of the lines that matter for testing
 speech engines, and labels them by itself after the show. Everything stays on
 this Mac. The show, the transcript and the diagnostics file are unchanged.
+
+The setting can change during a capture. Turned on, it keeps lines that start
+from that moment (a line already under way may be missing audio from before
+it); turned off, nothing more is offered and clips already saved stay. Both
+reach channels that are already transcribing (each asks a per-session
+`ClipSwitch` line by line). One `.clips` folder and manifest per session,
+however often it is switched.
 
 ```
 Session 2026-11-21 1720-04.jsonl
