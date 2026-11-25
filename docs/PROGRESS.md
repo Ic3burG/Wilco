@@ -1745,7 +1745,8 @@ one-click collapse in the app, and they work.
 
 - New channels now start with Mark voice changes off; the letters aren't
   accurate enough yet to be on by default. Channels already in a show
-  keep whatever they have. Tested; not verified in the app.
+  keep whatever they have. Verified (2026-11-25): the user added a channel,
+  saw it start off, and turned it on by hand.
 - Learning: Keep audio clips used to do nothing when turned on mid-capture
   (read once at start; each channel's clip tap fixed when it started).
   Channels now ask a per-session `ClipSwitch` line by line, so it can be
