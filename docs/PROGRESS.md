@@ -1729,15 +1729,24 @@ Repair changes nothing in the shows and transcripts on this Mac (5 shows,
 
 ### Testing
 
-Tested: all package tests pass and the app builds without warnings. Not
-verified in the app.
+Tested: all package tests pass and the app builds without warnings.
+Verified: the user tried the matrix resets, column resizing and the
+one-click collapse in the app, and they work.
 
 ### Next steps / where we left off
 
-- Hand check: the matrix toolbar in a narrow window (detail toolbar items
-  can spill into the `>>` overflow); the icon click collapses a column.
 - Text size shortcuts in the matrix (waiting on the user): a column given
   its own size from its ••• menu ignores View ▸ Larger/Smaller Text, and
   ⌘0 doesn't clear column sizes. Proposed: ⌘+/⌘− step every column, ⌘0
   also clears column sizes. Also check whether plain ⌘= works, since the
   shortcut is registered as "+".
+
+### Later the same day: voice changes off by default
+
+- New channels now start with Mark voice changes off; the letters aren't
+  accurate enough yet to be on by default. Channels already in a show
+  keep whatever they have. Tested; not verified in the app.
+- Learning question from the user: turning on Keep audio clips during a
+  capture does nothing until the next capture. The setting is read once
+  at capture start, and each channel's clip tap is fixed when its
+  transcriber starts.

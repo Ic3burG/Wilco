@@ -6,8 +6,8 @@ import Foundation
 extension ShowDocument {
     /// Appends a channel named "Channel N", patched to the lowest unused input,
     /// on `engine` or else the show's ``newChannelEngine``, in the show's
-    /// default language (see ``newChannelLocale(for:)``). New channels
-    /// detect voice changes (channels in older shows decode with it off).
+    /// default language (see ``newChannelLocale(for:)``). Voice changes
+    /// start off: the letters aren't reliable enough to be on by default.
     @discardableResult
     public mutating func addChannel(engine: SpeechEngine? = nil) -> ChannelConfig {
         let usedInputs = Set(channels.compactMap(\.deviceChannel))
@@ -18,8 +18,7 @@ extension ShowDocument {
             tint: ChannelTint.allCases[channels.count % ChannelTint.allCases.count],
             deviceChannel: freeInput,
             localeIdentifier: newChannelLocale(for: engine),
-            engine: engine,
-            detectsVoiceChanges: true
+            engine: engine
         )
         channels.append(channel)
         return channel

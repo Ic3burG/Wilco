@@ -30,11 +30,11 @@ struct ChannelEditingTests {
         #expect(show.channels.count == 1)
     }
 
-    @Test func newChannelDetectsVoiceChanges() throws {
-        // On for channels added now (it keeps up at 32 channels in
-        // wilco-bench); channels in existing shows decode with it off.
+    @Test func newChannelLeavesVoiceChangesOff() throws {
+        // Off until voice letters are accurate enough; channels in older
+        // shows decode with it off too.
         var show = ShowDocument()
-        #expect(show.addChannel().detectsVoiceChanges)
+        #expect(!show.addChannel().detectsVoiceChanges)
         let old = Data(#"{"id":"\#(UUID().uuidString)","name":"SM"}"#.utf8)
         #expect(try !JSONDecoder().decode(ChannelConfig.self, from: old).detectsVoiceChanges)
     }

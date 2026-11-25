@@ -305,7 +305,7 @@ struct ChannelConfig {
   // vocabulary: [String] — per-channel terms in the reference app. The rebuild
   // has show vocabulary only; on open, a channel's terms join globalVocabulary
   // (trimmed, case-insensitive duplicates skipped) and are no longer saved.
-  var detectsVoiceChanges: Bool  // new in the rebuild: mark lines with a voice letter; decodes false for existing shows, new channels default true
+  var detectsVoiceChanges: Bool  // new in the rebuild: mark lines with a voice letter; decodes false for existing shows, new channels default false (letters not yet reliable)
 }
 struct ChannelGroup { var id: UUID; var name: String; var symbol: String }
 
