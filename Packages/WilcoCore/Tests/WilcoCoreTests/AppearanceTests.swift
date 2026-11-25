@@ -83,12 +83,6 @@ struct TranscriptAppearanceTests {
         #expect(appearance.fontSize == TranscriptAppearance.fontSizeRange.upperBound)
     }
 
-    @Test func motionStylesDescribeThemselves() {
-        #expect(MotionStyle.allCases.count == 4)
-        #expect(MotionStyle.still.isAnimated == false)
-        #expect(MotionStyle.allCases.filter(\.isAnimated).allSatisfy { !$0.summary.isEmpty })
-    }
-
     @Test func themesRoundTripThroughTheirStoredNames() {
         #expect(AppTheme.allCases.map(\.rawValue) == ["system", "light", "dark"])
         for theme in AppTheme.allCases {

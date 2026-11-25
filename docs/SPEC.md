@@ -591,8 +591,8 @@ Single main window (`MainWindowView`) — `NavigationSplitView`:
 - **Status bar** (`CaptureStatusBar`): capture state, device, rate, reconnects,
   dropped frames; Start/Stop capture.
 - **Look & feel** defaults: `transcript.fontSize`, `.followLive`,
-  `.showTimecode`, `.newestFirst`, motion style (`bouncy|snappy|smooth|still`,
-  honours Reduce Motion).
+  `.showTimecode`, `.newestFirst`. Animation is one fixed eased style (no
+  setting) and switches off when Reduce Motion is on.
 
 **Settings** (`SettingsTab`, persisted `settings.selectedTab`): Look & Feel,
 Audio, Languages (engine models, Whisper model picker, global vocabulary),

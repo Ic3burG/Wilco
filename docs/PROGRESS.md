@@ -34,7 +34,7 @@ Status key: **verified** means tried in the app on a real Mac;
 | Transcription | Each channel transcribed on-device by Apple's speech engine (macOS 26+) or Whisper; transcripts written as `.jsonl`. | verified |
 | Automation | Phrase rules fire OSC (UDP / TCP / SLIP), MIDI, webhooks, notifications and cue markers; highlights in the transcript; Activity log. | tested |
 | Post-show report | Run of show, chat log and Channels tabs in the reference app's style: stats header, channel and moment chips, search with `"exact phrases"`, per-channel stats and a traffic heatmap. Export to HTML, SRT and VTT. Statistics checked against the reference app's own report for a real session. | built, awaiting user test |
-| Look & Feel | Text size, timecode, newest-first, follow live, motion style, matrix column widths/collapse/text size; Light, Dark or Match System. Imports existing preferences once. | built, awaiting user test |
+| Look & Feel | Text size, timecode, newest-first, follow live, matrix column widths/collapse/text size; Light, Dark or Match System. Imports existing preferences once. | built, awaiting user test |
 | Live transcript | Restyled to match the report: live header with duration and counts, channel chips, clock-over-elapsed time column. | built, awaiting user test |
 | HTML export | Self-contained page mirroring the report window, light/dark aware, printable, opens to a tab via `#view=`. | built, awaiting user test |
 

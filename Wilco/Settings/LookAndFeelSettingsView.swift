@@ -42,29 +42,6 @@ struct LookAndFeelSettingsView: View {
                 Text("With newest first, the most recent line sits at the top of the window and the log reads downward into the past. Auto-scroll applies everywhere, the matrix columns included.")
             }
 
-            Section {
-                Picker("Motion", selection: $look.appearance.motion) {
-                    ForEach(MotionStyle.allCases, id: \.self) { style in
-                        VStack(alignment: .leading) {
-                            Text(style.title)
-                            Text(style.summary).font(.caption).foregroundStyle(.secondary)
-                        }
-                        .tag(style)
-                    }
-                }
-                .pickerStyle(.radioGroup)
-                .disabled(look.reduceMotion)
-                if look.reduceMotion {
-                    Label("Reduce Motion is on in System Settings, so animation is disabled regardless of this choice.",
-                          systemImage: "figure.walk.motion.trianglebadge.exclamationmark")
-                        .foregroundStyle(.orange)
-                }
-            } header: {
-                Text("Motion")
-            } footer: {
-                Text("Applies to view changes, list updates and the channel list. Level meters stay linear: a meter that overshoots reports a level the signal never reached.")
-            }
-
             Section("Matrix Columns") {
                 HStack {
                     Button("Reset Widths") { withAnimation(look.animation) { look.matrix.resetWidths() } }

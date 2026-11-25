@@ -2,8 +2,8 @@ import AppKit
 import SwiftUI
 import WilcoCore
 
-/// This Mac's display preferences: transcript text and order, motion, and
-/// matrix columns, stored in user defaults.
+/// This Mac's display preferences: transcript text and order, matrix
+/// columns and theme, stored in user defaults.
 @MainActor
 @Observable
 final class LookAndFeel {
@@ -34,18 +34,12 @@ final class LookAndFeel {
         }
     }
 
-    /// macOS Reduce Motion; when on, nothing animates whatever the style.
+    /// macOS Reduce Motion; when on, nothing animates.
     private(set) var reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
 
     /// The animation for list and view changes, or nil for none.
     var animation: Animation? {
-        guard !reduceMotion else { return nil }
-        switch appearance.motion {
-        case .smooth: return .smooth(duration: 0.3)
-        case .snappy: return .snappy(duration: 0.25, extraBounce: 0.08)
-        case .bouncy: return .bouncy(duration: 0.4, extraBounce: 0.22)
-        case .still: return nil
-        }
+        reduceMotion ? nil : .smooth(duration: 0.3)
     }
 
     private let defaults: UserDefaults
@@ -56,7 +50,6 @@ final class LookAndFeel {
         static let followLive = "transcript.followLive"
         static let showTimecode = "transcript.showTimecode"
         static let newestFirst = "transcript.newestFirst"
-        static let motion = "transcript.motion"
         static let widths = "matrix.columnWidths"
         static let fontSizes = "matrix.fontSizes"
         static let collapsed = "matrix.collapsedChannels"
@@ -73,8 +66,7 @@ final class LookAndFeel {
             fontSize: defaults.object(forKey: Key.fontSize) as? Double ?? stored.fontSize,
             followLive: defaults.object(forKey: Key.followLive) as? Bool ?? stored.followLive,
             showTimecode: defaults.object(forKey: Key.showTimecode) as? Bool ?? stored.showTimecode,
-            newestFirst: defaults.object(forKey: Key.newestFirst) as? Bool ?? stored.newestFirst,
-            motion: defaults.string(forKey: Key.motion).flatMap(MotionStyle.init(rawValue:)) ?? stored.motion
+            newestFirst: defaults.object(forKey: Key.newestFirst) as? Bool ?? stored.newestFirst
         )
         matrix = MatrixLayout(propertyLists: (
             widths: defaults.dictionary(forKey: Key.widths) as? [String: Double] ?? [:],
@@ -122,7 +114,6 @@ final class LookAndFeel {
         defaults.set(appearance.followLive, forKey: Key.followLive)
         defaults.set(appearance.showTimecode, forKey: Key.showTimecode)
         defaults.set(appearance.newestFirst, forKey: Key.newestFirst)
-        defaults.set(appearance.motion.rawValue, forKey: Key.motion)
     }
 
     private func saveMatrix() {
