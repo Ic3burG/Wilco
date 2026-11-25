@@ -38,7 +38,7 @@ final class ReportModel {
     private(set) var isLoading = false
     private(set) var error: String?
 
-    var tab: Tab = .runOfShow {
+    var tab: Tab = .channels {
         didSet { if tab == .review { loadHistoryIfNeeded() } }
     }
 

@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'sha256-SWFsWRz46QvOVC1RmqKh3Tc0/L1jcxv2mtsnTXkPSGI='; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'sha256-bS3xw21XXUqRDuZUsMItIDo9gihhnSKk7c1ImG4ELmk='; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fixture Show — Sun, Nov 8, 2026 at 02:25</title>
 <style>:root{color-scheme:light dark;--bg:#fff;--side:#f5f5f7;--ink:#1d1d1f;--muted:#6e6e73;--faint:#a1a1a6;--line:#e5e5ea;--fill:#f0f0f2;--mark:#fde68a;--hit:#bfdbfe}
@@ -42,7 +42,7 @@ mark{color:var(--ink);border-radius:3px;padding:0 2px}mark.call{background:var(-
 <div class="bar">
   <div class="where"><b>Post-Show</b><span>session-v1</span></div>
   <nav class="tabs">
-    <button data-tab="channels">Channels</button><button data-tab="log">Chat log</button><button class="on" data-tab="run">Run of show</button>
+    <button class="on" data-tab="channels">Channels</button><button data-tab="log">Chat log</button><button data-tab="run">Run of show</button>
   </nav>
   <input type="search" id="q" placeholder="Search words, or &quot;an exact phrase&quot;" autocomplete="off">
 </div>
@@ -53,16 +53,16 @@ mark{color:var(--ink);border-radius:3px;padding:0 2px}mark.call{background:var(-
   </div>
 </header>
 <div class="chips" id="channel-chips"><button class="chip on" style="--t:#475569;--td:#ADB5BD" data-ch="all"><i></i>All channels</button><button class="chip" style="--t:#475569;--td:#ADB5BD" data-ch="B32FFE0F-41D2-47F5-A403-EB1284511CBA"><i></i>Unknown channel <span class="n">2</span></button></div>
-<section id="run"><div class="chips cats"><button class="chip on" style="--t:#475569;--td:#ADB5BD" data-cat="all"><i></i>Everything <span class="n">2</span></button><button class="chip" style="--t:#2B8A3E;--td:#69DB7C" data-cat="cue"><i></i>Cue calls <span class="n">1</span></button><button class="chip" style="--t:#0B7285;--td:#63E6BE" data-cat="department"><i></i>Department gos <span class="n">1</span></button></div><table class="rows"><tr data-ch="B32FFE0F-41D2-47F5-A403-EB1284511CBA" data-cat="cue"><td class="time"><b>02:25:25</b><span>0:00:00</span></td><td class="what" style="--t:#2B8A3E;--td:#69DB7C"><i></i><b>Standby</b></td><td class="who" style="--t:#475569;--td:#ADB5BD">Unknown channel</td><td class="said"><mark class="call">Standby</mark> lighting cue five.</td></tr>
+<section id="run" hidden><div class="chips cats"><button class="chip on" style="--t:#475569;--td:#ADB5BD" data-cat="all"><i></i>Everything <span class="n">2</span></button><button class="chip" style="--t:#2B8A3E;--td:#69DB7C" data-cat="cue"><i></i>Cue calls <span class="n">1</span></button><button class="chip" style="--t:#0B7285;--td:#63E6BE" data-cat="department"><i></i>Department gos <span class="n">1</span></button></div><table class="rows"><tr data-ch="B32FFE0F-41D2-47F5-A403-EB1284511CBA" data-cat="cue"><td class="time"><b>02:25:25</b><span>0:00:00</span></td><td class="what" style="--t:#2B8A3E;--td:#69DB7C"><i></i><b>Standby</b></td><td class="who" style="--t:#475569;--td:#ADB5BD">Unknown channel</td><td class="said"><mark class="call">Standby</mark> lighting cue five.</td></tr>
 <tr data-ch="B32FFE0F-41D2-47F5-A403-EB1284511CBA" data-cat="department"><td class="time"><b>02:25:34</b><span>0:00:09</span></td><td class="what" style="--t:#0B7285;--td:#63E6BE"><i></i><b>Lighting go</b></td><td class="who" style="--t:#475569;--td:#ADB5BD">Unknown channel</td><td class="said"><mark class="call">Lighting go</mark>.</td></tr></table></section>
 <section id="log" hidden><table class="rows log"><tr data-ch="B32FFE0F-41D2-47F5-A403-EB1284511CBA"><td class="time"><b>02:25:25</b><span>0:00:00</span></td><td class="who" style="--t:#475569;--td:#ADB5BD">Unknown channel</td><td class="said unsure" title="50% confidence">Standby lighting cue five.</td></tr>
 <tr data-ch="B32FFE0F-41D2-47F5-A403-EB1284511CBA"><td class="time"><b>02:25:34</b><span>0:00:09</span></td><td class="who" style="--t:#475569;--td:#ADB5BD">Unknown channel</td><td class="said" title="91% confidence">Lighting go.</td></tr></table></section>
-<section id="channels" hidden><h2>Messages per channel</h2><div class="ch" data-ch="B32FFE0F-41D2-47F5-A403-EB1284511CBA" style="--t:#475569;--td:#ADB5BD"><div class="name"><i></i>Unknown channel</div><div class="body"><div class="track"><div style="width:100.0%"></div></div><p>6 words · 70% mean confidence · 1 unclear · busiest 0:00:00 · 2 in 10 min</p><div class="terms"><span>lighting <b>2</b></span><span>cue <b>1</b></span><span>five <b>1</b></span><span>standby <b>1</b></span></div></div><div class="count"><b>2</b><span>100.0%</span></div></div>
+<section id="channels"><h2>Messages per channel</h2><div class="ch" data-ch="B32FFE0F-41D2-47F5-A403-EB1284511CBA" style="--t:#475569;--td:#ADB5BD"><div class="name"><i></i>Unknown channel</div><div class="body"><div class="track"><div style="width:100.0%"></div></div><p>6 words · 70% mean confidence · 1 unclear · busiest 0:00:00 · 2 in 10 min</p><div class="terms"><span>lighting <b>2</b></span><span>cue <b>1</b></span><span>five <b>1</b></span><span>standby <b>1</b></span></div></div><div class="count"><b>2</b><span>100.0%</span></div></div>
 <h2>Traffic</h2><p class="note">One column per 1 min, shaded by messages in that window.</p>
 <div class="traffic"><div class="heat" data-ch="B32FFE0F-41D2-47F5-A403-EB1284511CBA" style="--t:#475569;--td:#ADB5BD"><span>Unknown channel</span><div class="cols"><i style="height:100%;opacity:1.00" title="2"></i></div></div><div class="heat axis"><span></span><div class="ticks"><span style="left:0.00%">0:00:00</span><span style="left:16.67%">0:00:10</span><span style="left:33.33%">0:00:20</span><span style="left:50.00%">0:00:30</span><span style="left:66.67%">0:00:40</span><span style="left:83.33%">0:00:50</span></div></div></div></section>
 <p class="none" id="none" hidden>Nothing matched. Try fewer words, or quote a phrase.</p>
 <footer>Generated by Wilco from session-v1.jsonl</footer>
-<script>const $=s=>[...document.querySelectorAll(s)];let tab='run',chs=new Set(),cat='all';
+<script>const $=s=>[...document.querySelectorAll(s)];let tab='channels',chs=new Set(),cat='all';
 const esc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
 function parse(q){const w=[],p=[];q.split('"').forEach((part,i)=>{if(i%2){const t=part.trim().toLowerCase().split(/\s+/).filter(Boolean);if(t.length)p.push(t)}else w.push(...part.toLowerCase().split(/\s+/).filter(Boolean))});
   return{w,p:p.map(t=>new RegExp('(?<![\\p{L}\\p{N}])'+[...t.join('')].map(esc).join('[\\s\\-]*')+'(?![\\p{L}\\p{N}])','iu'))}}
